@@ -1,17 +1,14 @@
 {
-  "extends": ["plugin:@nrwl/nx/react"],
-  "root": true,
+  "extends": ["plugin:@nrwl/nx/react", "./.eslintrc.base.json"],
   "ignorePatterns": ["!**/*"],
-  "plugins": ["@nrwl/nx"],
   "overrides": [
     {
       "files": ["*.ts", "*.tsx"],
-      "extends": ["plugin:@nrwl/nx/typescript"],
-      "rules": {}
+      "rules": {
+      }
     },
     {
       "files": ["*.js", "*.jsx"],
-      "extends": ["plugin:@nrwl/nx/javascript"],
       "rules": {}
     }
   ]

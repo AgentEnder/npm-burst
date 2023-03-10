@@ -9,16 +9,18 @@
   },
   "private": true,
   "devDependencies": {
+    "@babel/preset-react": "^7.14.5",
     "@nrwl/cypress": "15.8.5",
     "@nrwl/eslint-plugin-nx": "15.8.5",
+    "@nrwl/js": "15.8.5",
     "@nrwl/linter": "15.8.5",
     "@nrwl/react": "15.8.5",
     "@nrwl/vite": "15.8.5",
     "@nrwl/workspace": "15.8.5",
-    "@testing-library/react": "13.4.0",
-    "@types/node": "18.11.9",
-    "@types/react": "18.0.25",
-    "@types/react-dom": "18.0.9",
+    "@testing-library/react": "14.0.0",
+    "@types/node": "18.14.2",
+    "@types/react": "18.0.28",
+    "@types/react-dom": "18.0.11",
     "@typescript-eslint/eslint-plugin": "^5.36.1",
     "@typescript-eslint/parser": "^5.36.1",
     "@vitejs/plugin-react": "^3.0.0",
@@ -28,9 +30,9 @@
     "eslint": "~8.15.0",
     "eslint-config-prettier": "8.1.0",
     "eslint-plugin-cypress": "^2.10.3",
-    "eslint-plugin-import": "2.26.0",
-    "eslint-plugin-jsx-a11y": "6.6.1",
-    "eslint-plugin-react": "7.31.11",
+    "eslint-plugin-import": "2.27.5",
+    "eslint-plugin-jsx-a11y": "6.7.1",
+    "eslint-plugin-react": "7.32.2",
     "eslint-plugin-react-hooks": "4.6.0",
     "jsdom": "~20.0.3",
     "nx": "15.8.5",
@@ -44,8 +46,11 @@
     "vitest": "^0.25.8"
   },
   "dependencies": {
+    "@types/d3": "^7.4.0",
+    "d3": "^7.8.2",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "semver": "^7.3.8",
+    "tslib": "^2.3.0"
   }
 }
-
