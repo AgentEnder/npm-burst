@@ -51,6 +51,10 @@
       "options": {
         "lintFilePatterns": ["./src/**/*.{ts,tsx,js,jsx}"]
       }
+    },
+    "deploy": {
+      "command": "ts-node tools/deploy-to-github-pages",
+      "dependsOn": ["build"]
     }
   },
   "tags": []

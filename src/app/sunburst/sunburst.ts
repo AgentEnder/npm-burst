@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @nrwl/nx/enforce-module-boundaries */
+/* eslint-disable @typescript-eslint/no-explicit-any -- d3 typings are not great.*/
 import * as d3 from 'd3';
 import { HierarchyRectangularNode } from 'd3';
 
@@ -14,6 +13,7 @@ export type SunburstLeafNode = {
 };
 
 const width = 450;
+const height = width * 0.75;
 const radius = 50;
 
 const arc = d3
@@ -48,12 +48,13 @@ export function sunburst(data: SunburstData) {
 
   const svg = d3
     .create('svg')
-    .attr('viewBox', [0, 0, width, width])
+    .attr('viewBox', [0, 0, width, height])
+    .attr('width', '75vw')
     .style('font', '5px sans-serif');
 
   const g = svg
     .append('g')
-    .attr('transform', `translate(${width / 2},${width / 2})`);
+    .attr('transform', `translate(${width / 2},${height / 2})`);
 
   const path = g
     .append('g')
@@ -101,12 +102,24 @@ export function sunburst(data: SunburstData) {
   const parent = g
     .append('circle')
     .datum(root)
-    .attr('r', radius)
-    .attr('fill', 'none')
+    .attr('r', radius - 1)
+    .attr('fill', '#afaffa')
     .attr('pointer-events', 'all')
-    .on('click', clicked);
+    .attr('id', 'innerCircle')
+    .on('click', clicked)
+    .on('mouseenter', mouseEnter)
+    .on('mouseleave', mouseExit);
 
-  function clicked(event: Event, p: any) {
+  function mouseEnter(event: Event, p: d3.HierarchyRectangularNode<SunburstData>) {
+    const child = d3.select('#innerCircle');
+    child.attr('fill', '#cfcfff')
+  }
+  function mouseExit(event: Event, p: d3.HierarchyRectangularNode<SunburstData>) {
+    const child = d3.select('#innerCircle');
+    child.attr('fill', '#afaffa')
+  }
+
+  function clicked(event: Event, p: d3.HierarchyRectangularNode<SunburstData>) {
     parent.datum(p.parent || root);
 
     root.each(

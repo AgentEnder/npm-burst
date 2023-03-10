@@ -15,15 +15,6 @@ export default defineConfig({
     }),
   ],
 
-  // Uncomment this if you are using workers.
-  // worker: {
-  //  plugins: [
-  //    viteTsConfigPaths({
-  //      root: './',
-  //    }),
-  //  ],
-  // },
-
   test: {
     globals: true,
     cache: {
@@ -32,4 +23,10 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
   },
+
+  build: {
+    emptyOutDir: true
+  },
+
+  base: '/npm-burst',
 });
