@@ -20,7 +20,8 @@
   "extends": "./tsconfig.base.json",
   "ts-node": {
     "compilerOptions": {
-      "module": "commonjs"
+      "module": "nodenext",
+      "target": "es2017"
     }
   }
 }
