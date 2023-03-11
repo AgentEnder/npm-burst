@@ -3,33 +3,23 @@ import {
   getDownloadsByVersion,
   NpmDownloadsByVersion,
 } from '@npm-burst/npm/data-access';
-import { sunburst, SunburstData, SunburstLeafNode } from './sunburst/sunburst';
+import {
+  Sunburst,
+  SunburstData,
+  SunburstLeafNode,
+} from './components/sunburst';
 import { parse } from 'semver';
+import { Card } from './components/card';
 
 export function App() {
-  const [npmDownloads, setNpmDownloads] = useState<Awaited<
-    ReturnType<typeof getDownloadsByVersion>
-  > | null>(null);
-
   const [npmPackageName, setNpmPackageName] = useState<string | null>('nx');
 
   const [sunburstChartData, setSunburstChartData] =
     useState<SunburstData | null>();
 
   useEffect(() => {
-    const chart = document.getElementById('chart');
-    if (chart && sunburstChartData) {
-      for (const child of Array.from(chart.children)) {
-        chart.removeChild(child);
-      }
-      chart.appendChild(sunburst(sunburstChartData)!);
-    }
-  }, [sunburstChartData]);
-
-  useEffect(() => {
     if (npmPackageName) {
       getDownloadsByVersion(npmPackageName).then((downloads) => {
-        setNpmDownloads(downloads);
         if (downloads) {
           setSunburstChartData(getSunburstDataFromDownloads(downloads));
         }
@@ -39,19 +29,11 @@ export function App() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(document.location.search);
-    setNpmPackageName(urlParams.get('package') ?? 'nx')
-  }, [])
+    setNpmPackageName(urlParams.get('package') ?? 'nx');
+  }, []);
 
   return (
-    <div
-      style={{
-        maxWidth: '80vw',
-        margin: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}
-    >
+    <Card>
       <h1 style={{ textAlign: 'center' }}>
         NPM Downloads for {npmPackageName}
       </h1>
@@ -62,14 +44,20 @@ export function App() {
         }}
         onKeyDown={(evt: React.KeyboardEvent<HTMLInputElement>) => {
           if (evt.key === 'Enter') {
-            const target = evt.target as HTMLInputElement
+            const target = evt.target as HTMLInputElement;
             setNpmPackageName(target.value);
-            window.history.replaceState({}, document.title, document.location.href.split('?')[0] + '?package=' + target.value)
+            window.history.replaceState(
+              {},
+              document.title,
+              document.location.href.split('?')[0] + '?package=' + target.value
+            );
           }
         }}
       ></input>
-      {npmDownloads ? <div id="chart"></div> : null}
-    </div>
+      {sunburstChartData ? (
+        <Sunburst data={sunburstChartData}></Sunburst>
+      ) : null}
+    </Card>
   );
 }
 
