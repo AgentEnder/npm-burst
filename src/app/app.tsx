@@ -73,7 +73,7 @@ export function App() {
           onKeyDown={(evt: React.KeyboardEvent<HTMLInputElement>) => {
             if (evt.key === 'Enter') {
               const target = evt.target as HTMLInputElement;
-              setNpmPackageName(target.value);
+              setNpmPackageName(target.value?.toLocaleLowerCase());
             }
           }}
           placeholder="NPM Package"
