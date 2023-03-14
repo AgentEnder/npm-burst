@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- d3 typings are not great.*/
 import * as d3 from 'd3';
-import { HierarchyRectangularNode } from 'd3';
+import { HierarchyNode, HierarchyRectangularNode } from 'd3';
 
 export type SunburstData = {
   name: string;
@@ -27,21 +27,44 @@ const arc = d3
 
 const format = d3.format(',d');
 
-function partition(data: any) {
-  const root = d3
-    .hierarchy(data)
-    .sum((d) => d.value)
-    .sort((a, b) => b.value! - a.value!);
-  return d3.partition().size([2 * Math.PI, root.height + 1])(root);
+export function isLeafNode(
+  datum: SunburstData | SunburstLeafNode
+): datum is SunburstLeafNode {
+  return 'value' in datum;
 }
 
-export function sunburst(data: SunburstData) {
+function partition(
+  data: SunburstData,
+  comparator: (
+    a: HierarchyNode<SunburstData>,
+    b: HierarchyNode<SunburstData>
+  ) => number = (a, b) => b.value! - a.value!
+) {
+  const root = d3
+    .hierarchy(data)
+    .sum((d) => (isLeafNode(d) ? d.value : 0))
+    .sort(comparator);
+  return d3.partition<SunburstData>().size([2 * Math.PI, root.height + 1])(
+    root
+  );
+}
+
+export function sunburst(
+  data: SunburstData,
+  sortComparator: (
+    a: HierarchyNode<SunburstData>,
+    b: HierarchyNode<SunburstData>
+  ) => number = (a, b) => b.value! - a.value!
+): SVGSVGElement {
   const color = d3.scaleOrdinal(
     d3.quantize(d3.interpolateRainbow, data.children.length + 1)
   );
 
-  const root = partition(data) as d3.HierarchyRectangularNode<any> & {
-    current: d3.HierarchyRectangularNode<any>;
+  const root = partition(
+    data,
+    sortComparator
+  ) as d3.HierarchyRectangularNode<SunburstData> & {
+    current: d3.HierarchyRectangularNode<SunburstData>;
   };
 
   root.each((d) => (d.current = d));
@@ -110,13 +133,19 @@ export function sunburst(data: SunburstData) {
     .on('mouseenter', mouseEnter)
     .on('mouseleave', mouseExit);
 
-  function mouseEnter(event: Event, p: d3.HierarchyRectangularNode<SunburstData>) {
+  function mouseEnter(
+    event: Event,
+    p: d3.HierarchyRectangularNode<SunburstData>
+  ) {
     const child = d3.select('#innerCircle');
-    child.attr('fill', '#cfcfff')
+    child.attr('fill', '#cfcfff');
   }
-  function mouseExit(event: Event, p: d3.HierarchyRectangularNode<SunburstData>) {
+  function mouseExit(
+    event: Event,
+    p: d3.HierarchyRectangularNode<SunburstData>
+  ) {
     const child = d3.select('#innerCircle');
-    child.attr('fill', '#afaffa')
+    child.attr('fill', '#afaffa');
   }
 
   function clicked(event: Event, p: d3.HierarchyRectangularNode<SunburstData>) {
@@ -190,5 +219,5 @@ export function sunburst(data: SunburstData) {
     return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
   }
 
-  return svg.node();
+  return svg.node() as SVGSVGElement;
 }
