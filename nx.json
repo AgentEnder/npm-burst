@@ -3,9 +3,10 @@
   "npmScope": "npm-burst",
   "tasksRunnerOptions": {
     "default": {
-      "runner": "nx/tasks-runners/default",
+      "runner": "@nrwl/nx-cloud",
       "options": {
-        "cacheableOperations": ["build", "lint", "test", "e2e"]
+        "cacheableOperations": ["build", "lint", "test", "e2e"],
+        "accessToken": "NGQxYzlkNmItNjgxMC00NGRjLThhOGEtMmI3ODQ3MDczM2NkfHJlYWQtd3JpdGU="
       }
     }
   },

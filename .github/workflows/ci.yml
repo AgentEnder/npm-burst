@@ -1,4 +1,8 @@
-name: "Combine PRs"
+name: 'CI / CD'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
 
 # Controls when the action will run - in this case triggered manually
 on:
@@ -11,10 +15,29 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    name: Nx Cloud - Main Job
+    uses: nrwl/ci/.github/workflows/nx-cloud-main.yml@v0.8
+    with:
+      main-branch-name: 'main'
+      parallel-commands: |
+        npx nx-cloud record npx nx format:check
+      parallel-commands-on-agents: |
+        yarn nx affected -t lint test build --parallel 3
+      final-commands: |
+        npx nx affected -t e2e
 
+  ci-agents:
+    name: Nx Cloud - Agents
+    uses: nrwl/ci/.github/workflows/nx-cloud-agents.yml@v0.8
+    with:
+      number-of-agents: 3
+
+  cd:
+    needs: 'ci'
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     steps:
-      - uses: actions/checkout@v2.3.3
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -33,16 +56,7 @@ jobs:
         run: |
           npm install
 
-      - name: Test / Lint / Build
-        run: |
-          npx nx affected -t test lint build
-      
-      - name: E2E
-        run: |
-          npx nx affected -t e2e
-
       - name: Deploy
-        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
