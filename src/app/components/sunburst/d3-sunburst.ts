@@ -72,7 +72,7 @@ export function sunburst(
   const svg = d3
     .create('svg')
     .attr('viewBox', [0, 0, width, height])
-    .attr('width', '75vw')
+    .attr('width', 'min(1020px, 75vw)')
     .style('font', '5px sans-serif');
 
   const g = svg

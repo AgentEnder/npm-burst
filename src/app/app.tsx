@@ -19,19 +19,13 @@ export function App() {
   const [sunburstChartData, setSunburstChartData] =
     useState<SunburstData | null>();
 
-  window.addEventListener('popstate', (evt: PopStateEvent) => {
+  window.addEventListener('popstate', () => {
     setPropsFromQueryParams();
   });
 
   useEffect(() => {
     if (npmPackageName) {
-      const urlParams = new URLSearchParams(document.location.search);
-      urlParams.set('package', npmPackageName);
-      window.history.pushState(
-        {},
-        document.title,
-        document.location.href.split('?')[0] + `?` + urlParams.toString()
-      );
+      setQueryParam('package', npmPackageName);
       getDownloadsByVersion(npmPackageName).then((downloads) => {
         if (downloads) {
           setSunburstChartData(getSunburstDataFromDownloads(downloads));
@@ -41,17 +35,7 @@ export function App() {
   }, [npmPackageName]);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(document.location.search);
-    if (sortByVersion) {
-      urlParams.set('sortBy', 'version');
-    } else {
-      urlParams.delete('sortBy');
-    }
-    window.history.pushState(
-      {},
-      document.title,
-      document.location.href.split('?')[0] + `?` + urlParams.toString()
-    );
+    setQueryParam('sortBy', 'version');
   }, [sortByVersion]);
 
   useEffect(() => {
@@ -172,6 +156,20 @@ function getSunburstDataFromDownloads({
     }
   }
   return data;
+}
+
+function setQueryParam(key: string, value: string) {
+  const urlParams = new URLSearchParams(document.location.search);
+  if (value !== null && value !== undefined) {
+    urlParams.set(key, value);
+  } else {
+    urlParams.delete(key);
+  }
+  window.history.pushState(
+    {},
+    document.title,
+    document.location.href.split('?')[0] + `?` + urlParams.toString()
+  );
 }
 
 const memo: Map<string, number> = new Map();
