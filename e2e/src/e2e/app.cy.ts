@@ -1,13 +1,12 @@
-import { getGreeting } from '../support/app.po';
-
 describe('npm-burst', () => {
-  beforeEach(() => cy.visit('/'));
+  beforeEach(() => cy.visit('/npm-burst'));
 
-  it('should display welcome message', () => {
-    // Custom command example, see `../support/commands.ts` file
-    cy.login('my-email@something.com', 'myPassword');
-
-    // Function helper example, see `../support/app.po.ts` file
-    getGreeting().contains('Welcome npm-burst');
+  it('should display package name', () => {
+    cy.get('h1').contains('NPM Downloads for nx');
   });
+
+  it('should update package name when updating dropdown', () => {
+    cy.get('input[type=text]').type('typescript{enter}')
+    cy.get('h1').contains('NPM Downloads for typescript');
+  })
 });

@@ -2,14 +2,25 @@ import { render } from '@testing-library/react';
 
 import App from './app';
 
+import * as npmlib from '@npm-burst/npm/data-access';
+
+vi.mock('@npm-burst/npm/data-access', () => ({
+  getDownloadsByVersion: (pkg: string) => Promise.resolve({
+    package: pkg,
+    versions: {
+      '1.0.0': 123,
+    },
+  }),
+}));
+
 describe('App', () => {
   it('should render successfully', () => {
     const { baseElement } = render(<App />);
     expect(baseElement).toBeTruthy();
   });
 
-  it('should have a greeting as the title', () => {
+  it('should default to Nx', () => {
     const { getByText } = render(<App />);
-    expect(getByText(/Welcome npm-burst/gi)).toBeTruthy();
+    expect(getByText(/NPM Downloads for nx/gi)).toBeTruthy();
   });
 });
