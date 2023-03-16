@@ -15,7 +15,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   ci:
-    name: Nx Cloud - Main Job
+    name: Nx Cloud - Main Job (format / lint / test / build)
     uses: nrwl/ci/.github/workflows/nx-cloud-main.yml@v0.8
     with:
       main-branch-name: 'main'
@@ -23,8 +23,40 @@ jobs:
         npx nx-cloud record npx nx format:check
       parallel-commands-on-agents: |
         yarn nx affected -t lint test build --parallel 3
-      final-commands: |
-        npx nx affected -t e2e
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Derive appropriate SHAs for base and head for `nx affected` commands
+        uses: nrwl/nx-set-shas@v3
+        with:
+          main-branch-name: main
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules, !node_modules/.*
+          key: ${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: 'Cypress'
+        run: |
+          npx nx affected -t e2e --record
+        env:
+          CYPRESS_RECORD_KEY: ${{secrets.CYPRESS_CLOUD_KEY}}
 
   ci-agents:
     name: Nx Cloud - Agents
@@ -32,14 +64,22 @@ jobs:
     with:
       number-of-agents: 3
 
-  cd:
-    needs: 'ci'
+  deploy:
+    name: 'Deploy'
+    needs:
+      - 'ci'
+      - 'e2e'
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Derive appropriate SHAs for base and head for `nx affected` commands
+        uses: nrwl/nx-set-shas@v3
+        with:
+          main-branch-name: main
 
       - name: Use Node.js
         uses: actions/setup-node@v3

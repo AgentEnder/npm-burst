@@ -33,7 +33,11 @@
       "!{projectRoot}/tsconfig.spec.json",
       "!{projectRoot}/.eslintrc.json"
     ],
-    "sharedGlobals": ["{workspaceRoot}/babel.config.json"]
+    "sharedGlobals": [
+      "{workspaceRoot}/babel.config.json",
+      "{workspaceRoot}/vite.config.ts",
+      "{workspaceRoot}/.github/workflows/ci.yml"
+    ]
   },
   "generators": {
     "@nrwl/react": {

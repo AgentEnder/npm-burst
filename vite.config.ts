@@ -25,7 +25,7 @@ export default defineConfig({
   },
 
   build: {
-    emptyOutDir: true
+    emptyOutDir: true,
   },
 
   base: '/npm-burst',

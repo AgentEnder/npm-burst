@@ -9,8 +9,10 @@ export function getDownloadsByVersion(pkg: string) {
       '/',
       '%2f'
     )}/last-week`
-  ).then(async (result) => {
-    const json = await result.json();
-    return json as NpmDownloadsByVersion;
-  }).catch(() => null);
+  )
+    .then(async (result) => {
+      const json = await result.json();
+      return json as NpmDownloadsByVersion;
+    })
+    .catch(() => null);
 }
