@@ -13,8 +13,12 @@ import { Card } from './components/card';
 import { isLeafNode } from './components/sunburst/d3-sunburst';
 
 export function App() {
-  const [npmPackageName, setNpmPackageName] = useState<string>('nx');
-  const [sortByVersion, setSortByVersion] = useState(false);
+  const [npmPackageName, setNpmPackageName] = useState<string>(
+    new URLSearchParams(document.location.search).get('package') ?? 'nx'
+  );
+  const [sortByVersion, setSortByVersion] = useState(
+    new URLSearchParams(document.location.search).get('sortBy') === 'version'
+  );
 
   const [sunburstChartData, setSunburstChartData] =
     useState<SunburstData | null>();
@@ -38,10 +42,6 @@ export function App() {
     setQueryParam('sortBy', 'version');
   }, [sortByVersion]);
 
-  useEffect(() => {
-    setPropsFromQueryParams();
-  }, []);
-
   return (
     <Card>
       <h1 style={{ textAlign: 'center' }}>
@@ -54,6 +54,7 @@ export function App() {
           style={{
             maxWidth: '100px',
           }}
+          defaultValue={npmPackageName}
           onKeyDown={(evt: React.KeyboardEvent<HTMLInputElement>) => {
             if (evt.key === 'Enter') {
               const target = evt.target as HTMLInputElement;
@@ -84,7 +85,7 @@ export function App() {
 
   function setPropsFromQueryParams() {
     const urlParams = new URLSearchParams(document.location.search);
-    setNpmPackageName(urlParams.get('package') ?? 'nx');
+    setNpmPackageName(urlParams.get('package') ?? npmPackageName);
     setSortByVersion(urlParams.get('sortBy') === 'version');
   }
 }
