@@ -1,4 +1,13 @@
 body {
   margin: 0;
   padding: 0;
+
+  background-color: var(--bg-dark);
+
+  // Variables
+  --bg-dark: #2d232e;
+  --nav-dark: #474448;
+  --fg-light: #e0ddcf;
+  --chart-dark: #534b52;
+  --chart-light: #f1f0ea;
 }

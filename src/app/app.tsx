@@ -10,96 +10,131 @@ import {
 } from './components/sunburst';
 import { parse } from 'semver';
 import { Card } from './components/card';
-import { isLeafNode } from './components/sunburst/d3-sunburst';
+import { Navbar } from './components/navbar';
+import { useUrlParam } from './hooks/url-params';
 
 export function App() {
-  const [npmPackageName, setNpmPackageName] = useState<string>(
-    new URLSearchParams(document.location.search).get('package') ?? 'nx'
+  const [npmPackageName, setNpmPackageName] = useUrlParam<string>(
+    'package',
+    'nx'
   );
-  const [sortByVersion, setSortByVersion] = useState(
-    new URLSearchParams(document.location.search).get('sortBy') === 'version'
-  );
+  const [sortByVersion, setSortByVersion] = useUrlParam<boolean>('sortBy', {
+    defaultValue: true,
+    serializer: {
+      serialize: (v) => (v ? 'version' : null),
+      deserialize: (s) => s === 'version',
+    },
+  });
 
+  const [lowPassFilter, setLowPassFilter] = useUrlParam('lpf', {
+    defaultValue: 0.001,
+    serializer: {
+      serialize: (v) => `${(v * 100).toFixed(2)}`,
+      deserialize: (s) => {
+        const matches = s.match(/([0-9]+.?[0-9]*)/);
+        if (matches) {
+          return Number.parseFloat(matches[0]) / 100;
+        }
+        return 0.001;
+      },
+    },
+  });
+
+  const [rawDownloadData, setRawDownloadData] =
+    useState<NpmDownloadsByVersion | null>();
   const [sunburstChartData, setSunburstChartData] =
     useState<SunburstData | null>();
 
-  window.addEventListener('popstate', () => {
-    setPropsFromQueryParams();
-  });
-
   useEffect(() => {
     if (npmPackageName) {
-      setQueryParam('package', npmPackageName);
       getDownloadsByVersion(npmPackageName).then((downloads) => {
-        if (downloads) {
-          setSunburstChartData(getSunburstDataFromDownloads(downloads));
-        }
+        setRawDownloadData(downloads);
       });
     }
   }, [npmPackageName]);
 
   useEffect(() => {
-    setQueryParam('sortBy', 'version');
-  }, [sortByVersion]);
+    if (rawDownloadData) {
+      setSunburstChartData(
+        getSunburstDataFromDownloads(rawDownloadData, lowPassFilter)
+      );
+    }
+  }, [lowPassFilter, rawDownloadData]);
 
   return (
-    <Card>
-      <h1 style={{ textAlign: 'center' }}>
-        NPM Downloads for {npmPackageName}
-      </h1>
-      <label>
-        NPM Package:
-        <input
-          type="text"
-          style={{
-            maxWidth: '100px',
-          }}
-          defaultValue={npmPackageName}
-          onKeyDown={(evt: React.KeyboardEvent<HTMLInputElement>) => {
-            if (evt.key === 'Enter') {
-              const target = evt.target as HTMLInputElement;
-              setNpmPackageName(target.value?.toLocaleLowerCase());
-            }
-          }}
-          placeholder="NPM Package"
-        ></input>
-      </label>
-      <label>
-        Sort by version?
-        <input
-          type="checkbox"
-          checked={sortByVersion}
-          onChange={() => {
-            setSortByVersion(!sortByVersion);
-          }}
-        ></input>
-      </label>
-      {sunburstChartData ? (
-        <Sunburst
-          data={sunburstChartData}
-          sortByVersion={sortByVersion}
-        ></Sunburst>
-      ) : null}
-    </Card>
+    <>
+      <Navbar></Navbar>
+      <Card>
+        <h1 style={{ textAlign: 'center' }}>
+          NPM Downloads for {npmPackageName}
+        </h1>
+        <label>
+          NPM Package:
+          <input
+            type="text"
+            style={{
+              maxWidth: '100px',
+            }}
+            onKeyDown={(evt: React.KeyboardEvent<HTMLInputElement>) => {
+              if (evt.key === 'Enter') {
+                const target = evt.target as HTMLInputElement;
+                setNpmPackageName(target.value?.toLocaleLowerCase());
+              }
+            }}
+            placeholder="NPM Package"
+          ></input>
+        </label>
+        <label>
+          Sort by version?
+          <input
+            type="checkbox"
+            checked={sortByVersion}
+            onChange={() => {
+              setSortByVersion(!sortByVersion);
+            }}
+          ></input>
+        </label>
+        <label
+          title={`Versions under ${(lowPassFilter * 100).toFixed(
+            2
+          )}% are hidden from the graph`}
+        >
+          Low pass filter:
+          <input
+            type="number"
+            step={0.1}
+            min={0}
+            max={100}
+            value={lowPassFilter * 100}
+            onChange={(t) => setLowPassFilter(t.target.valueAsNumber / 100)}
+          ></input>
+        </label>
+        {sunburstChartData ? (
+          <Sunburst
+            data={sunburstChartData}
+            sortByVersion={sortByVersion}
+          ></Sunburst>
+        ) : null}
+      </Card>
+    </>
   );
-
-  function setPropsFromQueryParams() {
-    const urlParams = new URLSearchParams(document.location.search);
-    setNpmPackageName(urlParams.get('package') ?? npmPackageName);
-    setSortByVersion(urlParams.get('sortBy') === 'version');
-  }
 }
 
 export default App;
 
-function getSunburstDataFromDownloads({
-  downloads,
-  package: pkg,
-}: NpmDownloadsByVersion) {
+function getSunburstDataFromDownloads(
+  { downloads, package: pkg }: NpmDownloadsByVersion,
+  lowPassFilter: number
+) {
+  const totalDownloads = Object.values(downloads).reduce(
+    (acc, next) => acc + next,
+    0
+  );
   const data: SunburstData = {
     name: 'versions',
     children: [],
   };
+
   const accumulator: {
     [majorVersion: string]: {
       [minorVersion: string]: {
@@ -109,6 +144,7 @@ function getSunburstDataFromDownloads({
       };
     };
   } = {};
+
   for (const version in downloads) {
     const { major, minor, patch, prerelease } = parse(version)!;
     accumulator[major] ??= {};
@@ -133,62 +169,60 @@ function getSunburstDataFromDownloads({
           tags.length > 1
             ? {
                 name: `v${major}.${minor}.${patch}`,
-                children: tags.map(([tag, value]) => ({
-                  name: tag.trim().length
-                    ? `v${major}.${minor}.${patch}-${tag}`
-                    : `v${major}.${minor}.${patch}`,
-                  value,
-                })),
+                children: tags.reduce((acc, [tag, value]) => {
+                  if (value / totalDownloads > lowPassFilter) {
+                    acc.push({
+                      name: tag.trim().length
+                        ? `v${major}.${minor}.${patch}-${tag}`
+                        : `v${major}.${minor}.${patch}`,
+                      value,
+                    });
+                  }
+                  return acc;
+                }, [] as SunburstLeafNode[]),
               }
             : {
                 name: `v${major}.${minor}.${patch}`,
                 value: tags[0][1],
               };
-        if (calculateNodeValue(t3node, pkg) > 0) {
+        if (
+          calculateNodeValue(accumulator[major][minor][patch]) /
+            totalDownloads >
+          lowPassFilter
+        ) {
           t2node.children.push(t3node);
         }
       }
-      if (calculateNodeValue(t2node, pkg) > 0) {
+      if (
+        calculateNodeValue(accumulator[major][minor]) / totalDownloads >
+        lowPassFilter
+      ) {
         t1node.children.push(t2node);
       }
     }
-    if (calculateNodeValue(t1node, pkg) > 0) {
+    if (
+      calculateNodeValue(accumulator[major]) / totalDownloads >
+      lowPassFilter
+    ) {
       data.children.push(t1node);
     }
   }
   return data;
 }
 
-function setQueryParam(key: string, value: string) {
-  const urlParams = new URLSearchParams(document.location.search);
-  if (value !== null && value !== undefined) {
-    urlParams.set(key, value);
-  } else {
-    urlParams.delete(key);
-  }
-  window.history.pushState(
-    {},
-    document.title,
-    document.location.href.split('?')[0] + `?` + urlParams.toString()
-  );
-}
+type RecursiveNode =
+  | {
+      [key: string]: number | RecursiveNode;
+    }
+  | number;
 
-const memo: Map<string, number> = new Map();
-function calculateNodeValue(
-  data: SunburstData | SunburstLeafNode,
-  pkg: string
-): number {
-  const cacheKey = `${pkg}-${data.name}`;
-  const value =
-    memo.get(cacheKey) ??
-    (isLeafNode(data)
-      ? data.value
-      : data.children.reduce((acc, node) => {
-          return (
-            acc +
-            (isLeafNode(node) ? node.value : calculateNodeValue(node, pkg))
-          );
-        }, 0));
-  memo.set(cacheKey, value);
-  return value;
+function calculateNodeValue(data: RecursiveNode): number {
+  if (typeof data === 'number') {
+    return data;
+  } else {
+    return Object.values(data).reduce<number>(
+      (val, next) => val + calculateNodeValue(next),
+      0
+    );
+  }
 }
