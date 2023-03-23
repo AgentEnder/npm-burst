@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getDownloadsByVersion,
   NpmDownloadsByVersion,
@@ -12,6 +12,7 @@ import { parse } from 'semver';
 import { Card } from './components/card';
 import { Navbar } from './components/navbar';
 import { useUrlParam } from './hooks/url-params';
+import Table from './components/table';
 
 export function App() {
   const [npmPackageName, setNpmPackageName] = useUrlParam<string>(
@@ -25,6 +26,7 @@ export function App() {
       deserialize: (s) => s === 'version',
     },
   });
+  const [showDataTable, setShowDataTable] = useState(true);
 
   const [lowPassFilter, setLowPassFilter] = useUrlParam('lpf', {
     defaultValue: 0.001,
@@ -44,6 +46,12 @@ export function App() {
     useState<NpmDownloadsByVersion | null>();
   const [sunburstChartData, setSunburstChartData] =
     useState<SunburstData | null>();
+
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+  const selectedNode = useMemo<SunburstData | SunburstLeafNode | null>(
+    () => findNodeByVersion(sunburstChartData as any, selectedVersion || null),
+    [sunburstChartData, selectedVersion]
+  );
 
   useEffect(() => {
     if (npmPackageName) {
@@ -94,6 +102,16 @@ export function App() {
             }}
           ></input>
         </label>
+        <label>
+          Show Data Table?
+          <input
+            type="checkbox"
+            checked={showDataTable}
+            onChange={() => {
+              setShowDataTable(!showDataTable);
+            }}
+          ></input>
+        </label>
         <label
           title={`Versions under ${(lowPassFilter * 100).toFixed(
             2
@@ -109,12 +127,16 @@ export function App() {
             onChange={(t) => setLowPassFilter(t.target.valueAsNumber / 100)}
           ></input>
         </label>
-        {sunburstChartData ? (
-          <Sunburst
-            data={sunburstChartData}
-            sortByVersion={sortByVersion}
-          ></Sunburst>
-        ) : null}
+        <div className={'container-with-table'}>
+          {sunburstChartData ? (
+            <Sunburst
+              data={sunburstChartData}
+              sortByVersion={sortByVersion}
+              onVersionChange={setSelectedVersion}
+            ></Sunburst>
+          ) : null}
+          {selectedNode && showDataTable ? <Table data={selectedNode} /> : null}
+        </div>
       </Card>
     </>
   );
@@ -225,4 +247,40 @@ function calculateNodeValue(data: RecursiveNode): number {
       0
     );
   }
+}
+
+export function findNodeByVersion(
+  data: SunburstData | SunburstLeafNode | null,
+  version: string | null
+): SunburstData | SunburstLeafNode | null {
+  if (data === null) {
+    return null;
+  }
+  if (version === null) {
+    return data;
+  }
+  if (isLeafNode(data)) {
+    if (data.name === version) {
+      return data;
+    } else {
+      return null;
+    }
+  }
+  if (data.name === version) {
+    return data;
+  } else if (!isLeafNode(data)) {
+    for (const child of data.children) {
+      const result = findNodeByVersion(child, version);
+      if (result) {
+        return result;
+      }
+    }
+  }
+  return null;
+}
+
+function isLeafNode(
+  node: SunburstData | SunburstLeafNode
+): node is SunburstLeafNode {
+  return (node as SunburstLeafNode).value != null;
 }

@@ -49,13 +49,18 @@ function partition(
   );
 }
 
-export function sunburst(
-  data: SunburstData,
-  sortComparator: (
+export function sunburst({
+  data,
+  sortComparator = (a, b) => b.value! - a.value!,
+  selectionUpdated,
+}: {
+  data: SunburstData;
+  sortComparator?: (
     a: HierarchyNode<SunburstData>,
     b: HierarchyNode<SunburstData>
-  ) => number = (a, b) => b.value! - a.value!
-): SVGSVGElement {
+  ) => number;
+  selectionUpdated?: (selection: string) => void;
+}): SVGSVGElement {
   const color = d3.scaleOrdinal(
     d3.quantize(d3.interpolateRainbow, data.children.length + 1)
   );
@@ -149,6 +154,7 @@ export function sunburst(
   }
 
   function clicked(event: Event, p: d3.HierarchyRectangularNode<SunburstData>) {
+    selectionUpdated?.(p.data.name);
     parent.datum(p.parent || root);
 
     root.each(

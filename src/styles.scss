@@ -11,3 +11,25 @@ body {
   --chart-dark: #534b52;
   --chart-light: #f1f0ea;
 }
+
+td {
+  border: 0.25rem solid var(--chart-dark);
+  text-align: center;
+}
+
+th {
+  border: 0.25rem solid var(--bg-dark);
+}
+
+.container-with-table {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+div#chart {
+  flex: 400px;
+}
+
+table {
+  flex: 400px;
+}
