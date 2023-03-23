@@ -52,6 +52,18 @@ export function App() {
     'selectedVersion',
     'versions'
   );
+  const [highlightedVersion, setHighlightedVersion] = useState<string | null>(
+    null
+  );
+  useEffect(() => {
+    if (highlightedVersion && highlightedVersion !== 'versions') {
+      const chartElement = document.querySelector(
+        `[data-name="${highlightedVersion}"]`
+      );
+      console.log(chartElement);
+      chartElement?.classList.add('glow');
+    }
+  }, [highlightedVersion]);
   const selectedNode = useMemo<SunburstData | SunburstLeafNode | null>(
     () => findNodeByVersion(sunburstChartData as any, selectedVersion || null),
     [sunburstChartData, selectedVersion]
@@ -139,9 +151,16 @@ export function App() {
               sortByVersion={sortByVersion}
               onVersionChange={setSelectedVersion}
               initialSelection={selectedVersion}
+              versionMouseEnter={setHighlightedVersion}
+              versionMouseExit={() => setHighlightedVersion(null)}
             ></Sunburst>
           ) : null}
-          {selectedNode && showDataTable ? <Table data={selectedNode} /> : null}
+          {selectedNode && showDataTable ? (
+            <Table
+              data={selectedNode}
+              highlightedVersion={highlightedVersion}
+            />
+          ) : null}
         </div>
       </Card>
     </>
