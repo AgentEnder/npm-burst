@@ -4,6 +4,7 @@ import {
   NpmDownloadsByVersion,
 } from '@npm-burst/npm/data-access';
 import {
+  isLeafNode,
   Sunburst,
   SunburstData,
   SunburstLeafNode,
@@ -12,7 +13,7 @@ import { parse } from 'semver';
 import { Card } from './components/card';
 import { Navbar } from './components/navbar';
 import { useUrlParam } from './hooks/url-params';
-import Table from './components/table';
+import { Table } from './components/table';
 
 export function App() {
   const [npmPackageName, setNpmPackageName] = useUrlParam<string>(
@@ -47,15 +48,9 @@ export function App() {
   const [sunburstChartData, setSunburstChartData] =
     useState<SunburstData | null>();
 
-  const [selectedVersion, setSelectedVersion] = useUrlParam<string>(
+  const [selectedVersion, setSelectedVersion] = useUrlParam<string | null>(
     'selectedVersion',
-    {
-      defaultValue: 'versions',
-      serializer: {
-        serialize: (v) => v,
-        deserialize: (s) => s,
-      },
-    }
+    'versions'
   );
   const selectedNode = useMemo<SunburstData | SunburstLeafNode | null>(
     () => findNodeByVersion(sunburstChartData as any, selectedVersion || null),
@@ -96,7 +91,7 @@ export function App() {
               if (evt.key === 'Enter') {
                 const target = evt.target as HTMLInputElement;
                 setNpmPackageName(target.value?.toLocaleLowerCase());
-                setSelectedVersion('versions');
+                setSelectedVersion(null);
               }
             }}
             placeholder="NPM Package"
@@ -288,10 +283,4 @@ export function findNodeByVersion(
     }
   }
   return null;
-}
-
-function isLeafNode(
-  node: SunburstData | SunburstLeafNode
-): node is SunburstLeafNode {
-  return (node as SunburstLeafNode)?.value != null;
 }

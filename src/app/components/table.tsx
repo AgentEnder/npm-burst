@@ -1,18 +1,11 @@
 import { useMemo } from 'react';
+import { isLeafNode, SunburstData, SunburstLeafNode } from './sunburst';
 
-type DataNode = LeafNode | ParentNode;
-type LeafNode = {
-  name: string;
-  value: number;
-};
-type ParentNode = {
-  name: string;
-  children: DataNode[];
-};
+type DataNode = SunburstData | SunburstLeafNode;
 
-export default function Table({ data }: { data: DataNode }) {
+export function Table({ data }: { data: DataNode }) {
   const total = useMemo<number>(() => getCount(data), [data]);
-  if (hasGrandChildren(data)) {
+  if (!isLeafNode(data) && hasGrandChildren(data)) {
     return (
       <table>
         <thead>
@@ -36,7 +29,7 @@ export default function Table({ data }: { data: DataNode }) {
           </tr>
         </thead>
         <tbody>
-          {[...(data as ParentNode).children]
+          {[...data.children]
             .reverse()
             .filter((node) => getCount(node) > 0)
             .map((dataNode) => (
@@ -51,7 +44,7 @@ export default function Table({ data }: { data: DataNode }) {
         </tfoot>
       </table>
     );
-  } else {
+  } else if (!isLeafNode(data)) {
     return (
       <table>
         <thead>
@@ -67,7 +60,7 @@ export default function Table({ data }: { data: DataNode }) {
           </tr>
         </thead>
         <tbody>
-          {[...(data as ParentNode).children]
+          {[...data.children]
             .reverse()
             .filter((node) => getCount(node) > 0)
             .map((dataNode) => (
@@ -136,11 +129,11 @@ function getCount(data: DataNode): number {
   }
 }
 
-function hasChildren(data: DataNode): data is ParentNode {
-  return (data as any).children && (data as any).children.length > 0;
+function hasChildren(data: DataNode): data is SunburstData {
+  return !isLeafNode(data) && data.children.length > 0;
 }
 
-function hasGrandChildren(data: DataNode): data is ParentNode {
+function hasGrandChildren(data: SunburstData): boolean {
   return hasChildren(data) && data.children.some(hasChildren);
 }
 

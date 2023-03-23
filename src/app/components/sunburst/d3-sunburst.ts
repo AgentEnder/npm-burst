@@ -49,6 +49,15 @@ function partition(
   );
 }
 
+export interface D3SunburstOptions {
+  data: SunburstData;
+  sortComparator?: (
+    a: HierarchyNode<SunburstData>,
+    b: HierarchyNode<SunburstData>
+  ) => number;
+  selectionUpdated?: (selection: string) => void;
+}
+
 export function sunburst({
   data,
   sortComparator = (a, b) => b.value! - a.value!,
