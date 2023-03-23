@@ -47,7 +47,16 @@ export function App() {
   const [sunburstChartData, setSunburstChartData] =
     useState<SunburstData | null>();
 
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+  const [selectedVersion, setSelectedVersion] = useUrlParam<string>(
+    'selectedVersion',
+    {
+      defaultValue: 'versions',
+      serializer: {
+        serialize: (v) => v,
+        deserialize: (s) => s,
+      },
+    }
+  );
   const selectedNode = useMemo<SunburstData | SunburstLeafNode | null>(
     () => findNodeByVersion(sunburstChartData as any, selectedVersion || null),
     [sunburstChartData, selectedVersion]
@@ -87,7 +96,7 @@ export function App() {
               if (evt.key === 'Enter') {
                 const target = evt.target as HTMLInputElement;
                 setNpmPackageName(target.value?.toLocaleLowerCase());
-                setSelectedVersion(null);
+                setSelectedVersion('versions');
               }
             }}
             placeholder="NPM Package"
@@ -134,6 +143,7 @@ export function App() {
               data={sunburstChartData}
               sortByVersion={sortByVersion}
               onVersionChange={setSelectedVersion}
+              initialSelection={selectedVersion}
             ></Sunburst>
           ) : null}
           {selectedNode && showDataTable ? <Table data={selectedNode} /> : null}
@@ -254,7 +264,7 @@ export function findNodeByVersion(
   data: SunburstData | SunburstLeafNode | null,
   version: string | null
 ): SunburstData | SunburstLeafNode | null {
-  if (data === null) {
+  if (!data) {
     return null;
   }
   if (version === null) {
@@ -283,5 +293,5 @@ export function findNodeByVersion(
 function isLeafNode(
   node: SunburstData | SunburstLeafNode
 ): node is SunburstLeafNode {
-  return (node as SunburstLeafNode).value != null;
+  return (node as SunburstLeafNode)?.value != null;
 }

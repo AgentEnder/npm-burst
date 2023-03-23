@@ -97,6 +97,7 @@ export function sunburst({
       arcVisible(d.current) ? (d.children ? 0.6 : 0.4) : 0
     )
     .attr('pointer-events', (d) => (arcVisible(d.current) ? 'auto' : 'none'))
+    .attr('data-name', (d) => d.data.name)
 
     .attr('d', (d) => arc(d.current!));
 

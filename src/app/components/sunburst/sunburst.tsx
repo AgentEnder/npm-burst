@@ -5,9 +5,22 @@ import { sunburst, SunburstData, SunburstLeafNode } from './d3-sunburst';
 export function Sunburst(props: {
   data: SunburstData;
   sortByVersion: boolean;
-  onVersionChange: (version: string | null) => void;
+  initialSelection: string | null;
+  onVersionChange: (version: string) => void;
 }) {
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+  useEffect(() => {
+    console.log(props);
+    if (props.initialSelection) {
+      setTimeout(() => {
+        const targetVersion = document.querySelector(
+          `[data-name="${props.initialSelection}"]`
+        );
+        console.log(targetVersion);
+        targetVersion?.dispatchEvent(new Event('click'));
+      }, 100);
+    }
+  }, []);
   useEffect(() => {
     const chart = document.getElementById('chart');
     if (chart) {
