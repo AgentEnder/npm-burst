@@ -91,7 +91,7 @@ export function App() {
               if (evt.key === 'Enter') {
                 const target = evt.target as HTMLInputElement;
                 setNpmPackageName(target.value?.toLocaleLowerCase());
-                setSelectedVersion(null);
+                setSelectedVersion('versions');
               }
             }}
             placeholder="NPM Package"
