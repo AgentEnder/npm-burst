@@ -40,6 +40,7 @@ export function Table({
             .filter((node) => getCount(node) > 0)
             .map((dataNode) => (
               <TopVersionRow
+                key={dataNode.name}
                 data={dataNode}
                 total={total}
                 highlightedVersion={highlightedVersion}
@@ -74,29 +75,29 @@ export function Table({
             .reverse()
             .filter((node) => getCount(node) > 0)
             .map((dataNode) => (
-              <tr>
-                <th
+              <div
+                style={{
+                  display: 'contents',
+                  border: '5px solid black',
+                  padding: '5px',
+                }}
+                className={
+                  highlightedVersion == dataNode.name ? 'glow' : undefined
+                }
+              >
+                <tr
+                  key={dataNode.name}
                   className={
-                    highlightedVersion === dataNode.name ? 'glow' : undefined
+                    highlightedVersion == dataNode.name ? 'glow' : undefined
                   }
                 >
-                  {dataNode.name}
-                </th>
-                <td
-                  className={
-                    highlightedVersion === dataNode.name ? 'glow' : undefined
-                  }
-                >
-                  {formatCount(getCount(dataNode))}
-                </td>
-                <td
-                  className={
-                    highlightedVersion === dataNode.name ? 'glow' : undefined
-                  }
-                >
-                  {formatPercentage((getCount(dataNode) / total) * 100)} %
-                </td>
-              </tr>
+                  <th>{dataNode.name}</th>
+                  <td>{formatCount(getCount(dataNode))}</td>
+                  <td>
+                    {formatPercentage((getCount(dataNode) / total) * 100)}
+                  </td>
+                </tr>
+              </div>
             ))}
         </tbody>
         <tfoot>
@@ -124,67 +125,22 @@ function TopVersionRow({
     const children = [...data.children]
       .reverse()
       .filter((node) => getCount(node) > 0);
-    const rowSpan = children?.length || 1;
+    const rowSpan = (children?.length || 0) + 1;
     return (
       <>
-        <tr>
-          <th
-            rowSpan={rowSpan}
-            className={highlightedVersion === data.name ? 'glow' : undefined}
-          >
-            {data.name}
-          </th>
-          <td
-            rowSpan={rowSpan}
-            className={highlightedVersion === data.name ? 'glow' : undefined}
-          >
-            {formatCount(count)}
-          </td>
-          <td
-            rowSpan={rowSpan}
-            className={highlightedVersion === data.name ? 'glow' : undefined}
-          >
-            {formatPercentage((count / total) * 100)}
-          </td>
-          <td
-            className={
-              highlightedVersion === children[0].name ? 'glow' : undefined
-            }
-          >
-            {children[0].name}
-          </td>
-          <td
-            className={
-              highlightedVersion === children[0].name ? 'glow' : undefined
-            }
-          >
-            {formatCount(getCount(children[0]))}
-          </td>
-          <td
-            className={
-              highlightedVersion === children[0].name ? 'glow' : undefined
-            }
-          >
-            {formatPercentage((getCount(children[0]) / total) * 100)}
-          </td>
+        <tr className={highlightedVersion === data.name ? 'glow' : undefined}>
+          <th rowSpan={rowSpan}>{data.name} | </th>
+          <td rowSpan={rowSpan}>{formatCount(count)}</td>
+          <td rowSpan={rowSpan}>{formatPercentage((count / total) * 100)}</td>
         </tr>
-        {children.slice(1).map((child) => (
-          <tr>
-            <td
-              className={highlightedVersion === child.name ? 'glow' : undefined}
-            >
-              {child.name}
-            </td>
-            <td
-              className={highlightedVersion === child.name ? 'glow' : undefined}
-            >
-              {formatCount(getCount(child))}
-            </td>
-            <td
-              className={highlightedVersion === child.name ? 'glow' : undefined}
-            >
-              {formatPercentage((getCount(child) / total) * 100)}
-            </td>
+        {children.map((child) => (
+          <tr
+            key={child.name}
+            className={highlightedVersion === child.name ? 'glow' : undefined}
+          >
+            <th>{child.name}</th>
+            <td>{formatCount(getCount(child))}</td>
+            <td>{formatPercentage((getCount(child) / total) * 100)}</td>
           </tr>
         ))}
       </>

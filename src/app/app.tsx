@@ -56,6 +56,8 @@ export function App() {
     null
   );
   useEffect(() => {
+    const chartElement = document.querySelector(`path.glow`);
+    chartElement?.classList.remove('glow');
     if (highlightedVersion && highlightedVersion !== 'versions') {
       const chartElement = document.querySelector(
         `[data-name="${highlightedVersion}"]`
@@ -63,6 +65,7 @@ export function App() {
       console.log(chartElement);
       chartElement?.classList.add('glow');
     }
+    scrollToHighlightedRow();
   }, [highlightedVersion]);
   const selectedNode = useMemo<SunburstData | SunburstLeafNode | null>(
     () => findNodeByVersion(sunburstChartData as any, selectedVersion || null),
@@ -144,22 +147,30 @@ export function App() {
             onChange={(t) => setLowPassFilter(t.target.valueAsNumber / 100)}
           ></input>
         </label>
-        <div className={'container-with-table'}>
+        <div
+          className={
+            showDataTable ? 'container-with-table' : 'container-without-table'
+          }
+        >
           {sunburstChartData ? (
-            <Sunburst
-              data={sunburstChartData}
-              sortByVersion={sortByVersion}
-              onVersionChange={setSelectedVersion}
-              initialSelection={selectedVersion}
-              versionMouseEnter={setHighlightedVersion}
-              versionMouseExit={() => setHighlightedVersion(null)}
-            ></Sunburst>
+            <div>
+              <Sunburst
+                data={sunburstChartData}
+                sortByVersion={sortByVersion}
+                onVersionChange={setSelectedVersion}
+                initialSelection={selectedVersion}
+                versionMouseEnter={setHighlightedVersion}
+                versionMouseExit={() => setHighlightedVersion(null)}
+              ></Sunburst>
+            </div>
           ) : null}
           {selectedNode && showDataTable ? (
-            <Table
-              data={selectedNode}
-              highlightedVersion={highlightedVersion}
-            />
+            <div className="scrollable-table">
+              <Table
+                data={selectedNode}
+                highlightedVersion={highlightedVersion}
+              />
+            </div>
           ) : null}
         </div>
       </Card>
@@ -302,4 +313,31 @@ export function findNodeByVersion(
     }
   }
   return null;
+}
+
+function scrollToHighlightedRow() {
+  const scrollableTable = document.querySelector('.scrollable-table');
+  const highlightedRow = document.querySelector(
+    'tr.glow'
+  ) as HTMLTableRowElement;
+  const tableHeader = document.querySelector('thead');
+  const tableFooter = document.querySelector('tfoot');
+
+  if (scrollableTable && highlightedRow) {
+    const headerHeight = tableHeader ? tableHeader.offsetHeight : 0;
+    const footerHeight = tableFooter ? tableFooter.offsetHeight : 0;
+    const rowOffsetTop = highlightedRow.offsetTop;
+    const tableScrollTop = scrollableTable.scrollTop;
+    const tableClientHeight = scrollableTable.clientHeight;
+
+    if (
+      rowOffsetTop < tableScrollTop + headerHeight ||
+      rowOffsetTop > tableScrollTop + tableClientHeight - footerHeight
+    ) {
+      scrollableTable.scrollTo({
+        top: rowOffsetTop - headerHeight,
+        behavior: 'smooth',
+      });
+    }
+  }
 }

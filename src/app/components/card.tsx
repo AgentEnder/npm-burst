@@ -4,7 +4,6 @@ export function Card(props: PropsWithChildren) {
   return (
     <div
       style={{
-        maxWidth: 'min(1020px, 80vw)',
         margin: '2rem auto',
         display: 'flex',
         flexDirection: 'column',
