@@ -1,0 +1,1 @@
+body{margin:0;padding:0;background-color:var(--bg-dark);--bg-dark: #2d232e;--nav-dark: #474448;--fg-light: #e0ddcf;--chart-dark: #534b52;--chart-light: #f1f0ea}td{border:.25rem solid var(--chart-dark);text-align:center}th{border:.25rem solid var(--bg-dark)}.container-with-table{display:flex;flex-wrap:wrap}div#chart,table{flex:400px}
