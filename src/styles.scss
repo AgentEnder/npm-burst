@@ -29,7 +29,7 @@ th {
 .container-with-table {
   margin: 2rem;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 4fr 3fr;
   grid-gap: 1rem;
   > div:not(.scrollable-table) {
     display: flex;
@@ -70,7 +70,7 @@ th {
 
 @media (max-width: 992px) {
   .container-with-table {
-    grid-template-columns: 1fr;
+    display: block;
     div.scrollable-table {
       max-height: none;
       overflow-y: hidden;
