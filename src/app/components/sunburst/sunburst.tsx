@@ -12,6 +12,8 @@ export function Sunburst(props: {
   sortByVersion: boolean;
   initialSelection: string | null;
   onVersionChange: (version: string | null) => void;
+  versionMouseEnter: (version: string) => void;
+  versionMouseExit: (version: string) => void;
 }) {
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
   useEffect(() => {
@@ -35,6 +37,8 @@ export function Sunburst(props: {
         setSelectedVersion(version);
         props.onVersionChange(version);
       },
+      versionMouseEnter: (v) => props.versionMouseEnter(v),
+      versionMouseExit: (v) => props.versionMouseExit(v),
     };
     if (chart) {
       for (const child of Array.from(chart.children)) {

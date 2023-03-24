@@ -3,7 +3,13 @@ import { isLeafNode, SunburstData, SunburstLeafNode } from './sunburst';
 
 type DataNode = SunburstData | SunburstLeafNode;
 
-export function Table({ data }: { data: DataNode }) {
+export function Table({
+  data,
+  highlightedVersion,
+}: {
+  data: DataNode;
+  highlightedVersion: string | null;
+}) {
   const total = useMemo<number>(() => getCount(data), [data]);
   if (!isLeafNode(data) && hasGrandChildren(data)) {
     return (
@@ -33,7 +39,12 @@ export function Table({ data }: { data: DataNode }) {
             .reverse()
             .filter((node) => getCount(node) > 0)
             .map((dataNode) => (
-              <TopVersionRow data={dataNode} total={total} />
+              <TopVersionRow
+                key={dataNode.name}
+                data={dataNode}
+                total={total}
+                highlightedVersion={highlightedVersion}
+              />
             ))}
         </tbody>
         <tfoot>
@@ -64,12 +75,15 @@ export function Table({ data }: { data: DataNode }) {
             .reverse()
             .filter((node) => getCount(node) > 0)
             .map((dataNode) => (
-              <tr>
+              <tr
+                key={dataNode.name}
+                className={
+                  highlightedVersion == dataNode.name ? 'glow' : undefined
+                }
+              >
                 <th>{dataNode.name}</th>
                 <td>{formatCount(getCount(dataNode))}</td>
-                <td>
-                  {formatPercentage((getCount(dataNode) / total) * 100)} %
-                </td>
+                <td>{formatPercentage((getCount(dataNode) / total) * 100)}</td>
               </tr>
             ))}
         </tbody>
@@ -84,26 +98,34 @@ export function Table({ data }: { data: DataNode }) {
   }
 }
 
-function TopVersionRow({ data, total }: { data: DataNode; total: number }) {
+function TopVersionRow({
+  data,
+  total,
+  highlightedVersion,
+}: {
+  data: DataNode;
+  total: number;
+  highlightedVersion: string | null;
+}) {
   const count = getCount(data);
   if (hasChildren(data)) {
     const children = [...data.children]
       .reverse()
       .filter((node) => getCount(node) > 0);
-    const rowSpan = children?.length || 1;
+    const rowSpan = (children?.length || 0) + 1;
     return (
       <>
-        <tr>
-          <th rowSpan={rowSpan}>{data.name}</th>
+        <tr className={highlightedVersion === data.name ? 'glow' : undefined}>
+          <th rowSpan={rowSpan}>{data.name} | </th>
           <td rowSpan={rowSpan}>{formatCount(count)}</td>
           <td rowSpan={rowSpan}>{formatPercentage((count / total) * 100)}</td>
-          <td>{children[0].name}</td>
-          <td>{formatCount(getCount(children[0]))}</td>
-          <td>{formatPercentage((getCount(children[0]) / total) * 100)}</td>
         </tr>
-        {children.slice(1).map((child) => (
-          <tr>
-            <td>{child.name}</td>
+        {children.map((child) => (
+          <tr
+            key={child.name}
+            className={highlightedVersion === child.name ? 'glow' : undefined}
+          >
+            <th>{child.name}</th>
             <td>{formatCount(getCount(child))}</td>
             <td>{formatPercentage((getCount(child) / total) * 100)}</td>
           </tr>
@@ -112,7 +134,7 @@ function TopVersionRow({ data, total }: { data: DataNode; total: number }) {
     );
   } else {
     return (
-      <tr>
+      <tr className={highlightedVersion === data.name ? 'glow' : undefined}>
         <th>{data.name}</th>
         <td>{formatCount(count)}</td>
         <td>{formatPercentage((count / total) * 100)}</td>

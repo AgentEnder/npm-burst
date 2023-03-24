@@ -56,12 +56,16 @@ export interface D3SunburstOptions {
     b: HierarchyNode<SunburstData>
   ) => number;
   selectionUpdated?: (selection: string) => void;
+  versionMouseEnter?: (selection: string) => void;
+  versionMouseExit?: (selection: string) => void;
 }
 
 export function sunburst({
   data,
   sortComparator = (a, b) => b.value! - a.value!,
   selectionUpdated,
+  versionMouseEnter,
+  versionMouseExit,
 }: {
   data: SunburstData;
   sortComparator?: (
@@ -69,6 +73,8 @@ export function sunburst({
     b: HierarchyNode<SunburstData>
   ) => number;
   selectionUpdated?: (selection: string) => void;
+  versionMouseEnter?: (selection: string) => void;
+  versionMouseExit?: (selection: string) => void;
 }): SVGSVGElement {
   const color = d3.scaleOrdinal(
     d3.quantize(d3.interpolateRainbow, data.children.length + 1)
@@ -108,7 +114,9 @@ export function sunburst({
     .attr('pointer-events', (d) => (arcVisible(d.current) ? 'auto' : 'none'))
     .attr('data-name', (d) => d.data.name)
 
-    .attr('d', (d) => arc(d.current!));
+    .attr('d', (d) => arc(d.current!))
+    .on('mouseenter', mouseEnter)
+    .on('mouseleave', mouseExit);
 
   path
     .filter((d) => !!d.children)
@@ -154,6 +162,7 @@ export function sunburst({
   ) {
     const child = d3.select('#innerCircle');
     child.attr('fill', '#cfcfff');
+    versionMouseEnter?.(p.data.name);
   }
   function mouseExit(
     event: Event,
@@ -161,6 +170,7 @@ export function sunburst({
   ) {
     const child = d3.select('#innerCircle');
     child.attr('fill', '#afaffa');
+    versionMouseExit?.(p.data.name);
   }
 
   function clicked(event: Event, p: d3.HierarchyRectangularNode<SunburstData>) {

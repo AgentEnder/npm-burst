@@ -10,6 +10,7 @@ body {
   --fg-light: #e0ddcf;
   --chart-dark: #534b52;
   --chart-light: #f1f0ea;
+  --svg-height: 750px;
 }
 
 td {
@@ -21,15 +22,87 @@ th {
   border: 0.25rem solid var(--bg-dark);
 }
 
+.container-without-table {
+  display: grid;
+  grid-template-columns: 1fr;
+}
 .container-with-table {
-  display: flex;
-  flex-wrap: wrap;
+  margin: 2rem;
+  display: grid;
+  grid-template-columns: 4fr 3fr;
+  grid-gap: 1rem;
+  > div:not(.scrollable-table) {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    height: var(--svg-height);
+    position: relative;
+    > div {
+      margin-right: -400px;
+      margin-left: -400px;
+      overflow: visible;
+    }
+  }
+  div.scrollable-table {
+    max-height: var(--svg-height);
+    overflow-y: auto;
+    overflow-x: hidden;
+    table {
+      width: calc(100% - 2rem);
+      margin: 1rem;
+      min-width: 400px;
+      thead th {
+        background-color: var(--chart-dark);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      tfoot th {
+        background-color: var(--chart-dark);
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
+      }
+    }
+  }
 }
 
-div#chart {
-  flex: 400px;
+@media (max-width: 992px) {
+  .container-with-table {
+    display: block;
+    div.scrollable-table {
+      max-height: none;
+      overflow-y: hidden;
+      overflow-x: hidden;
+      table {
+        width: calc(100% - 2rem);
+        margin: 1rem;
+      }
+    }
+  }
 }
 
-table {
-  flex: 400px;
+tr.glow {
+  td,
+  th {
+    background-color: #0ff;
+    color: #000;
+  }
+}
+
+td,
+th {
+  transition-property: background-color, color;
+  transition-duration: 500ms;
+}
+
+path {
+  &.glow {
+    transition: fill-opacity 500ms ease-in-out;
+    transition-delay: 1s;
+    transition: filter 500ms ease-in-out;
+    filter: drop-shadow(0px 0px 2px #0ff);
+    fill-opacity: 1;
+  }
 }
