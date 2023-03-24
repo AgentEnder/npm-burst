@@ -58,11 +58,22 @@ export function App() {
   );
 
   useEffect(() => {
+    const { get, cancel } = getDownloadsByVersion(npmPackageName);
     if (npmPackageName) {
-      getDownloadsByVersion(npmPackageName).then((downloads) => {
-        setRawDownloadData(downloads);
-      });
+      get()
+        .then((downloads) => {
+          if (downloads) {
+            setRawDownloadData(downloads);
+          }
+        })
+        .catch((e) => {
+          // do nothing - probably a cnacellation
+          // can check in future via e.name === `AbortError`
+        });
     }
+    return () => {
+      cancel();
+    };
   }, [npmPackageName]);
 
   useEffect(() => {
