@@ -163,7 +163,6 @@ export function sunburst({
     const child = d3.select('#innerCircle');
     child.attr('fill', '#cfcfff');
     versionMouseEnter?.(p.data.name);
-    console.log(p.data.name);
   }
   function mouseExit(
     event: Event,

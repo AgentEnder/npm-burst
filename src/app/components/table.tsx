@@ -75,29 +75,16 @@ export function Table({
             .reverse()
             .filter((node) => getCount(node) > 0)
             .map((dataNode) => (
-              <div
-                style={{
-                  display: 'contents',
-                  border: '5px solid black',
-                  padding: '5px',
-                }}
+              <tr
+                key={dataNode.name}
                 className={
                   highlightedVersion == dataNode.name ? 'glow' : undefined
                 }
               >
-                <tr
-                  key={dataNode.name}
-                  className={
-                    highlightedVersion == dataNode.name ? 'glow' : undefined
-                  }
-                >
-                  <th>{dataNode.name}</th>
-                  <td>{formatCount(getCount(dataNode))}</td>
-                  <td>
-                    {formatPercentage((getCount(dataNode) / total) * 100)}
-                  </td>
-                </tr>
-              </div>
+                <th>{dataNode.name}</th>
+                <td>{formatCount(getCount(dataNode))}</td>
+                <td>{formatPercentage((getCount(dataNode) / total) * 100)}</td>
+              </tr>
             ))}
         </tbody>
         <tfoot>
@@ -147,16 +134,10 @@ function TopVersionRow({
     );
   } else {
     return (
-      <tr>
-        <th className={highlightedVersion === data.name ? 'glow' : undefined}>
-          {data.name}
-        </th>
-        <td className={highlightedVersion === data.name ? 'glow' : undefined}>
-          {formatCount(count)}
-        </td>
-        <td className={highlightedVersion === data.name ? 'glow' : undefined}>
-          {formatPercentage((count / total) * 100)}
-        </td>
+      <tr className={highlightedVersion === data.name ? 'glow' : undefined}>
+        <th>{data.name}</th>
+        <td>{formatCount(count)}</td>
+        <td>{formatPercentage((count / total) * 100)}</td>
       </tr>
     );
   }
