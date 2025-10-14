@@ -1,11 +1,116 @@
-import { useMemo } from 'react';
-import { isLeafNode, SunburstData, SunburstLeafNode } from './sunburst';
+import { useMemo, memo, useEffect } from 'react';
+import {
+  isLeafNode,
+  SunburstData,
+  SunburstLeafNode,
+  isAggregatedNode,
+} from './sunburst';
 
 type DataNode = SunburstData | SunburstLeafNode;
 
-export function Table({ data }: { data: DataNode }) {
+export const Table = memo(function Table({
+  data,
+  onVersionClick,
+}: {
+  data: DataNode;
+  onVersionClick?: (version: string, isAggregated?: boolean) => void;
+}): JSX.Element | null {
   const total = useMemo<number>(() => getCount(data), [data]);
-  if (!isLeafNode(data) && hasGrandChildren(data)) {
+
+  useEffect(() => {
+    // Handle hover for rows with rowspan
+    const handleMouseEnter = (e: Event) => {
+      const row = e.currentTarget as HTMLElement;
+      const tbody = row.parentElement;
+      if (!tbody) return;
+
+      // Highlight all cells in the current row
+      row.querySelectorAll('th, td').forEach((cell) => {
+        cell.classList.add('row-hover');
+      });
+
+      // Find cells with rowspan and highlight them if they span this row
+      const allCells = tbody.querySelectorAll('th[rowspan], td[rowspan]');
+      const rows = Array.from(tbody.children);
+      const currentRowIndex = rows.indexOf(row);
+
+      allCells.forEach((cell) => {
+        const cellElement = cell as HTMLElement;
+        const rowspan = parseInt(cellElement.getAttribute('rowspan') || '1');
+        const cellRow = cellElement.closest('tr');
+        if (!cellRow) return;
+
+        const cellRowIndex = rows.indexOf(cellRow);
+
+        // If current row is within the rowspan range, add hover class
+        if (
+          currentRowIndex >= cellRowIndex &&
+          currentRowIndex < cellRowIndex + rowspan
+        ) {
+          cellElement.classList.add('row-hover');
+        }
+      });
+    };
+
+    const handleMouseLeave = () => {
+      document.querySelectorAll('.row-hover').forEach((cell) => {
+        cell.classList.remove('row-hover');
+      });
+    };
+
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach((row) => {
+      row.addEventListener('mouseenter', handleMouseEnter);
+      row.addEventListener('mouseleave', handleMouseLeave);
+    });
+
+    // Cleanup
+    return () => {
+      rows.forEach((row) => {
+        row.removeEventListener('mouseenter', handleMouseEnter);
+        row.removeEventListener('mouseleave', handleMouseLeave);
+      });
+    };
+  }, [data]);
+
+  const processedRows = useMemo(() => {
+    if (isLeafNode(data)) return [];
+
+    return data.children.reduce<
+      Array<{
+        node: DataNode;
+        count: number;
+        isAggregated: boolean;
+        hasChildren: boolean;
+      }>
+    >((acc, node) => {
+      const count = getCount(node);
+      if (count === 0) return acc;
+
+      const row = {
+        node,
+        count,
+        isAggregated: isAggregatedNode(node),
+        hasChildren: hasChildren(node),
+      };
+
+      // Aggregated nodes go to the end, regular nodes to the front
+      if (row.isAggregated) {
+        acc.push(row);
+      } else {
+        acc.unshift(row);
+      }
+
+      return acc;
+    }, []);
+  }, [data]);
+
+  const hasGrandChildrenMemo = useMemo(
+    () => !isLeafNode(data) && hasGrandChildren(data),
+    [data]
+  );
+
+  if (hasGrandChildrenMemo) {
     return (
       <table>
         <thead>
@@ -29,12 +134,18 @@ export function Table({ data }: { data: DataNode }) {
           </tr>
         </thead>
         <tbody>
-          {[...data.children]
-            .reverse()
-            .filter((node) => getCount(node) > 0)
-            .map((dataNode) => (
-              <TopVersionRow data={dataNode} total={total} />
-            ))}
+          {processedRows.map((row, groupIndex) => (
+            <TopVersionRow
+              key={row.node.name}
+              data={row.node}
+              count={row.count}
+              isAggregated={row.isAggregated}
+              hasChildren={row.hasChildren}
+              total={total}
+              onVersionClick={onVersionClick}
+              groupIndex={groupIndex}
+            />
+          ))}
         </tbody>
         <tfoot>
           <tr>
@@ -60,18 +171,36 @@ export function Table({ data }: { data: DataNode }) {
           </tr>
         </thead>
         <tbody>
-          {[...data.children]
-            .reverse()
-            .filter((node) => getCount(node) > 0)
-            .map((dataNode) => (
-              <tr>
-                <th>{dataNode.name}</th>
-                <td>{formatCount(getCount(dataNode))}</td>
-                <td>
-                  {formatPercentage((getCount(dataNode) / total) * 100)} %
+          {processedRows.map((row, index) => {
+            const isClickable =
+              (!isLeafNode(row.node) || row.isAggregated) && onVersionClick;
+            const handleClick = isClickable
+              ? () => onVersionClick(row.node.name, row.isAggregated)
+              : undefined;
+            const cursorStyle = isClickable ? 'pointer' : 'default';
+            const isEvenRow = index % 2 === 0;
+
+            return (
+              <tr
+                key={row.node.name}
+                className={isEvenRow ? 'row-group-even' : 'row-group-odd'}
+              >
+                <th onClick={handleClick} style={{ cursor: cursorStyle }}>
+                  {row.node.name}
+                </th>
+                <td onClick={handleClick} style={{ cursor: cursorStyle }}>
+                  {formatCount(row.count)}
+                </td>
+                <td
+                  className="monospace"
+                  onClick={handleClick}
+                  style={{ cursor: cursorStyle }}
+                >
+                  {formatPercentage((row.count / total) * 100)}
                 </td>
               </tr>
-            ))}
+            );
+          })}
         </tbody>
         <tfoot>
           <tr>
@@ -82,40 +211,159 @@ export function Table({ data }: { data: DataNode }) {
       </table>
     );
   }
-}
+  return null;
+});
 
-function TopVersionRow({ data, total }: { data: DataNode; total: number }) {
-  const count = getCount(data);
-  if (hasChildren(data)) {
+function TopVersionRow({
+  data,
+  count,
+  isAggregated,
+  hasChildren: hasChildrenProp,
+  total,
+  onVersionClick,
+  groupIndex,
+}: {
+  data: DataNode;
+  count: number;
+  isAggregated: boolean;
+  hasChildren: boolean;
+  total: number;
+  onVersionClick?: (version: string, isAggregated?: boolean) => void;
+  groupIndex: number;
+}) {
+  const isEvenGroup = groupIndex % 2 === 0;
+
+  if (hasChildrenProp && !isLeafNode(data)) {
     const children = [...data.children]
       .reverse()
       .filter((node) => getCount(node) > 0);
     const rowSpan = children?.length || 1;
+
+    const parentClickable =
+      (!isLeafNode(data) || isAggregated) && onVersionClick;
+    const parentHandleClick = parentClickable
+      ? () => onVersionClick(data.name, isAggregated)
+      : undefined;
+    const parentCursorStyle = parentClickable ? 'pointer' : 'default';
+
+    const firstChildIsAggregated = isAggregatedNode(children[0]);
+    const firstChildClickable =
+      (!isLeafNode(children[0]) || firstChildIsAggregated) && onVersionClick;
+    const firstChildHandleClick = firstChildClickable
+      ? () => onVersionClick(children[0].name, firstChildIsAggregated)
+      : undefined;
+    const firstChildCursorStyle = firstChildClickable ? 'pointer' : 'default';
+
     return (
       <>
-        <tr>
-          <th rowSpan={rowSpan}>{data.name}</th>
-          <td rowSpan={rowSpan}>{formatCount(count)}</td>
-          <td rowSpan={rowSpan}>{formatPercentage((count / total) * 100)}</td>
-          <td>{children[0].name}</td>
-          <td>{formatCount(getCount(children[0]))}</td>
-          <td>{formatPercentage((getCount(children[0]) / total) * 100)}</td>
+        <tr className={isEvenGroup ? 'row-group-even' : 'row-group-odd'}>
+          <th
+            rowSpan={rowSpan}
+            onClick={parentHandleClick}
+            style={{ cursor: parentCursorStyle }}
+            className={isEvenGroup ? 'row-group-even' : 'row-group-odd'}
+          >
+            {data.name}
+          </th>
+          <td
+            rowSpan={rowSpan}
+            onClick={parentHandleClick}
+            style={{ cursor: parentCursorStyle }}
+            className={isEvenGroup ? 'row-group-even' : 'row-group-odd'}
+          >
+            {formatCount(count)}
+          </td>
+          <td
+            rowSpan={rowSpan}
+            className={`monospace ${
+              isEvenGroup ? 'row-group-even' : 'row-group-odd'
+            }`}
+            onClick={parentHandleClick}
+            style={{ cursor: parentCursorStyle }}
+          >
+            {formatPercentage((count / total) * 100)}
+          </td>
+          <td
+            onClick={firstChildHandleClick}
+            style={{ cursor: firstChildCursorStyle }}
+          >
+            {children[0].name}
+          </td>
+          <td
+            onClick={firstChildHandleClick}
+            style={{ cursor: firstChildCursorStyle }}
+          >
+            {formatCount(getCount(children[0]))}
+          </td>
+          <td
+            className="monospace"
+            onClick={firstChildHandleClick}
+            style={{ cursor: firstChildCursorStyle }}
+          >
+            {formatPercentage((getCount(children[0]) / total) * 100)}
+          </td>
         </tr>
-        {children.slice(1).map((child) => (
-          <tr>
-            <td>{child.name}</td>
-            <td>{formatCount(getCount(child))}</td>
-            <td>{formatPercentage((getCount(child) / total) * 100)}</td>
-          </tr>
-        ))}
+        {children.slice(1).map((child) => {
+          const childIsAggregated = isAggregatedNode(child);
+          const childClickable =
+            (!isLeafNode(child) || childIsAggregated) && onVersionClick;
+          const childHandleClick = childClickable
+            ? () => onVersionClick(child.name, childIsAggregated)
+            : undefined;
+          const childCursorStyle = childClickable ? 'pointer' : 'default';
+
+          return (
+            <tr
+              key={child.name}
+              className={isEvenGroup ? 'row-group-even' : 'row-group-odd'}
+            >
+              <td
+                onClick={childHandleClick}
+                style={{ cursor: childCursorStyle }}
+              >
+                {child.name}
+              </td>
+              <td
+                onClick={childHandleClick}
+                style={{ cursor: childCursorStyle }}
+              >
+                {formatCount(getCount(child))}
+              </td>
+              <td
+                className="monospace"
+                onClick={childHandleClick}
+                style={{ cursor: childCursorStyle }}
+              >
+                {formatPercentage((getCount(child) / total) * 100)}
+              </td>
+            </tr>
+          );
+        })}
       </>
     );
   } else {
+    // No children - render only 3 cells for simple table
+    const isClickable = (!isLeafNode(data) || isAggregated) && onVersionClick;
+    const handleClick = isClickable
+      ? () => onVersionClick!(data.name, isAggregated)
+      : undefined;
+    const cursorStyle = isClickable ? 'pointer' : 'default';
+
     return (
-      <tr>
-        <th>{data.name}</th>
-        <td>{formatCount(count)}</td>
-        <td>{formatPercentage((count / total) * 100)}</td>
+      <tr className={isEvenGroup ? 'row-group-even' : 'row-group-odd'}>
+        <th onClick={handleClick} style={{ cursor: cursorStyle }}>
+          {data.name}
+        </th>
+        <td onClick={handleClick} style={{ cursor: cursorStyle }}>
+          {formatCount(count)}
+        </td>
+        <td
+          className="monospace"
+          onClick={handleClick}
+          style={{ cursor: cursorStyle }}
+        >
+          {formatPercentage((count / total) * 100)}
+        </td>
       </tr>
     );
   }

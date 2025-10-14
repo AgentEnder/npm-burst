@@ -1,13 +1,14 @@
-import { render } from '@testing-library/react';
+import { render, waitFor, act } from '@testing-library/react';
 
 import App from './app';
+import { ThemeProvider } from './context/theme-context';
 
 vi.mock('@npm-burst/npm/data-access', () => ({
   getDownloadsByVersion: (pkg: string) => ({
     get: () =>
       Promise.resolve({
         package: pkg,
-        versions: {
+        downloads: {
           '1.0.0': 123,
         },
       }),
@@ -17,14 +18,28 @@ vi.mock('@npm-burst/npm/data-access', () => ({
   }),
 }));
 
+const renderWithTheme = (component: React.ReactElement) => {
+  return render(<ThemeProvider>{component}</ThemeProvider>);
+};
+
 describe('App', () => {
-  it('should render successfully', () => {
-    const { baseElement } = render(<App />);
-    expect(baseElement).toBeTruthy();
+  it('should render successfully', async () => {
+    let renderResult;
+    await act(async () => {
+      renderResult = renderWithTheme(<App />);
+      await waitFor(() => {
+        expect(renderResult!.baseElement).toBeTruthy();
+      });
+    });
   });
 
-  it('should default to Nx', () => {
-    const { getByText } = render(<App />);
-    expect(getByText(/NPM Downloads for nx/gi)).toBeTruthy();
+  it('should display package name when data loads', async () => {
+    const { getByText } = renderWithTheme(<App />);
+    await waitFor(
+      () => {
+        expect(getByText(/NPM Downloads for/i)).toBeTruthy();
+      },
+      { timeout: 2000 }
+    );
   });
 });

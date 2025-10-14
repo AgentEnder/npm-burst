@@ -1,0 +1,55 @@
+.chartContainer {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  background-color: var(--surface-2);
+  color: var(--text-primary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  z-index: 1000;
+  max-width: 300px;
+  border: 1px solid var(--border-color);
+}
+
+.tooltipVisible {
+  opacity: 1;
+}
+
+.tooltipTitle {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-primary);
+}
+
+.tooltipContent {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.tooltipRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xs);
+}
+
+.tooltipLabel {
+  color: var(--text-tertiary);
+}
+
+.tooltipValue {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}

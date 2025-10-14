@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type URLParamSerializer<T> = {
   serialize: (obj: T) => string | null;
@@ -39,8 +39,7 @@ export function useUrlParam<T>(key: string, opts: UrlParamOpts<T>) {
     updateValueFromURL();
   });
 
-  return [
-    val,
+  const setter = useCallback(
     (newValue: T) => {
       setValue(newValue);
       const mapped = serializer
@@ -49,7 +48,10 @@ export function useUrlParam<T>(key: string, opts: UrlParamOpts<T>) {
           (newValue as unknown as string);
       setQueryParam(key, mapped);
     },
-  ] as const;
+    [key, serializer]
+  );
+
+  return [val, setter] as const;
 }
 
 export function setQueryParam(key: string, value: string | null) {
