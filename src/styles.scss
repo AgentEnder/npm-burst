@@ -100,6 +100,8 @@
   --table-row-even: rgba(255, 255, 255, 0.02);
   --table-row-hover: rgba(255, 255, 255, 0.1);
   --table-border: var(--border-color);
+
+  --card-bg: var(--surface-3);
 }
 
 // Light Theme
@@ -162,6 +164,8 @@
   --table-row-even: rgba(0, 0, 0, 0.02);
   --table-row-hover: rgba(0, 0, 0, 0.08);
   --table-border: var(--border-color);
+
+  --card-bg: var(--surface-3);
 }
 
 // Base styles

@@ -16,6 +16,9 @@ import { useUrlParam } from './hooks/url-params';
 import { Table } from './components/table';
 import { LoadingSkeleton } from './components/loading-skeleton';
 import { ErrorMessage } from './components/error-message';
+import { Popover } from './components/popover';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 import styles from './app.module.scss';
 
 export function App() {
@@ -27,7 +30,7 @@ export function App() {
     defaultValue: true,
     serializer: {
       serialize: (v) => (v ? 'version' : null),
-      deserialize: (s) => s === 'version',
+      deserialize: ((s) => s === 'version') as (s: string) => true | false,
     },
   });
   const [showDataTable, setShowDataTable] = useState(true);
@@ -207,6 +210,39 @@ export function App() {
             <div className={styles.numberInputWrapper}>
               <label htmlFor="lpf-input" className={styles.label}>
                 Low pass filter (%)
+                <Popover
+                  content={
+                    <div className={styles.popoverContent}>
+                      <strong>How Low Pass Filter Works</strong>
+                      <p>
+                        Nodes with a percentage lower than the filter threshold
+                        are aggregated into special nodes:
+                      </p>
+                      <ul>
+                        <li>
+                          <strong>Other</strong>: Aggregates small major
+                          versions at the root level
+                        </li>
+                        <li>
+                          <strong>X.?</strong>: Aggregates small minor/patch
+                          versions within a major version
+                        </li>
+                        <li>
+                          <strong>X.Y.Z-other</strong>: Aggregates small
+                          pre-release tags
+                        </li>
+                      </ul>
+                      <p>
+                        Click on these nodes to expand and see all versions.
+                      </p>
+                    </div>
+                  }
+                >
+                  <FontAwesomeIcon
+                    icon={faCircleInfo}
+                    className={styles.infoIcon}
+                  />
+                </Popover>
               </label>
               <input
                 id="lpf-input"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type URLParamSerializer<T> = {
   serialize: (obj: T) => string | null;

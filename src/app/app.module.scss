@@ -18,6 +18,9 @@
   font-weight: 500;
   color: var(--text-secondary);
   margin-bottom: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 .input {
@@ -207,6 +210,53 @@
 .helpText {
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
+}
+
+.infoIcon {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    color: var(--primary-main);
+    transform: scale(1.1);
+  }
+}
+
+.popoverContent {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: 1.5;
+
+  strong {
+    display: block;
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+  }
+
+  p {
+    margin: var(--spacing-sm) 0;
+    color: var(--text-secondary);
+  }
+
+  ul {
+    margin: var(--spacing-sm) 0;
+    padding-left: var(--spacing-lg);
+    list-style: disc;
+
+    li {
+      margin: var(--spacing-xs) 0;
+      color: var(--text-secondary);
+
+      strong {
+        display: inline;
+        font-size: inherit;
+        margin: 0;
+        color: var(--primary-main);
+      }
+    }
+  }
 }
 
 .clearButton {
