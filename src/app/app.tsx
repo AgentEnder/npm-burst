@@ -182,6 +182,12 @@ export function App() {
                   setExpandedNodes([]);
                 }
               }}
+              onBlur={(evt: React.FocusEvent) => {
+                const target = evt.target as HTMLInputElement;
+                setNpmPackageName(target.value.toLowerCase());
+                setSelectedVersion(null);
+                setExpandedNodes([]);
+              }}
               placeholder="e.g., react, lodash, express"
             />
           </div>
