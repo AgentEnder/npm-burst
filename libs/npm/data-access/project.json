@@ -4,18 +4,5 @@
   "sourceRoot": "libs/npm/data-access/src",
   "projectType": "library",
   "tags": [],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"]
-    },
-    "test": {
-      "executor": "@nx/vitest:test",
-      "outputs": ["{workspaceRoot}/coverage/libs/npm/data-access"],
-      "options": {
-        "passWithNoTests": true,
-        "reportsDirectory": "../../../coverage/libs/npm/data-access"
-      }
-    }
-  }
+  "targets": {}
 }

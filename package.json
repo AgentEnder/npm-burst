@@ -1,5 +1,5 @@
 {
-  "name": "npm-burst",
+  "name": "@npm-burst/source",
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
@@ -12,12 +12,13 @@
     "@babel/core": "^7.14.5",
     "@babel/preset-react": "^7.14.5",
     "@nx/cypress": "22.5.4",
-    "@nx/eslint": "22.5.4",
+    "@nx/eslint": "^22.5.4",
     "@nx/eslint-plugin": "22.5.4",
     "@nx/js": "22.5.4",
     "@nx/react": "22.5.4",
-    "@nx/vite": "22.5.4",
-    "@nx/vitest": "22.5.4",
+    "@nx/vite": "^22.5.4",
+    "@nx/vitest": "^22.5.4",
+    "@nx/web": "22.5.4",
     "@nx/workspace": "22.5.4",
     "@testing-library/react": "16.1.0",
     "@types/d3": "^7.4.0",
@@ -28,8 +29,8 @@
     "@typescript-eslint/eslint-plugin": "7.18.0",
     "@typescript-eslint/parser": "7.18.0",
     "@vitejs/plugin-react": "4.7.0",
-    "@vitest/coverage-v8": "^3.0.0",
-    "@vitest/ui": "^3.0.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "@vitest/ui": "^4.0.0",
     "cypress": "15.9.0",
     "eslint": "8.57.1",
     "eslint-config-prettier": "10.1.8",
@@ -48,7 +49,7 @@
     "vite": "7.3.1",
     "vite-plugin-eslint": "^1.8.1",
     "vite-tsconfig-paths": "4.3.2",
-    "vitest": "^3.0.0"
+    "vitest": "^4.0.8"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.3.0",
@@ -60,5 +61,6 @@
     "react-dom": "18.3.1",
     "semver": "^7.3.8",
     "tslib": "^2.3.0"
-  }
+  },
+  "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531"
 }

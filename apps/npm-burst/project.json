@@ -1,0 +1,13 @@
+{
+  "name": "npm-burst",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/npm-burst/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "deploy": {
+      "command": "ts-node tools/deploy-to-github-pages",
+      "dependsOn": ["build"]
+    }
+  }
+}
