@@ -5,7 +5,7 @@ type URLParamSerializer<T> = {
   deserialize: (str: string) => T;
 };
 
-type UrlParamOpts<T> = T extends string
+type UrlParamOpts<T> = [T] extends [string | null]
   ? string | { defaultValue: T; serializer?: URLParamSerializer<T> }
   : {
       defaultValue: T;

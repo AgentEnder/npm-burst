@@ -1,6 +1,10 @@
 {
   "permissions": {
-    "allow": ["mcp__ide__getDiagnostics"],
+    "allow": [
+      "mcp__ide__getDiagnostics",
+      "Bash(/tmp/craigory_structure.txt:*)",
+      "Read(//tmp/**)"
+    ],
     "deny": [],
     "ask": []
   }

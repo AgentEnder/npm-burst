@@ -1,27 +1,14 @@
 {
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "allowJs": false,
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "types": ["vite/client", "vitest"]
-  },
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {},
   "files": [],
   "include": [],
   "references": [
     {
-      "path": "./tsconfig.app.json"
+      "path": "./apps/web"
     },
     {
-      "path": "./tsconfig.spec.json"
+      "path": "./libs/npm/data-access"
     }
-  ],
-  "extends": "./tsconfig.base.json",
-  "ts-node": {
-    "compilerOptions": {
-      "module": "nodenext",
-      "target": "es2017"
-    }
-  }
+  ]
 }

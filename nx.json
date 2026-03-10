@@ -1,28 +1,22 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "npmScope": "npm-burst",
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "@nrwl/nx-cloud",
-      "options": {
-        "cacheableOperations": ["build", "lint", "test", "e2e"],
-        "accessToken": "NGQxYzlkNmItNjgxMC00NGRjLThhOGEtMmI3ODQ3MDczM2NkfHJlYWQtd3JpdGU="
-      }
-    }
-  },
   "targetDefaults": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "inputs": ["production", "^production"],
+      "cache": true
     },
     "e2e": {
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "cache": true
     },
-    "test": {
-      "inputs": ["default", "^production"]
+    "@nx/eslint:lint": {
+      "inputs": ["default", "{workspaceRoot}/.eslintrc.json"],
+      "cache": true
     },
-    "lint": {
-      "inputs": ["default", "{workspaceRoot}/.eslintrc.json"]
+    "@nx/vitest:test": {
+      "inputs": ["default", "^production"],
+      "cache": true
     }
   },
   "namedInputs": {
@@ -35,12 +29,11 @@
     ],
     "sharedGlobals": [
       "{workspaceRoot}/babel.config.json",
-      "{workspaceRoot}/vite.config.ts",
       "{workspaceRoot}/.github/workflows/ci.yml"
     ]
   },
   "generators": {
-    "@nrwl/react": {
+    "@nx/react": {
       "application": {
         "style": "scss",
         "linter": "eslint",
@@ -57,5 +50,7 @@
       }
     }
   },
-  "defaultProject": "npm-burst"
+  "defaultProject": "npm-burst",
+  "nxCloudAccessToken": "NGQxYzlkNmItNjgxMC00NGRjLThhOGEtMmI3ODQ3MDczM2NkfHJlYWQtd3JpdGU=",
+  "useInferencePlugins": false
 }

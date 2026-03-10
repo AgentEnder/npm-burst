@@ -1,15 +1,16 @@
 {
   "name": "npm-burst",
-  "$schema": "node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "./src",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/web/src",
   "projectType": "application",
+  "tags": [],
   "targets": {
     "build": {
-      "executor": "@nrwl/vite:build",
+      "executor": "@nx/vite:build",
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
-        "outputPath": "dist/npm-burst"
+        "outputPath": "dist/apps/web"
       },
       "configurations": {
         "development": {
@@ -21,7 +22,7 @@
       }
     },
     "serve": {
-      "executor": "@nrwl/vite:dev-server",
+      "executor": "@nx/vite:dev-server",
       "defaultConfiguration": "development",
       "options": {
         "buildTarget": "npm-burst:build"
@@ -38,24 +39,22 @@
       }
     },
     "test": {
-      "executor": "@nrwl/vite:test",
-      "outputs": ["coverage/npm-burst"],
+      "executor": "@nx/vitest:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/web"],
       "options": {
         "passWithNoTests": true,
-        "reportsDirectory": "coverage/npm-burst"
+        "reportsDirectory": "../../coverage/apps/web"
       }
     },
     "lint": {
-      "executor": "@nrwl/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["./src/**/*.{ts,tsx,js,jsx}"]
+        "lintFilePatterns": ["{projectRoot}/src"]
       }
     },
     "deploy": {
       "command": "ts-node tools/deploy-to-github-pages",
       "dependsOn": ["build"]
     }
-  },
-  "tags": []
+  }
 }

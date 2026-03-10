@@ -30,7 +30,7 @@ export function App() {
     defaultValue: true,
     serializer: {
       serialize: (v) => (v ? 'version' : null),
-      deserialize: ((s) => s === 'version') as (s: string) => true | false,
+      deserialize: (s) => s === 'version',
     },
   });
   const [showDataTable, setShowDataTable] = useState(true);
