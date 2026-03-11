@@ -1,8 +1,9 @@
+/// <reference types="@cloudflare/workers-types" />
 import { telefunc, config } from 'telefunc';
 
 config.telefuncUrl = '/_telefunc';
 
-export async function telefuncHandler(context: EventContext<unknown, string, unknown>) {
+export async function telefuncHandler(context: EventContext<Record<string, string>, string, unknown>) {
   const request = context.request;
   const httpResponse = await telefunc({
     url: request.url,
