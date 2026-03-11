@@ -56,6 +56,9 @@ importers:
       wrangler:
         specifier: ^4.72.0
         version: 4.72.0(@cloudflare/workers-types@4.20260310.1)
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@babel/core':
         specifier: ^7.14.5
@@ -6044,6 +6047,9 @@ packages:
 
   youch@4.1.0-beta.10:
     resolution: {integrity: sha512-rLfVLB4FgQneDr0dv1oddCVZmKjcJ6yX6mS4pU82Mq/Dt9a3cLZQ62pDBL4AUO+uVrCvtWz3ZFUL2HFAFJ/BXQ==}
+
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
 
@@ -12855,3 +12861,5 @@ snapshots:
       '@speed-highlight/core': 1.2.14
       cookie: 1.1.1
       youch-core: 0.3.3
+
+  zod@4.3.6: {}

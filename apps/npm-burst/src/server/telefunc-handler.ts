@@ -1,12 +1,13 @@
 /// <reference types="@cloudflare/workers-types" />
 import { telefunc, config } from 'telefunc';
 import { getAuthUserId } from './auth';
+import { parseEnv } from './env';
 
 config.telefuncUrl = '/_telefunc';
 
 export async function telefuncHandler(context: EventContext<Record<string, string>, string, unknown>) {
   const request = context.request;
-  const env = (context as any).env;
+  const env = parseEnv(context.env);
 
   const userId = await getAuthUserId(request, env.CLERK_SECRET_KEY);
 

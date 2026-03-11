@@ -3,7 +3,7 @@
     "allow": [
       "mcp__ide__getDiagnostics",
       "Bash(/tmp/craigory_structure.txt:*)",
-      "Read(//tmp/**)"
+      "Bash(timeout 15 ./node_modules/.bin/nx serve npm-burst 2>&1 || true)"
     ],
     "deny": [],
     "ask": []

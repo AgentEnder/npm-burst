@@ -1,8 +1,9 @@
 import { createClient, Client } from '@libsql/client';
+import type { Env } from './env';
 
 let client: Client | null = null;
 
-export function getDb(env: { TURSO_DATABASE_URL: string; TURSO_AUTH_TOKEN: string }): Client {
+export function getDb(env: Pick<Env, 'TURSO_DATABASE_URL' | 'TURSO_AUTH_TOKEN'>): Client {
   if (!client) {
     client = createClient({
       url: env.TURSO_DATABASE_URL,

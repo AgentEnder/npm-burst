@@ -1,13 +1,9 @@
-import type { Client } from '@libsql/client';
+import type { Env } from './env';
 
 declare module 'telefunc' {
   namespace Telefunc {
     interface Context {
-      env: {
-        TURSO_DATABASE_URL: string;
-        TURSO_AUTH_TOKEN: string;
-        CLERK_SECRET_KEY: string;
-      };
+      env: Env;
       userId: string | null;
       request: Request;
     }
