@@ -3,9 +3,19 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { faMoon, faSun } from '@fortawesome/free-solid-svg-icons';
 import { useTheme } from '../context/theme-context';
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton,
+} from '@clerk/clerk-react';
 import styles from './navbar.module.scss';
 
-export const Navbar = memo(function Navbar() {
+interface NavbarProps {
+  onSelectPackage?: (pkg: string) => void;
+}
+
+export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -30,6 +40,22 @@ export const Navbar = memo(function Navbar() {
       >
         <FontAwesomeIcon icon={faGithub} />
       </a>
+      <div className={styles.authSection}>
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button className={styles.signInButton}>Sign In</button>
+          </SignInButton>
+        </SignedOut>
+        <SignedIn>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: styles.avatarBox,
+              },
+            }}
+          />
+        </SignedIn>
+      </div>
     </nav>
   );
 });

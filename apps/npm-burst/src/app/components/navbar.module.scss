@@ -83,6 +83,32 @@
   }
 }
 
+.authSection {
+  display: flex;
+  align-items: center;
+  margin-left: var(--spacing-sm);
+}
+
+.signInButton {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: opacity 150ms ease-in-out;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+.avatarBox {
+  width: 28px;
+  height: 28px;
+}
+
 @media (max-width: 600px) {
   .navbar {
     padding: var(--spacing-sm) var(--spacing-md);
