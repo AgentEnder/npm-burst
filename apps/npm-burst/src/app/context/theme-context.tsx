@@ -17,6 +17,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'dark';
     const saved = localStorage.getItem('npm-burst-theme');
     return (saved as Theme) || 'dark';
   });

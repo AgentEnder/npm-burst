@@ -35,9 +35,11 @@ export function useUrlParam<T>(key: string, opts: UrlParamOpts<T>) {
     updateValueFromURL();
   }, [updateValueFromURL]);
 
-  window.addEventListener('popstate', () => {
-    updateValueFromURL();
-  });
+  useEffect(() => {
+    const handler = () => updateValueFromURL();
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, [updateValueFromURL]);
 
   const setter = useCallback(
     (newValue: T) => {
