@@ -18,14 +18,14 @@ import { LoadingSkeleton } from './components/loading-skeleton';
 import { ErrorMessage } from './components/error-message';
 import { Popover } from './components/popover';
 import { TrackButton } from './components/track-button';
-import { useAuth } from '@clerk/clerk-react';
+import { useSafeAuth } from './context/auth-context';
 import { onGetDownloads } from '../server/functions/downloads.telefunc';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 import styles from './app.module.scss';
 
 export function App() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useSafeAuth();
   const [npmPackageName, setNpmPackageName] = useUrlParam<string>(
     'package',
     'nx'

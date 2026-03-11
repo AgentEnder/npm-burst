@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useSafeAuth } from '../context/auth-context';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStar as faStarSolid } from '@fortawesome/free-solid-svg-icons';
 import { faStar as faStarRegular } from '@fortawesome/free-regular-svg-icons';
@@ -15,7 +15,7 @@ interface TrackButtonProps {
 }
 
 export function TrackButton({ packageName }: TrackButtonProps) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useSafeAuth();
   const [isTracked, setIsTracked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 

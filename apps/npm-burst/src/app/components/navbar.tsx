@@ -12,6 +12,8 @@ import {
 import { TrackedPackagesMenu } from './tracked-packages-menu';
 import styles from './navbar.module.scss';
 
+const CLERK_AVAILABLE = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
 interface NavbarProps {
   onSelectPackage?: (pkg: string) => void;
 }
@@ -44,22 +46,24 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
       {onSelectPackage && (
         <TrackedPackagesMenu onSelectPackage={onSelectPackage} />
       )}
-      <div className={styles.authSection}>
-        <SignedOut>
-          <SignInButton mode="modal">
-            <button className={styles.signInButton}>Sign In</button>
-          </SignInButton>
-        </SignedOut>
-        <SignedIn>
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: styles.avatarBox,
-              },
-            }}
-          />
-        </SignedIn>
-      </div>
+      {CLERK_AVAILABLE && (
+        <div className={styles.authSection}>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className={styles.signInButton}>Sign In</button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: styles.avatarBox,
+                },
+              }}
+            />
+          </SignedIn>
+        </div>
+      )}
     </nav>
   );
 });

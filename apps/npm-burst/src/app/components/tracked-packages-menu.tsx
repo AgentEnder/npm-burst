@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useSafeAuth } from '../context/auth-context';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faList, faTimes } from '@fortawesome/free-solid-svg-icons';
 import {
@@ -15,7 +15,7 @@ interface TrackedPackagesMenuProps {
 export function TrackedPackagesMenu({
   onSelectPackage,
 }: TrackedPackagesMenuProps) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useSafeAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [packages, setPackages] = useState<string[]>([]);
 
