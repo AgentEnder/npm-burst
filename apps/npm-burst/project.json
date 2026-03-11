@@ -25,8 +25,11 @@
       "inputs": ["default", "^production"]
     },
     "deploy": {
-      "command": "ts-node tools/deploy-to-github-pages",
-      "dependsOn": ["build"]
+      "command": "wrangler pages deploy ../../dist/apps/web/client --project-name npm-burst",
+      "dependsOn": ["build"],
+      "options": {
+        "cwd": "apps/npm-burst"
+      }
     }
   }
 }
