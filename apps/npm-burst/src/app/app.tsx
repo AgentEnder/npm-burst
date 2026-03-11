@@ -17,6 +17,7 @@ import { Table } from './components/table';
 import { LoadingSkeleton } from './components/loading-skeleton';
 import { ErrorMessage } from './components/error-message';
 import { Popover } from './components/popover';
+import { TrackButton } from './components/track-button';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 import styles from './app.module.scss';
@@ -170,26 +171,29 @@ export function App() {
             <label htmlFor="npm-package-input" className={styles.label}>
               NPM Package
             </label>
-            <input
-              id="npm-package-input"
-              type="text"
-              className={styles.input}
-              onKeyDown={(evt: React.KeyboardEvent<HTMLInputElement>) => {
-                if (evt.key === 'Enter') {
+            <div className={styles.inputRow}>
+              <input
+                id="npm-package-input"
+                type="text"
+                className={styles.input}
+                onKeyDown={(evt: React.KeyboardEvent<HTMLInputElement>) => {
+                  if (evt.key === 'Enter') {
+                    const target = evt.target as HTMLInputElement;
+                    setNpmPackageName(target.value?.toLowerCase());
+                    setSelectedVersion(null);
+                    setExpandedNodes([]);
+                  }
+                }}
+                onBlur={(evt: React.FocusEvent) => {
                   const target = evt.target as HTMLInputElement;
-                  setNpmPackageName(target.value?.toLowerCase());
+                  setNpmPackageName(target.value.toLowerCase());
                   setSelectedVersion(null);
                   setExpandedNodes([]);
-                }
-              }}
-              onBlur={(evt: React.FocusEvent) => {
-                const target = evt.target as HTMLInputElement;
-                setNpmPackageName(target.value.toLowerCase());
-                setSelectedVersion(null);
-                setExpandedNodes([]);
-              }}
-              placeholder="e.g., react, lodash, express"
-            />
+                }}
+                placeholder="e.g., react, lodash, express"
+              />
+              <TrackButton packageName={npmPackageName} />
+            </div>
           </div>
 
           <div className={styles.optionsRow}>

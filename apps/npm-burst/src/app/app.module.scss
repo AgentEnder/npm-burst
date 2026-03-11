@@ -13,6 +13,12 @@
   gap: var(--spacing-xs);
 }
 
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
 .label {
   font-size: var(--font-size-sm);
   font-weight: 500;
