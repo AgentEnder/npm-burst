@@ -17,6 +17,7 @@ export async function telefuncHandler(context: EventContext<Record<string, strin
     context: {
       env,
       userId,
+      request,
     },
   });
 

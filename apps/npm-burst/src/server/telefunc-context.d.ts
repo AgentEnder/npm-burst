@@ -9,6 +9,7 @@ declare module 'telefunc' {
         CLERK_SECRET_KEY: string;
       };
       userId: string | null;
+      request: Request;
     }
   }
 }
