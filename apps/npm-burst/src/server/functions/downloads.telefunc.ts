@@ -1,5 +1,6 @@
 import { getContext, Abort } from 'telefunc';
 import { getDb } from '../db';
+import { getYesterdayDate } from '../utils';
 
 interface NpmDownloadsByVersion {
   downloads: Record<string, number>;
@@ -57,10 +58,4 @@ export async function onGetDownloads(pkg: string): Promise<NpmDownloadsByVersion
   }
 
   return data;
-}
-
-function getYesterdayDate(): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().split('T')[0]; // YYYY-MM-DD
 }

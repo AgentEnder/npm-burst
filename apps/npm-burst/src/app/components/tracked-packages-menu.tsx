@@ -20,8 +20,12 @@ export function TrackedPackagesMenu({
 
   const loadPackages = useCallback(async () => {
     if (!isSignedIn) return;
-    const { packages: pkgs } = await onGetTrackedPackages();
-    setPackages(pkgs);
+    try {
+      const { packages: pkgs } = await onGetTrackedPackages();
+      setPackages(pkgs);
+    } catch {
+      // ignore
+    }
   }, [isSignedIn]);
 
   useEffect(() => {

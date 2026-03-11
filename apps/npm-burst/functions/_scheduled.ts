@@ -1,7 +1,9 @@
 import { handleCron } from '../src/server/cron';
+import { parseEnv } from '../src/server/env';
 
 export default {
-  async scheduled(event: ScheduledEvent, env: any) {
-    await handleCron(env);
+  async scheduled(_event: ScheduledEvent, env: unknown) {
+    const validatedEnv = parseEnv(env);
+    await handleCron(validatedEnv);
   },
 };

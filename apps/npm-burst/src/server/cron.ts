@@ -1,9 +1,6 @@
 import { getDb } from './db';
-
-interface Env {
-  TURSO_DATABASE_URL: string;
-  TURSO_AUTH_TOKEN: string;
-}
+import type { Env } from './env';
+import { getYesterdayDate } from './utils';
 
 export async function handleCron(env: Env): Promise<void> {
   const db = getDb(env);
@@ -56,10 +53,4 @@ export async function handleCron(env: Env): Promise<void> {
       console.error(`Failed to fetch snapshot for ${packageName}:`, e);
     }
   }
-}
-
-function getYesterdayDate(): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().split('T')[0];
 }

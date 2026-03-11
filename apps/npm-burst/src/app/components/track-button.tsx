@@ -19,9 +19,9 @@ export function TrackButton({ packageName }: TrackButtonProps) {
 
   useEffect(() => {
     if (!isSignedIn || !packageName) return;
-    onIsPackageTracked(packageName).then(({ tracked }) =>
-      setIsTracked(tracked)
-    );
+    onIsPackageTracked(packageName)
+      .then(({ tracked }) => setIsTracked(tracked))
+      .catch(() => {});
   }, [isSignedIn, packageName]);
 
   const handleToggle = useCallback(async () => {
