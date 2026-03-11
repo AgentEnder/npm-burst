@@ -30,6 +30,19 @@
       "options": {
         "cwd": "apps/npm-burst"
       }
+    },
+    "db:migrate": {
+      "command": "tsx src/server/migrate.ts",
+      "options": { "cwd": "apps/npm-burst" }
+    },
+    "db:codegen": {
+      "command": "kysely-codegen --dialect sqlite --url file:local.db --out-file src/server/db-schema.ts",
+      "options": { "cwd": "apps/npm-burst" },
+      "dependsOn": ["db:migrate"]
+    },
+    "db:generate": {
+      "command": "TURSO_DATABASE_URL=file:local.db tsx src/server/migrate.ts && kysely-codegen --dialect sqlite --url file:local.db --out-file src/server/db-schema.ts",
+      "options": { "cwd": "apps/npm-burst" }
     }
   }
 }
