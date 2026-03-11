@@ -18,11 +18,14 @@ import { LoadingSkeleton } from './components/loading-skeleton';
 import { ErrorMessage } from './components/error-message';
 import { Popover } from './components/popover';
 import { TrackButton } from './components/track-button';
+import { useAuth } from '@clerk/clerk-react';
+import { onGetDownloads } from '../server/functions/downloads.telefunc';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 import styles from './app.module.scss';
 
 export function App() {
+  const { isSignedIn } = useAuth();
   const [npmPackageName, setNpmPackageName] = useUrlParam<string>(
     'package',
     'nx'
@@ -117,10 +120,29 @@ export function App() {
   const fetchData = useCallback(() => {
     if (!npmPackageName) return;
 
-    const { get, cancel } = getDownloadsByVersion(npmPackageName);
     setIsLoading(true);
     setError(null);
 
+    if (isSignedIn) {
+      // Signed-in: go through telefunc (enables ad-hoc snapshots)
+      onGetDownloads(npmPackageName)
+        .then((downloads) => {
+          setRawDownloadData(downloads);
+          setError(null);
+        })
+        .catch(() => {
+          setError(
+            `Failed to load data for "${npmPackageName}". The package may not exist or there was a network error.`
+          );
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+      return () => {}; // telefunc doesn't support cancellation
+    }
+
+    // Anonymous: direct NPM API call (unchanged behavior)
+    const { get, cancel } = getDownloadsByVersion(npmPackageName);
     get()
       .then((downloads) => {
         if (downloads) {
@@ -140,7 +162,7 @@ export function App() {
       });
 
     return cancel;
-  }, [npmPackageName]);
+  }, [npmPackageName, isSignedIn]);
 
   useEffect(() => {
     const cancel = fetchData();
