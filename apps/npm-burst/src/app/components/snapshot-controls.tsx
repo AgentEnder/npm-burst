@@ -1,10 +1,5 @@
 import { memo } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faChevronLeft,
-  faChevronRight,
-  faBolt,
-} from '@fortawesome/free-solid-svg-icons';
+import { ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import styles from './snapshot-controls.module.scss';
 
 interface SnapshotControlsProps {
@@ -36,7 +31,7 @@ export const SnapshotControls = memo(function SnapshotControls({
         disabled={isAtStart}
         title="Previous snapshot"
       >
-        <FontAwesomeIcon icon={faChevronLeft} />
+        <ChevronLeft size={16} />
       </button>
 
       <span className={styles.dateLabel}>
@@ -49,7 +44,7 @@ export const SnapshotControls = memo(function SnapshotControls({
         disabled={isAtEnd}
         title={isLive ? 'Already at live' : 'Next snapshot'}
       >
-        <FontAwesomeIcon icon={faChevronRight} />
+        <ChevronRight size={16} />
       </button>
 
       {!isLive && (
@@ -58,7 +53,7 @@ export const SnapshotControls = memo(function SnapshotControls({
           onClick={onLive}
           title="Return to live data"
         >
-          <FontAwesomeIcon icon={faBolt} />
+          <Zap size={16} />
           Live
         </button>
       )}

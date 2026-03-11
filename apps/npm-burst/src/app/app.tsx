@@ -20,8 +20,7 @@ import { Popover } from './components/popover';
 import { TrackButton } from './components/track-button';
 import { useSafeAuth } from './context/auth-context';
 import { onGetDownloads } from '../server/functions/downloads.telefunc';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleInfo } from '@fortawesome/free-solid-svg-icons';
+import { Info } from 'lucide-react';
 import styles from './app.module.scss';
 
 export function App() {
@@ -276,8 +275,8 @@ export function App() {
                     </div>
                   }
                 >
-                  <FontAwesomeIcon
-                    icon={faCircleInfo}
+                  <Info
+                    size={16}
                     className={styles.infoIcon}
                   />
                 </Popover>

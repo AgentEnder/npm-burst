@@ -1,7 +1,6 @@
 import { memo } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub } from '@fortawesome/free-brands-svg-icons';
-import { faMoon, faSun } from '@fortawesome/free-solid-svg-icons';
+import { Moon, Sun } from 'lucide-react';
+import { SiGithub } from '@icons-pack/react-simple-icons';
 import { useTheme } from '../context/theme-context';
 import {
   SignedIn,
@@ -31,7 +30,7 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
         aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
       >
-        <FontAwesomeIcon icon={theme === 'light' ? faMoon : faSun} />
+        {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
       </button>
       <a
         href="https://github.com/agentender/npm-burst"
@@ -41,7 +40,7 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
         target="_blank"
         rel="noopener noreferrer"
       >
-        <FontAwesomeIcon icon={faGithub} />
+        <SiGithub size={16} />
       </a>
       {onSelectPackage && (
         <TrackedPackagesMenu onSelectPackage={onSelectPackage} />

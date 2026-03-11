@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSafeAuth } from '../context/auth-context';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faStar as faStarSolid } from '@fortawesome/free-solid-svg-icons';
-import { faStar as faStarRegular } from '@fortawesome/free-regular-svg-icons';
+import { Star } from 'lucide-react';
 import {
   onTrackPackage,
   onUntrackPackage,
@@ -53,7 +51,7 @@ export function TrackButton({ packageName }: TrackButtonProps) {
         isTracked ? 'Untrack package' : 'Track package for daily snapshots'
       }
     >
-      <FontAwesomeIcon icon={isTracked ? faStarSolid : faStarRegular} />
+      <Star size={16} fill={isTracked ? 'currentColor' : 'none'} />
       {isTracked ? 'Tracked' : 'Track'}
     </button>
   );

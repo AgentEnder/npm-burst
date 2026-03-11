@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSafeAuth } from '../context/auth-context';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faList, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { List, X } from 'lucide-react';
 import {
   onGetTrackedPackages,
   onUntrackPackage,
@@ -57,7 +56,7 @@ export function TrackedPackagesMenu({
         onClick={() => setIsOpen(!isOpen)}
         title="Tracked packages"
       >
-        <FontAwesomeIcon icon={faList} />
+        <List size={16} />
       </button>
       {isOpen && (
         <div className={styles.dropdown}>
@@ -78,7 +77,7 @@ export function TrackedPackagesMenu({
                     onClick={(e) => handleUntrack(pkg, e)}
                     title={`Untrack ${pkg}`}
                   >
-                    <FontAwesomeIcon icon={faTimes} />
+                    <X size={16} />
                   </button>
                 </li>
               ))}
