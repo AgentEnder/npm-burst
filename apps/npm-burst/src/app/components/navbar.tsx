@@ -9,6 +9,7 @@ import {
   SignInButton,
   UserButton,
 } from '@clerk/clerk-react';
+import { TrackedPackagesMenu } from './tracked-packages-menu';
 import styles from './navbar.module.scss';
 
 interface NavbarProps {
@@ -40,6 +41,9 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
       >
         <FontAwesomeIcon icon={faGithub} />
       </a>
+      {onSelectPackage && (
+        <TrackedPackagesMenu onSelectPackage={onSelectPackage} />
+      )}
       <div className={styles.authSection}>
         <SignedOut>
           <SignInButton mode="modal">

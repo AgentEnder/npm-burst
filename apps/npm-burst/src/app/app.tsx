@@ -185,7 +185,13 @@ export function App() {
 
   return (
     <>
-      <Navbar />
+      <Navbar
+        onSelectPackage={(pkg) => {
+          setNpmPackageName(pkg);
+          setSelectedVersion(null);
+          setExpandedNodes([]);
+        }}
+      />
       <Card>
         <h1>NPM Downloads for {npmPackageName}</h1>
         <div className={styles.controls}>
