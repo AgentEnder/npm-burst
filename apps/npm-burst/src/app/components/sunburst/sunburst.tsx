@@ -1,4 +1,4 @@
-import { useEffect, memo } from 'react';
+import { useEffect, useRef, useMemo, memo } from 'react';
 import { coerce, gt } from 'semver';
 import {
   D3SunburstOptions,
@@ -21,6 +21,45 @@ export const Sunburst = memo(function Sunburst(props: {
 }) {
   const { theme } = useTheme();
   const { data, sortByVersion, initialSelection, onVersionChange } = props;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const sortComparator = useMemo(() => {
+    if (sortByVersion) {
+      return (
+        a: { data: SunburstData | SunburstLeafNode; value?: number },
+        b: { data: SunburstData | SunburstLeafNode; value?: number }
+      ) => {
+        const aIsAggregated = isAggregatedNode(a.data);
+        const bIsAggregated = isAggregatedNode(b.data);
+
+        if (aIsAggregated && !bIsAggregated) return 1;
+        if (!aIsAggregated && bIsAggregated) return -1;
+        if (aIsAggregated && bIsAggregated) return 0;
+
+        const vA = coerce(a.data.name);
+        const vB = coerce(b.data.name);
+        if (!vA || !vB) {
+          return a.value! - b.value!;
+        } else {
+          return gt(vA, vB) ? -1 : 1;
+        }
+      };
+    } else {
+      return (
+        a: { data: SunburstData | SunburstLeafNode; value?: number },
+        b: { data: SunburstData | SunburstLeafNode; value?: number }
+      ) => {
+        const aIsAggregated = isAggregatedNode(a.data);
+        const bIsAggregated = isAggregatedNode(b.data);
+
+        if (aIsAggregated && !bIsAggregated) return 1;
+        if (!aIsAggregated && bIsAggregated) return -1;
+        if (aIsAggregated && bIsAggregated) return 0;
+
+        return b.value! - a.value!;
+      };
+    }
+  }, [sortByVersion]);
 
   useEffect(() => {
     if (initialSelection) {
@@ -34,76 +73,40 @@ export const Sunburst = memo(function Sunburst(props: {
   }, [initialSelection]);
 
   useEffect(() => {
-    const chart = document.getElementById('chart');
+    const chart = containerRef.current;
     if (!chart || !data) return;
 
-    // Clear existing chart
-    for (const child of Array.from(chart.children)) {
-      chart.removeChild(child);
-    }
-
-    // Generate theme-aware colors
-    const colorCount = data.children.length + 1;
-    const palette = generateThemeColorPalette(colorCount, theme);
-    const chartColors = getThemeChartColors(theme);
-
-    const sunburstOptions: D3SunburstOptions = {
-      data: data,
-      selectionUpdated: (selection, isAggregated) => {
-        const version = selection === 'versions' ? null : selection;
-        onVersionChange(version, isAggregated);
-      },
-      colors: {
-        palette,
-        ...chartColors,
-      },
-    };
-
-    if (sortByVersion) {
-      const byVersion = (
-        a: { data: SunburstData | SunburstLeafNode; value?: number },
-        b: { data: SunburstData | SunburstLeafNode; value?: number }
-      ) => {
-        // Always sort aggregated nodes to the end
-        const aIsAggregated = isAggregatedNode(a.data);
-        const bIsAggregated = isAggregatedNode(b.data);
-
-        if (aIsAggregated && !bIsAggregated) return 1; // a goes after b
-        if (!aIsAggregated && bIsAggregated) return -1; // a goes before b
-        if (aIsAggregated && bIsAggregated) return 0; // both aggregated, keep order
-
-        // Neither is aggregated, sort by version
-        const vA = coerce(a.data.name);
-        const vB = coerce(b.data.name);
-        if (!vA || !vB) {
-          return a.value! - b.value!;
-        } else {
-          return gt(vA, vB) ? -1 : 1;
-        }
-      };
-      sunburstOptions.sortComparator = byVersion;
+    const existingSvg = chart.querySelector('svg');
+    if (existingSvg && (existingSvg as any).__updateData) {
+      // Transition existing chart to new data
+      (existingSvg as any).__updateData(data, sortComparator);
     } else {
-      // Sort by value but keep aggregated nodes at the end
-      const byValueWithAggregatedLast = (
-        a: { data: SunburstData | SunburstLeafNode; value?: number },
-        b: { data: SunburstData | SunburstLeafNode; value?: number }
-      ) => {
-        // Always sort aggregated nodes to the end
-        const aIsAggregated = isAggregatedNode(a.data);
-        const bIsAggregated = isAggregatedNode(b.data);
+      // First render — create new chart
+      for (const child of Array.from(chart.children)) {
+        chart.removeChild(child);
+      }
 
-        if (aIsAggregated && !bIsAggregated) return 1; // a goes after b
-        if (!aIsAggregated && bIsAggregated) return -1; // a goes before b
-        if (aIsAggregated && bIsAggregated) return 0; // both aggregated, keep order
+      // Generate theme-aware colors
+      const colorCount = data.children.length + 1;
+      const palette = generateThemeColorPalette(colorCount, theme);
+      const chartColors = getThemeChartColors(theme);
 
-        // Neither is aggregated, sort by value
-        return b.value! - a.value!;
+      const sunburstOptions: D3SunburstOptions = {
+        data: data,
+        sortComparator,
+        selectionUpdated: (selection, isAggregated) => {
+          const version = selection === 'versions' ? null : selection;
+          onVersionChange(version, isAggregated);
+        },
+        colors: {
+          palette,
+          ...chartColors,
+        },
       };
-      sunburstOptions.sortComparator = byValueWithAggregatedLast;
+
+      chart.appendChild(sunburst(sunburstOptions)!);
     }
+  }, [data, sortComparator, theme, onVersionChange]);
 
-    chart.appendChild(sunburst(sunburstOptions)!);
-  }, [data, sortByVersion, theme, onVersionChange]);
-
-  return <div id="chart"></div>;
+  return <div id="chart" ref={containerRef}></div>;
 });

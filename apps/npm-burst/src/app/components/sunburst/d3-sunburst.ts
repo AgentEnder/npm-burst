@@ -421,5 +421,64 @@ export function sunburst({
     return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
   }
 
+  // Expose an update method on the SVG element for transitioning to new data
+  (svg.node() as any).__updateData = function(
+    newData: SunburstData,
+    newSortComparator?: typeof sortComparator
+  ) {
+    const newRoot = partition(newData, newSortComparator || sortComparator) as any;
+    newRoot.each((d: any) => (d.current = d));
+
+    // Build a map of name -> new node for matching
+    const newNodeMap = new Map<string, any>();
+    newRoot.each((d: any) => newNodeMap.set(d.data.name, d));
+
+    // Update existing nodes with targets from new data
+    root.each((d: any) => {
+      const match = newNodeMap.get(d.data.name);
+      if (match) {
+        d.target = {
+          x0: match.x0,
+          x1: match.x1,
+          y0: match.y0,
+          y1: match.y1,
+        };
+      } else {
+        // Node doesn't exist in new data — collapse to zero
+        d.target = { x0: 0, x1: 0, y0: d.y0, y1: d.y1 };
+      }
+    });
+
+    const t = g.transition().duration(750);
+
+    path
+      .transition(t as any)
+      .tween('data', (d: any) => {
+        const i = d3.interpolate(d.current, d.target);
+        return (t: any) => (d.current = i(t));
+      })
+      .attr('fill-opacity', (d: any) =>
+        arcVisible(d.target) ? (d.children ? 0.6 : 0.4) : 0
+      )
+      .attr('pointer-events', (d: any) =>
+        arcVisible(d.target) ? 'auto' : 'none'
+      )
+      .attrTween('d', (d: any) => () => arc(d.current!) as any);
+
+    label
+      .transition(t as any)
+      .attr('fill-opacity', (d: any) => {
+        if (
+          d.parent &&
+          d.parent.data.name === d.data.name &&
+          labelVisible(d.parent.target)
+        ) {
+          return 0;
+        }
+        return +labelVisible(d.target);
+      })
+      .attrTween('transform', (d: any) => () => labelTransform(d.current));
+  };
+
   return svg.node() as SVGSVGElement;
 }
