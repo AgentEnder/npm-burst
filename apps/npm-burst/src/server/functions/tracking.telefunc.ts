@@ -11,23 +11,24 @@ export async function onTrackPackage(pkg: string): Promise<{ success: boolean }>
   const db = getDb(env);
 
   // Ensure package exists
-  await db.execute({
-    sql: 'INSERT OR IGNORE INTO tracked_packages (package_name) VALUES (?)',
-    args: [pkg],
-  });
+  await db
+    .insertInto('tracked_packages')
+    .values({ package_name: pkg })
+    .onConflict((oc) => oc.column('package_name').doNothing())
+    .execute();
 
-  const pkgRow = await db.execute({
-    sql: 'SELECT id FROM tracked_packages WHERE package_name = ?',
-    args: [pkg],
-  });
-
-  const packageId = pkgRow.rows[0].id as number;
+  const pkgRow = await db
+    .selectFrom('tracked_packages')
+    .select('id')
+    .where('package_name', '=', pkg)
+    .executeTakeFirstOrThrow();
 
   // Link user to package
-  await db.execute({
-    sql: 'INSERT OR IGNORE INTO user_tracked_packages (user_id, package_id) VALUES (?, ?)',
-    args: [userId, packageId],
-  });
+  await db
+    .insertInto('user_tracked_packages')
+    .values({ user_id: userId, package_id: pkgRow.id })
+    .onConflict((oc) => oc.columns(['user_id', 'package_id']).doNothing())
+    .execute();
 
   return { success: true };
 }
@@ -41,17 +42,18 @@ export async function onUntrackPackage(pkg: string): Promise<{ success: boolean 
 
   const db = getDb(env);
 
-  const pkgRow = await db.execute({
-    sql: 'SELECT id FROM tracked_packages WHERE package_name = ?',
-    args: [pkg],
-  });
+  const pkgRow = await db
+    .selectFrom('tracked_packages')
+    .select('id')
+    .where('package_name', '=', pkg)
+    .executeTakeFirst();
 
-  if (pkgRow.rows.length > 0) {
-    const packageId = pkgRow.rows[0].id as number;
-    await db.execute({
-      sql: 'DELETE FROM user_tracked_packages WHERE user_id = ? AND package_id = ?',
-      args: [userId, packageId],
-    });
+  if (pkgRow) {
+    await db
+      .deleteFrom('user_tracked_packages')
+      .where('user_id', '=', userId)
+      .where('package_id', '=', pkgRow.id)
+      .execute();
   }
 
   return { success: true };
@@ -66,17 +68,16 @@ export async function onGetTrackedPackages(): Promise<{ packages: string[] }> {
 
   const db = getDb(env);
 
-  const result = await db.execute({
-    sql: `SELECT tp.package_name
-          FROM tracked_packages tp
-          JOIN user_tracked_packages utp ON tp.id = utp.package_id
-          WHERE utp.user_id = ?
-          ORDER BY tp.package_name`,
-    args: [userId],
-  });
+  const result = await db
+    .selectFrom('tracked_packages as tp')
+    .innerJoin('user_tracked_packages as utp', 'tp.id', 'utp.package_id')
+    .select('tp.package_name')
+    .where('utp.user_id', '=', userId)
+    .orderBy('tp.package_name')
+    .execute();
 
   return {
-    packages: result.rows.map((r) => r.package_name as string),
+    packages: result.map((r) => r.package_name),
   };
 }
 
@@ -89,13 +90,13 @@ export async function onIsPackageTracked(pkg: string): Promise<{ tracked: boolea
 
   const db = getDb(env);
 
-  const result = await db.execute({
-    sql: `SELECT 1
-          FROM tracked_packages tp
-          JOIN user_tracked_packages utp ON tp.id = utp.package_id
-          WHERE utp.user_id = ? AND tp.package_name = ?`,
-    args: [userId, pkg],
-  });
+  const result = await db
+    .selectFrom('tracked_packages as tp')
+    .innerJoin('user_tracked_packages as utp', 'tp.id', 'utp.package_id')
+    .select('tp.id')
+    .where('utp.user_id', '=', userId)
+    .where('tp.package_name', '=', pkg)
+    .executeTakeFirst();
 
-  return { tracked: result.rows.length > 0 };
+  return { tracked: !!result };
 }

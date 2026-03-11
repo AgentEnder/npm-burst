@@ -1,20 +1,34 @@
 import { createClient, Client } from '@libsql/client';
+import { Kysely } from 'kysely';
+import { LibsqlDialect } from 'kysely-libsql';
+import type { Database } from './db-schema';
 import type { Env } from './env';
 
-let client: Client | null = null;
+let db: Kysely<Database> | null = null;
 
-export function getDb(env: Pick<Env, 'TURSO_DATABASE_URL' | 'TURSO_AUTH_TOKEN'>): Client {
-  if (!client) {
-    client = createClient({
-      url: env.TURSO_DATABASE_URL,
-      authToken: env.TURSO_AUTH_TOKEN,
+export function getDb(
+  env: Pick<Env, 'TURSO_DATABASE_URL' | 'TURSO_AUTH_TOKEN'>
+): Kysely<Database> {
+  if (!db) {
+    db = new Kysely<Database>({
+      dialect: new LibsqlDialect({
+        url: env.TURSO_DATABASE_URL,
+        authToken: env.TURSO_AUTH_TOKEN,
+      }),
     });
   }
-  return client;
+  return db;
 }
 
-export async function initializeDb(db: Client): Promise<void> {
-  await db.executeMultiple(`
+export async function initializeDb(
+  env: Pick<Env, 'TURSO_DATABASE_URL' | 'TURSO_AUTH_TOKEN'>
+): Promise<void> {
+  const client: Client = createClient({
+    url: env.TURSO_DATABASE_URL,
+    authToken: env.TURSO_AUTH_TOKEN,
+  });
+
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS tracked_packages (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       package_name TEXT UNIQUE NOT NULL,

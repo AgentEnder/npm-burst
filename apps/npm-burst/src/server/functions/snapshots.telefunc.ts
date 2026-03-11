@@ -10,29 +10,27 @@ export async function onGetSnapshots(pkg: string): Promise<{ snapshots: Snapshot
   const { env } = getContext();
   const db = getDb(env);
 
-  const pkgRow = await db.execute({
-    sql: 'SELECT id FROM tracked_packages WHERE package_name = ?',
-    args: [pkg],
-  });
+  const pkgRow = await db
+    .selectFrom('tracked_packages')
+    .select('id')
+    .where('package_name', '=', pkg)
+    .executeTakeFirst();
 
-  if (pkgRow.rows.length === 0) {
+  if (!pkgRow) {
     return { snapshots: [] };
   }
 
-  const packageId = pkgRow.rows[0].id as number;
-
-  const result = await db.execute({
-    sql: `SELECT snapshot_date, downloads
-          FROM snapshots
-          WHERE package_id = ?
-          ORDER BY snapshot_date ASC`,
-    args: [packageId],
-  });
+  const result = await db
+    .selectFrom('snapshots')
+    .select(['snapshot_date', 'downloads'])
+    .where('package_id', '=', pkgRow.id)
+    .orderBy('snapshot_date', 'asc')
+    .execute();
 
   return {
-    snapshots: result.rows.map((r) => ({
-      date: r.snapshot_date as string,
-      downloads: JSON.parse(r.downloads as string),
+    snapshots: result.map((r) => ({
+      date: r.snapshot_date,
+      downloads: JSON.parse(r.downloads),
     })),
   };
 }

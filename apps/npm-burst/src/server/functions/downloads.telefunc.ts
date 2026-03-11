@@ -25,25 +25,31 @@ export async function onGetDownloads(pkg: string): Promise<NpmDownloadsByVersion
 
   try {
     // Ensure package exists in tracked_packages (for ad-hoc snapshots)
-    await db.execute({
-      sql: 'INSERT OR IGNORE INTO tracked_packages (package_name) VALUES (?)',
-      args: [pkg],
-    });
+    await db
+      .insertInto('tracked_packages')
+      .values({ package_name: pkg })
+      .onConflict((oc) => oc.column('package_name').doNothing())
+      .execute();
 
-    const pkgRow = await db.execute({
-      sql: 'SELECT id FROM tracked_packages WHERE package_name = ?',
-      args: [pkg],
-    });
+    const pkgRow = await db
+      .selectFrom('tracked_packages')
+      .select('id')
+      .where('package_name', '=', pkg)
+      .executeTakeFirst();
 
-    if (pkgRow.rows.length > 0) {
-      const packageId = pkgRow.rows[0].id as number;
-
+    if (pkgRow) {
       // Only insert if snapshot doesn't exist for yesterday
-      await db.execute({
-        sql: `INSERT OR IGNORE INTO snapshots (package_id, snapshot_date, downloads)
-              VALUES (?, ?, ?)`,
-        args: [packageId, yesterday, JSON.stringify(data.downloads)],
-      });
+      await db
+        .insertInto('snapshots')
+        .values({
+          package_id: pkgRow.id,
+          snapshot_date: yesterday,
+          downloads: JSON.stringify(data.downloads),
+        })
+        .onConflict((oc) =>
+          oc.columns(['package_id', 'snapshot_date']).doNothing()
+        )
+        .execute();
     }
   } catch (e) {
     // Don't fail the request if snapshot saving fails

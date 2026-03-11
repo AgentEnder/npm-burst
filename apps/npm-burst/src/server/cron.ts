@@ -10,24 +10,26 @@ export async function handleCron(env: Env): Promise<void> {
   const yesterday = getYesterdayDate();
 
   // Get all tracked packages (those with at least one user tracking them)
-  const result = await db.execute({
-    sql: `SELECT DISTINCT tp.id, tp.package_name
-          FROM tracked_packages tp
-          JOIN user_tracked_packages utp ON tp.id = utp.package_id`,
-    args: [],
-  });
+  const result = await db
+    .selectFrom('tracked_packages as tp')
+    .innerJoin('user_tracked_packages as utp', 'tp.id', 'utp.package_id')
+    .select(['tp.id', 'tp.package_name'])
+    .distinct()
+    .execute();
 
-  for (const row of result.rows) {
-    const packageId = row.id as number;
-    const packageName = row.package_name as string;
+  for (const row of result) {
+    const packageId = row.id;
+    const packageName = row.package_name;
 
     // Check if we already have a snapshot for yesterday
-    const existing = await db.execute({
-      sql: 'SELECT 1 FROM snapshots WHERE package_id = ? AND snapshot_date = ?',
-      args: [packageId, yesterday],
-    });
+    const existing = await db
+      .selectFrom('snapshots')
+      .select('id')
+      .where('package_id', '=', packageId)
+      .where('snapshot_date', '=', yesterday)
+      .executeTakeFirst();
 
-    if (existing.rows.length > 0) {
+    if (existing) {
       continue; // Already have this snapshot (e.g., from ad-hoc)
     }
 
@@ -39,11 +41,17 @@ export async function handleCron(env: Env): Promise<void> {
         downloads: Record<string, number>;
       };
 
-      await db.execute({
-        sql: `INSERT OR IGNORE INTO snapshots (package_id, snapshot_date, downloads)
-              VALUES (?, ?, ?)`,
-        args: [packageId, yesterday, JSON.stringify(data.downloads)],
-      });
+      await db
+        .insertInto('snapshots')
+        .values({
+          package_id: packageId,
+          snapshot_date: yesterday,
+          downloads: JSON.stringify(data.downloads),
+        })
+        .onConflict((oc) =>
+          oc.columns(['package_id', 'snapshot_date']).doNothing()
+        )
+        .execute();
     } catch (e) {
       console.error(`Failed to fetch snapshot for ${packageName}:`, e);
     }
