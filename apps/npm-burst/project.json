@@ -5,6 +5,25 @@
   "projectType": "application",
   "tags": [],
   "targets": {
+    "build": {
+      "command": "vite build",
+      "options": { "cwd": "apps/npm-burst" },
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"],
+      "outputs": ["{workspaceRoot}/dist/apps/web"]
+    },
+    "serve": {
+      "command": "vite",
+      "options": { "cwd": "apps/npm-burst" },
+      "continuous": true
+    },
+    "test": {
+      "command": "vitest",
+      "options": { "cwd": "apps/npm-burst" },
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
     "deploy": {
       "command": "ts-node tools/deploy-to-github-pages",
       "dependsOn": ["build"]
