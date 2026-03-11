@@ -18,8 +18,10 @@ import { LoadingSkeleton } from './components/loading-skeleton';
 import { ErrorMessage } from './components/error-message';
 import { Popover } from './components/popover';
 import { TrackButton } from './components/track-button';
+import { SnapshotControls } from './components/snapshot-controls';
 import { useSafeAuth } from './context/auth-context';
 import { onGetDownloads } from '../server/functions/downloads.telefunc';
+import { onGetSnapshots, Snapshot } from '../server/functions/snapshots.telefunc';
 import { Info } from 'lucide-react';
 import styles from './app.module.scss';
 
@@ -58,6 +60,9 @@ export function App() {
     useState<SunburstData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [snapshotIndex, setSnapshotIndex] = useState<number | null>(null); // null = live
 
   const [selectedVersion, setSelectedVersion] = useUrlParam<string | null>(
     'selectedVersion',
@@ -171,16 +176,49 @@ export function App() {
   }, [fetchData]);
 
   useEffect(() => {
-    if (rawDownloadData) {
+    if (!npmPackageName) return;
+    setSnapshotIndex(null); // Reset to live on package change
+    onGetSnapshots(npmPackageName)
+      .then(({ snapshots: snaps }) => setSnapshots(snaps))
+      .catch(() => setSnapshots([]));
+  }, [npmPackageName]);
+
+  useEffect(() => {
+    const sourceData =
+      snapshotIndex !== null && snapshots[snapshotIndex]
+        ? { downloads: snapshots[snapshotIndex].downloads, package: npmPackageName }
+        : rawDownloadData;
+
+    if (sourceData) {
       setSunburstChartData(
-        getSunburstDataFromDownloads(
-          rawDownloadData,
-          lowPassFilter,
-          expandedNodes
-        )
+        getSunburstDataFromDownloads(sourceData, lowPassFilter, expandedNodes)
       );
     }
-  }, [lowPassFilter, rawDownloadData, expandedNodes]);
+  }, [lowPassFilter, rawDownloadData, expandedNodes, snapshotIndex, snapshots, npmPackageName]);
+
+  const handlePreviousSnapshot = useCallback(() => {
+    if (snapshots.length === 0) return;
+    if (snapshotIndex === null) {
+      // From live, go to last snapshot
+      setSnapshotIndex(snapshots.length - 1);
+    } else if (snapshotIndex > 0) {
+      setSnapshotIndex(snapshotIndex - 1);
+    }
+  }, [snapshots.length, snapshotIndex]);
+
+  const handleNextSnapshot = useCallback(() => {
+    if (snapshotIndex === null) return;
+    if (snapshotIndex >= snapshots.length - 1) {
+      // At last snapshot, go to live
+      setSnapshotIndex(null);
+    } else {
+      setSnapshotIndex(snapshotIndex + 1);
+    }
+  }, [snapshots.length, snapshotIndex]);
+
+  const handleGoLive = useCallback(() => {
+    setSnapshotIndex(null);
+  }, []);
 
   return (
     <>
@@ -313,6 +351,18 @@ export function App() {
                 initialSelection={selectedVersion}
               />
             ) : null}
+
+            {snapshots.length > 0 && (
+              <SnapshotControls
+                currentIndex={snapshotIndex ?? snapshots.length}
+                totalSnapshots={snapshots.length}
+                currentDate={snapshotIndex !== null ? snapshots[snapshotIndex].date : null}
+                onPrevious={handlePreviousSnapshot}
+                onNext={handleNextSnapshot}
+                onLive={handleGoLive}
+              />
+            )}
+
             {(selectedVersion !== 'versions' || expandedNodes.length > 0) && (
               <button
                 className={styles.clearButton}
