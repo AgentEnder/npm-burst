@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import vike from 'vike/plugin';
+import { telefunc } from 'telefunc/vite';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 
 export default defineConfig({
@@ -15,6 +16,7 @@ export default defineConfig({
     vike({
       prerender: true,
     }),
+    telefunc(),
   ],
   build: {
     outDir: '../../dist/apps/web',
