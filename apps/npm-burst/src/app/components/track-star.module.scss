@@ -1,0 +1,28 @@
+.trackStar {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  color: var(--text-disabled);
+
+  &:hover {
+    transform: scale(1.15);
+  }
+
+  &.others {
+    color: var(--text-tertiary);
+  }
+
+  &.mine {
+    color: #f5a623;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

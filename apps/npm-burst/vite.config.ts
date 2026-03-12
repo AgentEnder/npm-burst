@@ -1,8 +1,9 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import vike from 'vike/plugin';
-import { telefunc } from 'telefunc/vite';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import react from '@vitejs/plugin-react';
+import { telefunc } from 'telefunc/vite';
+import vike from 'vike/plugin';
+import { defineConfig } from 'vite';
+import { telefuncDevContext } from './src/server/vite-dev-telefunc';
 
 export default defineConfig({
   root: __dirname,
@@ -16,10 +17,11 @@ export default defineConfig({
     vike({
       prerender: true,
     }),
+    telefuncDevContext(),
     telefunc(),
   ],
   build: {
-    outDir: '../../dist/apps/web',
+    outDir: './dist',
     reportCompressedSize: true,
     commonjsOptions: { transformMixedEsModules: true },
     emptyOutDir: true,

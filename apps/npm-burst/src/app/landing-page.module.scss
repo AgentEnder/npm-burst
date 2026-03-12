@@ -1,0 +1,115 @@
+.main {
+  min-height: 100vh;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  text-align: center;
+}
+
+.title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  margin: 0 0 var(--spacing-md);
+  line-height: 1.1;
+}
+
+.titleAccent {
+  background: linear-gradient(135deg, var(--primary-main), var(--accent-main));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: var(--font-size-xl);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-2xl);
+  max-width: 500px;
+}
+
+.searchContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+// Features section
+.features {
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.featuresHeading {
+  text-align: center;
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--spacing-xl);
+  color: var(--text-primary);
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.featureCard {
+  padding: var(--spacing-xl);
+  background-color: var(--surface-1);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-hover);
+  }
+}
+
+.featureIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background-color: var(--surface-2);
+  color: var(--primary-main);
+  margin-bottom: var(--spacing-md);
+}
+
+.featureTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.featureDescription {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    min-height: 50vh;
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  .subtitle {
+    font-size: var(--font-size-base);
+  }
+}

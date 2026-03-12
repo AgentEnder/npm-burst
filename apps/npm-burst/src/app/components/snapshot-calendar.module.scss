@@ -1,0 +1,252 @@
+.calendarWrapper {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.calendar {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
+.monthNav {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.headerButton {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all 100ms ease-in-out;
+
+  &:hover {
+    background: var(--border-color);
+  }
+}
+
+.headerLabel {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dayLabels {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 2px;
+}
+
+.dayLabel {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 2px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  gap: 1px;
+}
+
+.empty {
+  aspect-ratio: 1;
+}
+
+.day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  transition: all 100ms ease-in-out;
+  position: relative;
+}
+
+.hasSnapshot {
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--accent-color);
+    color: white;
+  }
+}
+
+.noSnapshot {
+  background: none;
+  color: var(--text-secondary);
+  opacity: 0.3;
+  cursor: default;
+}
+
+.selected {
+  background: var(--accent-color);
+  color: white;
+}
+
+.releaseDot {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-color);
+
+  .selected & {
+    background: white;
+  }
+}
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.pickerCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) 0;
+  transition: all 100ms ease-in-out;
+}
+
+// Releases sidebar
+.releasesSidebar {
+  width: 160px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border-color);
+  padding-left: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  max-height: 260px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.releasesTitle {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.releasesEmpty {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.releaseTree {
+  display: flex;
+  flex-direction: column;
+}
+
+.treeNode {
+  display: flex;
+  flex-direction: column;
+}
+
+.treeBranch {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 100ms ease-in-out;
+
+  &:hover {
+    color: var(--accent-color);
+  }
+}
+
+.treeMuted {
+  opacity: 0.35;
+}
+
+.treeChild {
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.treeLeaf {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 1px 0 1px 14px;
+  transition: color 100ms ease-in-out;
+  min-width: 0;
+
+  &:hover {
+    color: var(--accent-color);
+  }
+}
+
+.leafVersion {
+  font-size: 10px;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.leafDate {
+  font-size: 9px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}

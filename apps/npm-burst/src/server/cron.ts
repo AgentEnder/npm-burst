@@ -1,6 +1,7 @@
 import { getDb } from './db';
 import type { Env } from './env';
 import { getYesterdayDate } from './utils';
+import { cachedFetch } from './npm-fetch';
 
 export async function handleCron(env: Env): Promise<void> {
   const db = getDb(env);
@@ -27,14 +28,13 @@ export async function handleCron(env: Env): Promise<void> {
       .executeTakeFirst();
 
     if (existing) {
-      continue; // Already have this snapshot (e.g., from ad-hoc)
+      continue;
     }
 
     try {
-      const response = await fetch(
-        `https://api.npmjs.org/versions/${encodeURI(packageName).replace('/', '%2f')}/last-week`
-      );
-      const data = (await response.json()) as {
+      const url = `https://api.npmjs.org/versions/${encodeURI(packageName).replace('/', '%2f')}/last-week`;
+      const body = await cachedFetch(db, url);
+      const data = JSON.parse(body) as {
         downloads: Record<string, number>;
       };
 

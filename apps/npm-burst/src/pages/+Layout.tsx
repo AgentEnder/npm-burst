@@ -1,28 +1,21 @@
 import { PropsWithChildren } from 'react';
-import { ThemeProvider } from '../app/context/theme-context';
-import { AuthProvider } from '../app/context/auth-context';
-import { useTelefuncAuth, isClerkAvailable } from '../app/hooks/use-telefunc-auth';
+import { Providers } from '../app/components/providers';
+import { Navbar } from '../app/components/navbar';
 import '../styles.scss';
 
-function TelefuncAuthSetup({ children }: PropsWithChildren) {
-  useTelefuncAuth();
-  return <>{children}</>;
+function handleSelectPackage(pkg: string) {
+  window.location.hash = `#/${encodeURIComponent(pkg)}`;
 }
 
+/**
+ * Default layout for all pages (except those that clear it).
+ * Includes providers + navbar with package search.
+ */
 export default function Layout({ children }: PropsWithChildren) {
-  const inner = (
-    <ThemeProvider>
-      {children}
-    </ThemeProvider>
-  );
-
   return (
-    <AuthProvider>
-      {isClerkAvailable() ? (
-        <TelefuncAuthSetup>{inner}</TelefuncAuthSetup>
-      ) : (
-        inner
-      )}
-    </AuthProvider>
+    <Providers>
+      <Navbar onSelectPackage={handleSelectPackage} />
+      {children}
+    </Providers>
   );
 }

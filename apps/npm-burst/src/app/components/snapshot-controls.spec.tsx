@@ -12,9 +12,12 @@ describe('SnapshotControls', () => {
     currentIndex: 1,
     totalSnapshots: 5,
     currentDate: '2026-03-01',
+    snapshotDates: ['2026-03-01', '2026-03-05', '2026-03-09'],
+    versionReleases: [],
     onPrevious: vi.fn(),
     onNext: vi.fn(),
     onLive: vi.fn(),
+    onSelectDate: vi.fn(),
   };
 
   beforeEach(() => {
@@ -50,15 +53,15 @@ describe('SnapshotControls', () => {
     expect(onPrevious).toHaveBeenCalledTimes(1);
   });
 
-  it('should show Live button when not in live mode', () => {
-    const { getByTitle } = render(<SnapshotControls {...defaultProps} />);
-    expect(getByTitle('Return to live data')).toBeTruthy();
+  it('should show live link when not in live mode', () => {
+    const { getByText } = render(<SnapshotControls {...defaultProps} />);
+    expect(getByText('View live data')).toBeTruthy();
   });
 
-  it('should hide Live button when in live mode', () => {
-    const { queryByTitle } = render(
+  it('should hide live link when in live mode', () => {
+    const { queryByText } = render(
       <SnapshotControls {...defaultProps} currentDate={null} />
     );
-    expect(queryByTitle('Return to live data')).toBeNull();
+    expect(queryByText('View live data')).toBeNull();
   });
 });

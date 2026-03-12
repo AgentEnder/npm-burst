@@ -75,12 +75,20 @@ export function getThemeChartColors(theme: 'light' | 'dark') {
       centerFill: '#4ecdc4',
       centerHover: '#95e1d3',
       labelColor: 'rgba(255, 255, 255, 0.95)',
+      tooltipBg: '#242424',
+      tooltipBorder: 'rgba(255, 255, 255, 0.12)',
+      tooltipText: 'rgba(255, 255, 255, 0.95)',
+      tooltipTextSecondary: 'rgba(255, 255, 255, 0.5)',
     };
   } else {
     return {
       centerFill: '#2a9d8f',
       centerHover: '#457b9d',
       labelColor: 'rgba(0, 0, 0, 0.87)',
+      tooltipBg: '#ffffff',
+      tooltipBorder: 'rgba(0, 0, 0, 0.12)',
+      tooltipText: 'rgba(0, 0, 0, 0.87)',
+      tooltipTextSecondary: 'rgba(0, 0, 0, 0.5)',
     };
   }
 }

@@ -1,5 +1,8 @@
-import { getContext, Abort } from 'telefunc';
+import { Abort, getContext } from 'telefunc';
 import { getDb } from '../db';
+import { isDevMode } from '../env';
+import { getFixturePackage } from '../fixtures/packages';
+import { cachedFetch } from '../npm-fetch';
 import { getYesterdayDate } from '../utils';
 
 interface NpmDownloadsByVersion {
@@ -7,25 +10,37 @@ interface NpmDownloadsByVersion {
   package: string;
 }
 
-export async function onGetDownloads(pkg: string): Promise<NpmDownloadsByVersion> {
+export async function onGetDownloads(
+  pkg: string
+): Promise<NpmDownloadsByVersion> {
   const { env, userId } = getContext();
 
   if (!userId) {
     throw Abort({ reason: 'Authentication required' });
   }
 
-  // Fetch from NPM API
-  const response = await fetch(
-    `https://api.npmjs.org/versions/${encodeURI(pkg).replace('/', '%2f')}/last-week`
-  );
-  const data = (await response.json()) as NpmDownloadsByVersion;
+  // In dev mode, return fixture data instead of hitting NPM
+  if (isDevMode(env)) {
+    const fixture = getFixturePackage(pkg);
+    if (fixture) {
+      return fixture;
+    }
+  }
+
+  const db = getDb(env);
+
+  // Fetch from NPM API (cached per day)
+  const url = `https://api.npmjs.org/versions/${encodeURI(pkg).replace(
+    '/',
+    '%2f'
+  )}/last-week`;
+  const body = await cachedFetch(db, url);
+  const data = JSON.parse(body) as NpmDownloadsByVersion;
 
   // Opportunistically save snapshot for yesterday
   const yesterday = getYesterdayDate();
-  const db = getDb(env);
 
   try {
-    // Ensure package exists in tracked_packages (for ad-hoc snapshots)
     await db
       .insertInto('tracked_packages')
       .values({ package_name: pkg })
@@ -36,10 +51,10 @@ export async function onGetDownloads(pkg: string): Promise<NpmDownloadsByVersion
       .selectFrom('tracked_packages')
       .select('id')
       .where('package_name', '=', pkg)
+      .$narrowType<{ id: number }>()
       .executeTakeFirst();
 
     if (pkgRow) {
-      // Only insert if snapshot doesn't exist for yesterday
       await db
         .insertInto('snapshots')
         .values({
@@ -53,7 +68,6 @@ export async function onGetDownloads(pkg: string): Promise<NpmDownloadsByVersion
         .execute();
     }
   } catch (e) {
-    // Don't fail the request if snapshot saving fails
     console.error('Failed to save ad-hoc snapshot:', e);
   }
 

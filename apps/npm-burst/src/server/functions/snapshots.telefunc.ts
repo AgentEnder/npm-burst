@@ -1,5 +1,7 @@
 import { getContext } from 'telefunc';
 import { getDb } from '../db';
+import { isDevMode } from '../env';
+import { getFixtureSnapshots } from '../fixtures/packages';
 
 export interface Snapshot {
   date: string;
@@ -8,6 +10,12 @@ export interface Snapshot {
 
 export async function onGetSnapshots(pkg: string): Promise<{ snapshots: Snapshot[] }> {
   const { env } = getContext();
+
+  // In dev mode, return fixture snapshots
+  if (isDevMode(env)) {
+    return { snapshots: getFixtureSnapshots(pkg) };
+  }
+
   const db = getDb(env);
 
   const pkgRow = await db

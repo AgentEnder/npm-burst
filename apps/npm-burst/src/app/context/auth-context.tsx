@@ -20,8 +20,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
  * SSR-safe wrapper around Clerk's useAuth.
  * Returns a default unauthenticated state when ClerkProvider is not available
  * (e.g., during pre-rendering or when VITE_CLERK_PUBLISHABLE_KEY is not set).
+ * In dev mode (import.meta.env.DEV), returns isSignedIn: true to bypass auth.
  */
 export function useSafeAuth() {
+  if (import.meta.env.DEV) {
+    return { isSignedIn: true, isLoaded: true } as const;
+  }
   if (!CLERK_PUBLISHABLE_KEY) {
     return { isSignedIn: false, isLoaded: true } as const;
   }

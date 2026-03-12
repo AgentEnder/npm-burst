@@ -53,13 +53,15 @@
     "vite": "7.3.1",
     "vite-plugin-eslint": "^1.8.1",
     "vite-tsconfig-paths": "4.3.2",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "zustand": "^5.0.11"
   },
   "dependencies": {
     "@clerk/backend": "^3.2.0",
     "@clerk/clerk-react": "^5.61.3",
     "@icons-pack/react-simple-icons": "^13.12.0",
     "@libsql/client": "^0.17.0",
+    "better-sqlite3": "^12.6.2",
     "d3": "^7.8.2",
     "kysely": "^0.28.11",
     "kysely-libsql": "^0.7.1",

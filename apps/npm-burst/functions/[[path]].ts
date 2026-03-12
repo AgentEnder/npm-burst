@@ -5,7 +5,8 @@ export const onRequest: PagesFunction<Record<string, string>> = async (context) 
   const { request } = context;
 
   // Only handle telefunc requests
-  if (new URL(request.url).pathname === '/_telefunc') {
+  const pathname = new URL(request.url).pathname;
+  if (pathname === '/_telefunc' || pathname === '/npm-burst/_telefunc') {
     return telefuncHandler(context);
   }
 

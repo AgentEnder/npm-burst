@@ -3,7 +3,8 @@
     "allow": [
       "mcp__ide__getDiagnostics",
       "Bash(/tmp/craigory_structure.txt:*)",
-      "Bash(timeout 15 ./node_modules/.bin/nx serve npm-burst 2>&1 || true)"
+      "Bash(timeout 15 ./node_modules/.bin/nx serve npm-burst 2>&1 || true)",
+      "WebFetch(domain:developers.cloudflare.com)"
     ],
     "deny": [],
     "ask": []

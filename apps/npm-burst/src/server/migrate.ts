@@ -1,8 +1,8 @@
-import * as path from 'node:path';
-import { promises as fs } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { Kysely, Migrator, FileMigrationProvider } from 'kysely';
+import { FileMigrationProvider, Kysely, Migrator } from 'kysely';
 import { LibsqlDialect } from 'kysely-libsql';
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,6 +62,7 @@ runMigrations({ url, authToken })
   .then(() => {
     console.log('Migrations complete.');
   })
-  .catch(() => {
+  .catch((err) => {
+    console.error('Migration failed:', err);
     process.exit(1);
   });

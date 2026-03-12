@@ -9,6 +9,13 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export interface NpmApiCache {
+  cache_date: string;
+  id: Generated<number | null>;
+  response: string;
+  url: string;
+}
+
 export interface Snapshots {
   downloads: string;
   id: Generated<number | null>;
@@ -28,6 +35,7 @@ export interface UserTrackedPackages {
 }
 
 export interface DB {
+  npm_api_cache: NpmApiCache;
   snapshots: Snapshots;
   tracked_packages: TrackedPackages;
   user_tracked_packages: UserTrackedPackages;

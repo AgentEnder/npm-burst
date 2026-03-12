@@ -22,6 +22,18 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.navSearch {
+  margin-left: var(--spacing-lg);
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .spacer {

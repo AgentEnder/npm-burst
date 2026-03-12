@@ -8,16 +8,17 @@
 .tooltip {
   position: absolute;
   pointer-events: none;
-  background-color: var(--surface-2);
+  background-color: var(--bg-elevated);
   color: var(--text-primary);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   opacity: 0;
-  transition: opacity var(--transition-fast);
+  transition: opacity 150ms ease-out;
   z-index: 1000;
-  max-width: 300px;
+  max-width: 280px;
   border: 1px solid var(--border-color);
+  backdrop-filter: blur(12px);
 }
 
 .tooltipVisible {
@@ -26,13 +27,13 @@
 
 .tooltipTitle {
   font-weight: 600;
-  font-size: var(--font-size-base);
-  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  margin-bottom: 2px;
   color: var(--text-primary);
 }
 
 .tooltipContent {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -41,15 +42,17 @@
   display: flex;
   justify-content: space-between;
   gap: var(--spacing-md);
-  margin-top: var(--spacing-xs);
+  margin-top: 2px;
 }
 
 .tooltipLabel {
   color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
 }
 
 .tooltipValue {
   font-weight: 500;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-xs);
 }

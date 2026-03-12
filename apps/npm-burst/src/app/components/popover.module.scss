@@ -1,59 +1,64 @@
 .popoverContainer {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 }
 
 .trigger {
   display: inline-flex;
   align-items: center;
   cursor: help;
+  line-height: 0;
 }
 
 .popoverContent {
   position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-8px);
-  background-color: var(--card-bg);
-  border: 2px solid var(--input-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
+  bottom: calc(100% + 10px);
+  right: 50%;
+  transform: translateX(50%);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
   box-shadow: var(--shadow-lg);
   z-index: 1000;
-  min-width: 250px;
-  max-width: 350px;
-  animation: fadeIn 0.2s ease-in-out;
+  width: 280px;
+  white-space: normal;
+  word-wrap: break-word;
+  backdrop-filter: blur(12px);
+  animation: popoverFadeIn 0.15s ease-out;
 
+  // Arrow
   &::after {
     content: '';
     position: absolute;
     top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 8px solid transparent;
-    border-top-color: var(--input-border);
+    right: 50%;
+    transform: translateX(50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border-color);
   }
 
   &::before {
     content: '';
     position: absolute;
     top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: var(--card-bg);
+    right: 50%;
+    transform: translateX(50%);
+    border: 5px solid transparent;
+    border-top-color: var(--bg-elevated);
     z-index: 1;
-    margin-top: -2px;
+    margin-top: -1px;
   }
 }
 
-@keyframes fadeIn {
+@keyframes popoverFadeIn {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-4px);
+    transform: translateX(50%) translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(-8px);
+    transform: translateX(50%);
   }
 }

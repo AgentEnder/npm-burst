@@ -8,12 +8,13 @@ import {
   SignInButton,
   UserButton,
 } from '@clerk/clerk-react';
-import { TrackedPackagesMenu } from './tracked-packages-menu';
+import { PackageSearch } from './package-search';
 import styles from './navbar.module.scss';
 
 const CLERK_AVAILABLE = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 interface NavbarProps {
+  /** When provided, shows a compact search bar in the navbar */
   onSelectPackage?: (pkg: string) => void;
 }
 
@@ -22,7 +23,14 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
 
   return (
     <nav className={styles.navbar}>
-      <div className={styles.title}>Npm Burst</div>
+      <a href={import.meta.env.BASE_URL || '/'} className={styles.title}>
+        Npm Burst
+      </a>
+      {onSelectPackage && (
+        <div className={styles.navSearch}>
+          <PackageSearch onSelectPackage={onSelectPackage} compact />
+        </div>
+      )}
       <div className={styles.spacer}></div>
       <button
         className={styles.themeToggle}
@@ -42,9 +50,6 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
       >
         <SiGithub size={16} />
       </a>
-      {onSelectPackage && (
-        <TrackedPackagesMenu onSelectPackage={onSelectPackage} />
-      )}
       {CLERK_AVAILABLE && (
         <div className={styles.authSection}>
           <SignedOut>
