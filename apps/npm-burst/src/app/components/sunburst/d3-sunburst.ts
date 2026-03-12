@@ -203,11 +203,7 @@ export function sunburst({
         const downloadsY = titleY + 15;
         const percentageY = downloadsY + 13;
         const tooltipWidth =
-          Math.max(
-            titleBBox.width,
-            downloadsBBox.width,
-            percentageBBox.width
-          ) +
+          Math.max(titleBBox.width, downloadsBBox.width, percentageBBox.width) +
           paddingX * 2;
         const tooltipHeight = percentageY + paddingY - 2;
 
@@ -473,7 +469,9 @@ export function sunburst({
   }
 
   // Subscribe to store — react to data changes with animated transitions
-  let unsubscribe = () => {};
+  let unsubscribe = () => {
+    // No-op if no store provided
+  };
   if (store) {
     unsubscribe = store.subscribe((state, prevState) => {
       if (

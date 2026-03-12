@@ -1,7 +1,7 @@
 import { getDb } from './db';
 import type { Env } from './env';
-import { getYesterdayDate } from './utils';
 import { cachedFetch } from './npm-fetch';
+import { getYesterdayDate } from './utils';
 
 export async function handleCron(env: Env): Promise<void> {
   const db = getDb(env);
@@ -12,6 +12,7 @@ export async function handleCron(env: Env): Promise<void> {
     .selectFrom('tracked_packages as tp')
     .innerJoin('user_tracked_packages as utp', 'tp.id', 'utp.package_id')
     .select(['tp.id', 'tp.package_name'])
+    .$narrowType<{ id: number; package_name: string }>()
     .distinct()
     .execute();
 
@@ -25,6 +26,7 @@ export async function handleCron(env: Env): Promise<void> {
       .select('id')
       .where('package_id', '=', packageId)
       .where('snapshot_date', '=', yesterday)
+      .$narrowType<{ id: number }>()
       .executeTakeFirst();
 
     if (existing) {
@@ -32,7 +34,9 @@ export async function handleCron(env: Env): Promise<void> {
     }
 
     try {
-      const url = `https://api.npmjs.org/versions/${encodeURI(packageName).replace('/', '%2f')}/last-week`;
+      const url = `https://api.npmjs.org/versions/${encodeURI(
+        packageName
+      ).replace('/', '%2f')}/last-week`;
       const body = await cachedFetch(db, url);
       const data = JSON.parse(body) as {
         downloads: Record<string, number>;

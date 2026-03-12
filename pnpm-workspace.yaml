@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - libs/*
+  - e2e/*
+
+onlyBuiltDependencies:
+  - nx

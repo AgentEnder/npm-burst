@@ -1,0 +1,6 @@
+{
+  "name": "npm-burst",
+  "dependencies": {
+    "@npm-burst/npm-data-access": "workspace:"
+  }
+}

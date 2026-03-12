@@ -13,7 +13,7 @@ interface MigrateOptions {
 }
 
 export async function runMigrations(options: MigrateOptions) {
-  const db = new Kysely<any>({
+  const db = new Kysely({
     dialect: new LibsqlDialect({
       url: options.url,
       authToken: options.authToken,

@@ -25,7 +25,7 @@
       "inputs": ["default", "^production"]
     },
     "deploy": {
-      "command": "wrangler pages deploy ../../dist/apps/web/client --project-name npm-burst",
+      "command": "wrangler deploy",
       "dependsOn": ["build"],
       "options": {
         "cwd": "apps/npm-burst"

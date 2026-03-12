@@ -1,19 +1,19 @@
-import { createStore } from 'zustand/vanilla';
+import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { useStore } from 'zustand';
-import type { NpmDownloadsByVersion } from '@npm-burst/npm/data-access';
-import type { SunburstData } from '../components/sunburst';
+import { createStore } from 'zustand/vanilla';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
+import type { SunburstData } from '../components/sunburst';
 import {
-  getSunburstDataFromDownloads,
   findNodeByVersion,
   getParentOfAggregatedNode,
+  getSunburstDataFromDownloads,
 } from '../utils/chart-data';
 import {
+  isPackagePage,
+  listenForURLChanges,
   readInitialStateFromURL,
   subscribeToURLSync,
-  listenForURLChanges,
-  isPackagePage,
 } from './url-sync';
 
 interface PackageCache {
@@ -256,7 +256,13 @@ export const appStore = createStore<AppState>((set, get) => ({
   },
 
   cacheCurrentPackageData: () => {
-    const { npmPackageName, liveData, snapshots, versionReleases, packageCache } = get();
+    const {
+      npmPackageName,
+      liveData,
+      snapshots,
+      versionReleases,
+      packageCache,
+    } = get();
     if (!liveData) return;
     set({
       packageCache: {
@@ -284,7 +290,12 @@ export const appStore = createStore<AppState>((set, get) => ({
     const next = { ...packageCache };
     delete next[npmPackageName];
     // Clear cache and bump fetchGeneration to trigger re-fetch
-    set({ packageCache: next, liveData: null, error: null, fetchGeneration: get().fetchGeneration + 1 });
+    set({
+      packageCache: next,
+      liveData: null,
+      error: null,
+      fetchGeneration: get().fetchGeneration + 1,
+    });
   },
 }));
 

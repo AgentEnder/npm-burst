@@ -11,20 +11,11 @@ export default defineConfig({
     port: 4200,
     host: 'localhost',
   },
-  plugins: [
-    react(),
-    nxViteTsPaths(),
-    vike({
-      prerender: true,
-    }),
-    telefuncDevContext(),
-    telefunc(),
-  ],
+  plugins: [react(), nxViteTsPaths(), vike(), telefuncDevContext(), telefunc()],
   build: {
     outDir: './dist',
     reportCompressedSize: true,
     commonjsOptions: { transformMixedEsModules: true },
     emptyOutDir: true,
   },
-  base: '/npm-burst',
 });

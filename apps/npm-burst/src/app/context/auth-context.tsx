@@ -6,7 +6,7 @@ const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 export function AuthProvider({ children }: PropsWithChildren) {
   if (!CLERK_PUBLISHABLE_KEY) {
     // In pre-render or if key not set, render children without Clerk
-    return <>{children}</>;
+    return children;
   }
 
   return (
@@ -22,7 +22,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
  * (e.g., during pre-rendering or when VITE_CLERK_PUBLISHABLE_KEY is not set).
  * In dev mode (import.meta.env.DEV), returns isSignedIn: true to bypass auth.
  */
-export function useSafeAuth() {
+export function useSafeAuth(): {
+  isSignedIn?: boolean;
+  isLoaded?: boolean;
+} {
   if (import.meta.env.DEV) {
     return { isSignedIn: true, isLoaded: true } as const;
   }

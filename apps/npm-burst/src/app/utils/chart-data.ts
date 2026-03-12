@@ -1,5 +1,5 @@
+import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { parse } from 'semver';
-import type { NpmDownloadsByVersion } from '@npm-burst/npm/data-access';
 import {
   isLeafNode,
   SunburstData,

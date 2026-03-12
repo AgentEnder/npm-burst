@@ -1,10 +1,10 @@
+import { getDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { useEffect, useRef } from 'react';
-import { getDownloadsByVersion } from '@npm-burst/npm/data-access';
 import { onGetDownloads } from '../../server/functions/downloads.telefunc';
 import { onGetSnapshots } from '../../server/functions/snapshots.telefunc';
 import { onGetVersionDates } from '../../server/functions/versions.telefunc';
-import { appStore, useAppStore } from '../store';
 import { useSafeAuth } from '../context/auth-context';
+import { appStore, useAppStore } from '../store';
 
 /**
  * Orchestrates data fetching when the package name changes.
@@ -67,9 +67,11 @@ export function usePackageData() {
       })
       .catch((e) => {
         if (cancelled || e?.name === 'AbortError') return;
-        appStore.getState().setError(
-          `Failed to load data for "${npmPackageName}". The package may not exist or there was a network error.`
-        );
+        appStore
+          .getState()
+          .setError(
+            `Failed to load data for "${npmPackageName}". The package may not exist or there was a network error.`
+          );
       })
       .finally(() => {
         if (!cancelled) {

@@ -110,7 +110,11 @@
   height: 0;
 
   &:checked + .toggleTrack {
-    background: linear-gradient(135deg, var(--primary-main), var(--accent-main));
+    background: linear-gradient(
+      135deg,
+      var(--primary-main),
+      var(--accent-main)
+    );
 
     .toggleThumb {
       transform: translateX(14px);
@@ -213,6 +217,7 @@
 
   // Remove spinner arrows
   -moz-appearance: textfield;
+  appearance: textfield;
 
   &::-webkit-outer-spin-button,
   &::-webkit-inner-spin-button {

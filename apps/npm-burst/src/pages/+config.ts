@@ -5,4 +5,5 @@ export default {
   extends: [vikeReact],
   trailingSlash: true,
   prerender: true,
+  clientRouting: true,
 } satisfies Config;

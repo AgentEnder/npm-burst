@@ -5,7 +5,10 @@
     "moduleResolution": "bundler",
     "module": "esnext",
     "target": "esnext",
-    "lib": ["esnext"]
+    "lib": ["esnext"],
+    "declaration": true,
+    "outDir": "../../dist/npm-burst/functions/out-tsc",
+    "composite": true
   },
   "include": ["functions/**/*.ts", "src/server/**/*.ts"]
 }

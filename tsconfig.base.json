@@ -14,9 +14,8 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {
-      "@npm-burst/npm/data-access": ["libs/npm/data-access/src/index.ts"]
-    }
+    "strict": true,
+    "jsx": "react-jsx"
   },
   "exclude": ["node_modules", "tmp"]
 }

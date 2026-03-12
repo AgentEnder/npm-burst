@@ -2,16 +2,15 @@ import { PropsWithChildren } from 'react';
 import { config } from 'telefunc/client';
 import { AuthProvider } from '../context/auth-context';
 import { ThemeProvider } from '../context/theme-context';
-import {
-  isClerkAvailable,
-  useTelefuncAuth,
-} from '../hooks/use-telefunc-auth';
+import { isClerkAvailable, useTelefuncAuth } from '../hooks/use-telefunc-auth';
 
-config.telefuncUrl = `${import.meta.env.BASE_URL}/_telefunc`;
+config.telefuncUrl = `${
+  import.meta.env.BASE_URL ? import.meta.env.BASE_URL : '/'
+}_telefunc`;
 
 function TelefuncAuthSetup({ children }: PropsWithChildren) {
   useTelefuncAuth();
-  return <>{children}</>;
+  return children;
 }
 
 /** Shared provider wrapper used by all layouts */
