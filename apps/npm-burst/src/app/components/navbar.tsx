@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, BarChart3 } from 'lucide-react';
 import { SiGithub } from '@icons-pack/react-simple-icons';
 import { useTheme } from '../context/theme-context';
 import {
@@ -64,7 +64,15 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
                   avatarBox: styles.avatarBox,
                 },
               }}
-            />
+            >
+              <UserButton.MenuItems>
+                <UserButton.Link
+                  label="Usage & Tracking"
+                  labelIcon={<BarChart3 size={16} />}
+                  href={`${import.meta.env.BASE_URL || '/'}usage`}
+                />
+              </UserButton.MenuItems>
+            </UserButton>
           </SignedIn>
         </div>
       )}
