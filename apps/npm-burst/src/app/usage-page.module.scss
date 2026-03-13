@@ -17,6 +17,8 @@
 // Quota bar
 .quotaSection {
   padding: var(--spacing-lg);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .quotaHeader {
@@ -68,6 +70,8 @@
 // Sections
 .section {
   padding: var(--spacing-lg);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .sectionTitle {

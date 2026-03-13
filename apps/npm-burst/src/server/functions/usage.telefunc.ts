@@ -6,6 +6,7 @@ import { getPackageMaintainers, isUserMaintainer } from '../npm-maintainers';
 import type { NpmMaintainer } from '../npm-maintainers';
 import { getPackageWeeklyDownloads } from '../npm-downloads';
 import { MAX_TRACKED_PACKAGES, WEEKLY_DOWNLOAD_THRESHOLD } from '../constants';
+import { getFixturePackage, getAllFixturePackageNames } from '../fixtures/packages';
 
 export interface TrackedPackageInfo {
   packageName: string;
@@ -32,9 +33,33 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
   }
 
   if (isDevMode(env)) {
+    const devMaintainers: NpmMaintainer[] = [
+      { name: 'jdoe', email: 'jdoe@example.com' },
+      { name: 'dev-user', email: 'dev@example.com' },
+    ];
+    const devPackages: TrackedPackageInfo[] = getAllFixturePackageNames().map(
+      (name) => {
+        const fixture = getFixturePackage(name);
+        const weeklyDownloads = fixture
+          ? Object.values(fixture.downloads).reduce((s, n) => s + n, 0)
+          : 0;
+        const isLargePackage = weeklyDownloads >= WEEKLY_DOWNLOAD_THRESHOLD;
+        // Simulate: dev user maintains 'nx' but not the others
+        const isMaintainer = name === 'nx';
+        const countsAgainstQuota = !isLargePackage && !isMaintainer;
+        return {
+          packageName: name,
+          weeklyDownloads,
+          isLargePackage,
+          isMaintainer,
+          maintainers: isMaintainer ? devMaintainers : [devMaintainers[0]],
+          countsAgainstQuota,
+        };
+      }
+    );
     return {
-      trackedPackages: [],
-      quotaUsed: 0,
+      trackedPackages: devPackages,
+      quotaUsed: devPackages.filter((p) => p.countsAgainstQuota).length,
       quotaLimit: MAX_TRACKED_PACKAGES,
       downloadThreshold: WEEKLY_DOWNLOAD_THRESHOLD,
       userEmails: ['dev@example.com'],
