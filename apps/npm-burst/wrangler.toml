@@ -2,16 +2,4 @@
 
 name = "npm-burst"
 compatibility_date = "2024-01-01"
-
-[assets]
-directory = "./dist/client"
-
-[vars]
-# Environment variables set in Cloudflare dashboard:
-# TURSO_DATABASE_URL
-# TURSO_AUTH_TOKEN
-# CLERK_SECRET_KEY
-# CLERK_PUBLISHABLE_KEY
-
-[triggers]
-crons = ["0 6 * * *"]  # Daily at 6 AM UTC
+pages_build_output_dir = "./dist/client"

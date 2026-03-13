@@ -1,0 +1,15 @@
+{
+  "name": "cronjob",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/cronjob/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "deploy": {
+      "command": "wrangler deploy",
+      "options": {
+        "cwd": "apps/cronjob"
+      }
+    }
+  }
+}
