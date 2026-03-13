@@ -6,7 +6,8 @@
     "target": "esnext",
     "lib": ["esnext"],
     "types": ["./worker-configuration.d.ts"],
-    "outDir": "../../dist/cronjob/out-tsc"
+    "outDir": "../../dist/cronjob/out-tsc",
+    "declaration": true
   },
   "include": ["src/**/*.ts"]
 }
