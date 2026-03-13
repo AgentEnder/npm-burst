@@ -99,16 +99,14 @@ function PackageRow({ pkg }: { pkg: TrackedPackageInfo }) {
       </td>
       <td className={styles.dlCell}>{formatDownloads(pkg.weeklyDownloads)}</td>
       <td>
-        {pkg.isLargePackage && (
-          <span className={styles.badge + ' ' + styles.badgeLarge}>500k+</span>
-        )}
-        {pkg.isMaintainer && (
+        {pkg.isMaintainer ? (
           <span className={styles.badge + ' ' + styles.badgeMaintainer}>
             <Shield size={12} /> Maintainer
           </span>
-        )}
-        {pkg.countsAgainstQuota && (
-          <span className={styles.badge + ' ' + styles.badgeQuota}>Counts</span>
+        ) : pkg.isLargePackage ? (
+          <span className={styles.badge + ' ' + styles.badgeLarge}>500k+ exempt</span>
+        ) : (
+          <span className={styles.badge + ' ' + styles.badgeQuota}>Uses slot</span>
         )}
       </td>
       <td>
@@ -182,8 +180,6 @@ export function UsagePage() {
       <Card className={styles.fullWidthCard}>
         <QuotaBar used={usage.quotaUsed} limit={usage.quotaLimit} />
 
-        <hr className={styles.divider} />
-
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Your Emails</h2>
           <p className={styles.sectionHint}>
@@ -198,8 +194,6 @@ export function UsagePage() {
             ))}
           </ul>
         </div>
-
-        <hr className={styles.divider} />
 
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>
