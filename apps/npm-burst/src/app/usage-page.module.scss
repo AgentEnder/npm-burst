@@ -7,6 +7,11 @@
   gap: var(--spacing-lg);
 }
 
+.fullWidthCard {
+  width: 100%;
+  align-items: stretch;
+}
+
 .pageTitle {
   font-size: var(--font-size-2xl);
   font-weight: 700;
@@ -65,6 +70,13 @@
   margin: var(--spacing-sm) 0 0;
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
+}
+
+.divider {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--surface-2);
+  margin: 0;
 }
 
 // Sections

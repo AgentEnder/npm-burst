@@ -179,11 +179,11 @@ export function UsagePage() {
     <main className={styles.main}>
       <h1 className={styles.pageTitle}>Usage & Tracking</h1>
 
-      <Card>
+      <Card className={styles.fullWidthCard}>
         <QuotaBar used={usage.quotaUsed} limit={usage.quotaLimit} />
-      </Card>
 
-      <Card>
+        <hr className={styles.divider} />
+
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Your Emails</h2>
           <p className={styles.sectionHint}>
@@ -198,9 +198,9 @@ export function UsagePage() {
             ))}
           </ul>
         </div>
-      </Card>
 
-      <Card>
+        <hr className={styles.divider} />
+
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>
             Tracked Packages ({usage.trackedPackages.length})
