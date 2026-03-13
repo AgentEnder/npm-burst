@@ -111,17 +111,23 @@
   font-family: var(--font-mono, monospace);
 }
 
-.manageEmailsButton {
-  background: none;
-  border: none;
-  color: var(--accent-color);
+.addEmailButton {
+  background: transparent;
+  border: 1.5px dashed var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
   font-size: var(--font-size-sm);
+  font-family: var(--font-mono, monospace);
+  color: var(--text-tertiary);
   cursor: pointer;
-  padding: 0;
-  margin-top: var(--spacing-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
 
   &:hover {
-    text-decoration: underline;
+    color: var(--accent-color);
+    border-color: var(--accent-color);
   }
 }
 

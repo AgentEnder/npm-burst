@@ -6,6 +6,7 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronRight,
+  Plus,
 } from 'lucide-react';
 import { Card } from './components/card';
 import { onGetUsageInfo } from '../server/functions/usage.telefunc';
@@ -23,14 +24,15 @@ function formatDownloads(n: number): string {
   return n.toString();
 }
 
-function ManageEmailsButton() {
+function AddEmailButton() {
   const { openUserProfile } = useClerk();
   return (
     <button
-      className={styles.manageEmailsButton}
+      className={styles.addEmailButton}
       onClick={() => openUserProfile()}
     >
-      Manage emails
+      <Plus size={14} />
+      Add email
     </button>
   );
 }
@@ -205,8 +207,10 @@ export function UsagePage() {
                 {email}
               </li>
             ))}
+            <li>
+              <AddEmailButton />
+            </li>
           </ul>
-          <ManageEmailsButton />
         </div>
 
         <div className={styles.section}>
