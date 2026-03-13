@@ -78,11 +78,13 @@ export const SnapshotControls = memo(function SnapshotControls({
           : `${currentIndex + 1} / ${totalSnapshots}`}
       </span>
 
-      {!isLive && (
-        <button className={styles.liveLink} onClick={onLive}>
-          View live data
-        </button>
-      )}
+      <button
+        className={styles.liveLink}
+        onClick={onLive}
+        style={{ visibility: isLive ? 'hidden' : 'visible' }}
+      >
+        View live data
+      </button>
     </div>
   );
 });

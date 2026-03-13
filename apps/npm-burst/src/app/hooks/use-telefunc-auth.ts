@@ -1,44 +1,38 @@
-import { useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import { config } from 'telefunc/client';
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+let _getToken: (() => Promise<string | null>) | null = null;
+
+const originalFetch = globalThis.fetch;
+
+config.fetch = async (input, init) => {
+  if (_getToken) {
+    const token = await _getToken();
+    if (token) {
+      init = {
+        ...init,
+        headers: {
+          ...init?.headers,
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  }
+  return originalFetch(input, init);
+};
+
 /**
- * Intercepts fetch requests to /_telefunc and adds the Clerk JWT
- * as an Authorization header. Only call this inside a component
- * rendered within ClerkProvider (use TelefuncAuthSetup wrapper).
+ * Bridges Clerk auth into telefunc's custom fetch.
+ * Updates the token getter during render (not in an effect)
+ * so it's available before any child effects fire telefunc calls.
+ *
+ * Must be rendered inside ClerkProvider (use TelefuncAuthSetup wrapper).
  */
 export function useTelefuncAuth() {
   const { getToken } = useAuth();
-
-  useEffect(() => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = async (input, init) => {
-      const url =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-          ? input.toString()
-          : input.url;
-
-      if (url.includes('/_telefunc')) {
-        const token = await getToken();
-        if (token) {
-          init = init || {};
-          init.headers = {
-            ...init.headers,
-            Authorization: `Bearer ${token}`,
-          };
-        }
-      }
-
-      return originalFetch(input, init);
-    };
-
-    return () => {
-      globalThis.fetch = originalFetch;
-    };
-  }, [getToken]);
+  _getToken = getToken;
 }
 
 /**
