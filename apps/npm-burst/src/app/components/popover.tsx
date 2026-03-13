@@ -4,17 +4,20 @@ import styles from './popover.module.scss';
 interface PopoverProps extends PropsWithChildren {
   content: React.ReactNode;
   trigger?: 'hover' | 'click';
+  position?: 'above' | 'below';
 }
 
 export function Popover({
   children,
   content,
   trigger = 'hover',
+  position = 'above',
 }: PopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
 
+  // Close on outside click
   useEffect(() => {
     if (trigger === 'click' && isOpen) {
       const handleClickOutside = (event: MouseEvent) => {
@@ -34,6 +37,23 @@ export function Popover({
       };
     }
   }, [isOpen, trigger]);
+
+  // Close when trigger scrolls out of view or is covered by a sticky element
+  useEffect(() => {
+    if (!isOpen || !triggerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) {
+          setIsOpen(false);
+        }
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(triggerRef.current);
+    return () => observer.disconnect();
+  }, [isOpen]);
 
   const handleMouseEnter = () => {
     if (trigger === 'hover') {
@@ -67,7 +87,7 @@ export function Popover({
       {isOpen && (
         <div
           ref={popoverRef}
-          className={styles.popoverContent}
+          className={`${styles.popoverContent} ${position === 'below' ? styles.below : ''}`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >

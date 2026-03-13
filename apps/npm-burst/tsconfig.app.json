@@ -23,7 +23,7 @@
   "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"],
   "references": [
     {
-      "path": "../../libs/npm-data-access"
+      "path": "../../libs/npm-data-access/tsconfig.lib.json"
     }
   ]
 }

@@ -22,7 +22,8 @@
   padding: var(--spacing-sm) var(--spacing-md);
   box-shadow: var(--shadow-lg);
   z-index: 1000;
-  width: 280px;
+  width: max-content;
+  min-width: 280px;
   white-space: normal;
   word-wrap: break-word;
   backdrop-filter: blur(12px);
@@ -50,12 +51,47 @@
     z-index: 1;
     margin-top: -1px;
   }
+
+  // Position below the trigger instead of above
+  &.below {
+    bottom: auto;
+    top: calc(100% + 10px);
+    animation: popoverFadeInBelow 0.15s ease-out;
+
+    // Move arrow to top
+    &::after {
+      top: auto;
+      bottom: 100%;
+      border-top-color: transparent;
+      border-bottom-color: var(--border-color);
+    }
+
+    &::before {
+      top: auto;
+      bottom: 100%;
+      border-top-color: transparent;
+      border-bottom-color: var(--bg-elevated);
+      margin-top: 0;
+      margin-bottom: -1px;
+    }
+  }
 }
 
 @keyframes popoverFadeIn {
   from {
     opacity: 0;
     transform: translateX(50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(50%);
+  }
+}
+
+@keyframes popoverFadeInBelow {
+  from {
+    opacity: 0;
+    transform: translateX(50%) translateY(-4px);
   }
   to {
     opacity: 1;

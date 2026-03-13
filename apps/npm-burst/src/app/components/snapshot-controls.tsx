@@ -45,6 +45,7 @@ export const SnapshotControls = memo(function SnapshotControls({
 
         <Popover
           trigger="click"
+          position="below"
           content={
             <SnapshotCalendar
               snapshotDates={snapshotDates}

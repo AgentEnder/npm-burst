@@ -11,7 +11,7 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"],
-      "outputs": ["{workspaceRoot}/dist/apps/web"]
+      "outputs": ["{projectRoot}/dist"]
     },
     "serve": {
       "command": "vite",

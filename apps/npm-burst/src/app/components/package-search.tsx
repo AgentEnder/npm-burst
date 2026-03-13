@@ -29,7 +29,7 @@ export function PackageSearch({
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Load tracked packages on mount if signed in
   useEffect(() => {
@@ -45,10 +45,15 @@ export function PackageSearch({
   useEffect(() => {
     if (!query.trim()) {
       setNpmResults([]);
-      return;
+      return () => {
+        // intentional noop
+      };
     }
 
-    clearTimeout(debounceRef.current);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
@@ -76,7 +81,7 @@ export function PackageSearch({
       }
     }, 300);
 
-    return () => clearTimeout(debounceRef.current);
+    return () => debounceRef.current && clearTimeout(debounceRef.current);
   }, [query]);
 
   // Click outside to close

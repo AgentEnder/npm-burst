@@ -4,6 +4,9 @@ import { Config } from 'vike/types';
 export default {
   extends: [vikeReact],
   trailingSlash: true,
-  prerender: true,
+  prerender: {
+    keepDistServer: true,
+    enable: true,
+  },
   clientRouting: true,
 } satisfies Config;
