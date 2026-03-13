@@ -13,8 +13,12 @@ export async function getPackageMaintainers(
 ): Promise<NpmMaintainer[]> {
   const url = `https://registry.npmjs.org/${encodeURIComponent(pkg)}`;
   const body = await cachedFetch(db, url);
-  const data = JSON.parse(body) as { maintainers?: NpmMaintainer[] };
-  return data.maintainers ?? [];
+  try {
+    const data = JSON.parse(body) as { maintainers?: NpmMaintainer[] };
+    return data.maintainers ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export function isUserMaintainer(

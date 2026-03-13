@@ -44,14 +44,18 @@ export async function onTrackPackage(
         .where('utp.user_id', '=', userId)
         .execute();
 
-      let quotaCount = 0;
-      for (const row of trackedPkgs) {
-        const dl = await getPackageWeeklyDownloads(db, row.package_name);
-        if (dl >= WEEKLY_DOWNLOAD_THRESHOLD) continue;
-        const maint = await getPackageMaintainers(db, row.package_name);
-        if (isUserMaintainer(userEmails, maint)) continue;
-        quotaCount++;
-      }
+      const quotaResults = await Promise.all(
+        trackedPkgs.map(async (row) => {
+          const [dl, maint] = await Promise.all([
+            getPackageWeeklyDownloads(db, row.package_name),
+            getPackageMaintainers(db, row.package_name),
+          ]);
+          if (dl >= WEEKLY_DOWNLOAD_THRESHOLD) return false;
+          if (isUserMaintainer(userEmails, maint)) return false;
+          return true;
+        })
+      );
+      const quotaCount = quotaResults.filter(Boolean).length;
 
       if (quotaCount >= MAX_TRACKED_PACKAGES) {
         throw Abort({

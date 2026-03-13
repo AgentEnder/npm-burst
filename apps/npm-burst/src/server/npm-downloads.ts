@@ -8,6 +8,7 @@ export async function getPackageWeeklyDownloads(
 ): Promise<number> {
   const url = `https://api.npmjs.org/versions/${encodeURI(pkg).replace('/', '%2f')}/last-week`;
   const body = await cachedFetch(db, url);
-  const data = JSON.parse(body) as { downloads: Record<string, number> };
+  const data = JSON.parse(body) as { downloads?: Record<string, number> };
+  if (!data.downloads) return 0;
   return Object.values(data.downloads).reduce((sum, n) => sum + n, 0);
 }

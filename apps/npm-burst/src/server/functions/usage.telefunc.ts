@@ -52,29 +52,26 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
     .orderBy('tp.package_name')
     .execute();
 
-  const trackedPackages: TrackedPackageInfo[] = [];
-  let quotaUsed = 0;
-
-  for (const row of trackedPkgs) {
-    const weeklyDownloads = await getPackageWeeklyDownloads(db, row.package_name);
-    const isLargePackage = weeklyDownloads >= WEEKLY_DOWNLOAD_THRESHOLD;
-    const maintainers = await getPackageMaintainers(db, row.package_name);
-    const isMaintainer = isUserMaintainer(userEmails, maintainers);
-    const countsAgainstQuota = !isLargePackage && !isMaintainer;
-
-    if (countsAgainstQuota) {
-      quotaUsed++;
-    }
-
-    trackedPackages.push({
-      packageName: row.package_name,
-      weeklyDownloads,
-      isLargePackage,
-      isMaintainer,
-      maintainers,
-      countsAgainstQuota,
-    });
-  }
+  const trackedPackages: TrackedPackageInfo[] = await Promise.all(
+    trackedPkgs.map(async (row) => {
+      const [weeklyDownloads, maintainers] = await Promise.all([
+        getPackageWeeklyDownloads(db, row.package_name),
+        getPackageMaintainers(db, row.package_name),
+      ]);
+      const isLargePackage = weeklyDownloads >= WEEKLY_DOWNLOAD_THRESHOLD;
+      const isMaintainer = isUserMaintainer(userEmails, maintainers);
+      const countsAgainstQuota = !isLargePackage && !isMaintainer;
+      return {
+        packageName: row.package_name,
+        weeklyDownloads,
+        isLargePackage,
+        isMaintainer,
+        maintainers,
+        countsAgainstQuota,
+      };
+    })
+  );
+  const quotaUsed = trackedPackages.filter((p) => p.countsAgainstQuota).length;
 
   return {
     trackedPackages,
