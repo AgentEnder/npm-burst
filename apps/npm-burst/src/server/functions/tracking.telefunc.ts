@@ -2,6 +2,12 @@ import { Abort, getContext } from 'telefunc';
 import { getDb } from '../db';
 import { isDevMode } from '../env';
 import { getAllFixturePackageNames } from '../fixtures/packages';
+import { getUserEmails } from '../clerk-utils';
+import { getPackageMaintainers, isUserMaintainer } from '../npm-maintainers';
+import { getPackageWeeklyDownloads } from '../npm-downloads';
+
+const MAX_TRACKED_PACKAGES = 5;
+const WEEKLY_DOWNLOAD_THRESHOLD = 500_000;
 
 // In-memory tracked packages for dev mode (no DB required)
 const devTrackedPackages = new Set<string>(getAllFixturePackageNames());
@@ -21,6 +27,44 @@ export async function onTrackPackage(
   }
 
   const db = getDb(env);
+
+  // --- Quota check ---
+  const weeklyDownloads = await getPackageWeeklyDownloads(db, pkg);
+  const isLargePackage = weeklyDownloads >= WEEKLY_DOWNLOAD_THRESHOLD;
+
+  if (!isLargePackage) {
+    const userEmails = await getUserEmails(userId, env);
+    const maintainers = await getPackageMaintainers(db, pkg);
+    const isMaintainer = isUserMaintainer(userEmails, maintainers);
+
+    if (!isMaintainer) {
+      // Count existing tracked packages that count against quota
+      const trackedPkgs = await db
+        .selectFrom('tracked_packages as tp')
+        .innerJoin('user_tracked_packages as utp', 'tp.id', 'utp.package_id')
+        .select('tp.package_name')
+        .where('utp.user_id', '=', userId)
+        .execute();
+
+      let quotaCount = 0;
+      for (const row of trackedPkgs) {
+        const dl = await getPackageWeeklyDownloads(db, row.package_name);
+        if (dl >= WEEKLY_DOWNLOAD_THRESHOLD) continue;
+        const maint = await getPackageMaintainers(db, row.package_name);
+        if (isUserMaintainer(userEmails, maint)) continue;
+        quotaCount++;
+      }
+
+      if (quotaCount >= MAX_TRACKED_PACKAGES) {
+        throw Abort({
+          reason: 'QUOTA_EXCEEDED',
+          message: `You can track up to ${MAX_TRACKED_PACKAGES} packages with under ${(WEEKLY_DOWNLOAD_THRESHOLD / 1000).toFixed(0)}k weekly downloads. Remove a tracked package or track packages you maintain.`,
+          currentCount: quotaCount,
+          limit: MAX_TRACKED_PACKAGES,
+        });
+      }
+    }
+  }
 
   // Ensure package exists
   await db
