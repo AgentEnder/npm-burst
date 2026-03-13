@@ -13,6 +13,7 @@ import type {
   UsageInfo,
   TrackedPackageInfo,
 } from '../server/functions/usage.telefunc';
+import { useClerk } from '@clerk/clerk-react';
 import { useSafeAuth } from './context/auth-context';
 import styles from './usage-page.module.scss';
 
@@ -20,6 +21,18 @@ function formatDownloads(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return n.toString();
+}
+
+function ManageEmailsButton() {
+  const { openUserProfile } = useClerk();
+  return (
+    <button
+      className={styles.manageEmailsButton}
+      onClick={() => openUserProfile()}
+    >
+      Manage emails
+    </button>
+  );
 }
 
 function QuotaBar({ used, limit }: { used: number; limit: number }) {
@@ -193,6 +206,7 @@ export function UsagePage() {
               </li>
             ))}
           </ul>
+          <ManageEmailsButton />
         </div>
 
         <div className={styles.section}>

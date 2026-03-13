@@ -111,6 +111,20 @@
   font-family: var(--font-mono, monospace);
 }
 
+.manageEmailsButton {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 0;
+  margin-top: var(--spacing-sm);
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 // Table
 .tableWrapper {
   overflow-x: auto;
