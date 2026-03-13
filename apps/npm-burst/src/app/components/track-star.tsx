@@ -23,6 +23,11 @@ export function TrackStar({ packageName }: TrackStarProps) {
   const auth = useSafeAuth();
   const [status, setStatus] = useState<'mine' | 'others' | 'none'>('none');
   const [loading, setLoading] = useState(false);
+  const [quotaError, setQuotaError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setQuotaError(null);
+  }, [packageName]);
 
   useEffect(() => {
     if (!auth.isSignedIn) return;
@@ -40,6 +45,7 @@ export function TrackStar({ packageName }: TrackStarProps) {
   const handleClick = useCallback(async () => {
     if (loading) return;
     setLoading(true);
+    setQuotaError(null);
     try {
       if (status === 'mine') {
         await onUntrackPackage(packageName);
@@ -47,6 +53,11 @@ export function TrackStar({ packageName }: TrackStarProps) {
       } else {
         await onTrackPackage(packageName);
         setStatus('mine');
+      }
+    } catch (e: unknown) {
+      const err = e as { abort?: { reason?: string; message?: string } };
+      if (err?.abort?.reason === 'QUOTA_EXCEEDED') {
+        setQuotaError(err.abort.message ?? 'Tracking quota exceeded');
       }
     } finally {
       setLoading(false);
@@ -61,7 +72,16 @@ export function TrackStar({ packageName }: TrackStarProps) {
     .join(' ');
 
   return (
-    <Popover content={<span>{tooltips[status]}</span>} trigger="hover">
+    <Popover
+      content={
+        quotaError ? (
+          <span style={{ color: 'var(--error-main, #e53935)' }}>{quotaError}</span>
+        ) : (
+          <span>{tooltips[status]}</span>
+        )
+      }
+      trigger="hover"
+    >
       <button
         className={className}
         onClick={handleClick}
