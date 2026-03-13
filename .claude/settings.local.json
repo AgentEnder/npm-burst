@@ -4,7 +4,9 @@
       "mcp__ide__getDiagnostics",
       "Bash(/tmp/craigory_structure.txt:*)",
       "Bash(timeout 15 ./node_modules/.bin/nx serve npm-burst 2>&1 || true)",
-      "WebFetch(domain:developers.cloudflare.com)"
+      "WebFetch(domain:developers.cloudflare.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:clerk.com)"
     ],
     "deny": [],
     "ask": []

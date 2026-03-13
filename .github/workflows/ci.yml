@@ -16,7 +16,7 @@ on:
 jobs:
   ci:
     name: Nx Cloud - Main Job (format / lint / test / build)
-    uses: nrwl/ci/.github/workflows/nx-cloud-main.yml@v0.8
+    uses: nrwl/ci/.github/workflows/nx-cloud-main.yml@v0.15
     with:
       main-branch-name: 'main'
       parallel-commands: |
@@ -60,7 +60,7 @@ jobs:
 
   ci-agents:
     name: Nx Cloud - Agents
-    uses: nrwl/ci/.github/workflows/nx-cloud-agents.yml@v0.8
+    uses: nrwl/ci/.github/workflows/nx-cloud-agents.yml@v0.15.0
     with:
       number-of-agents: 3
 

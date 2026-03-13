@@ -5,7 +5,7 @@ import { getUserEmails } from '../clerk-utils';
 import { getPackageMaintainers, isUserMaintainer } from '../npm-maintainers';
 import type { NpmMaintainer } from '../npm-maintainers';
 import { getPackageWeeklyDownloads } from '../npm-downloads';
-import { MAX_TRACKED_PACKAGES, WEEKLY_DOWNLOAD_THRESHOLD } from '../constants';
+import { DEFAULT_MAX_TRACKED_PACKAGES, WEEKLY_DOWNLOAD_THRESHOLD, getUserQuota } from '../constants';
 import { getFixturePackage, getAllFixturePackageNames } from '../fixtures/packages';
 
 export interface TrackedPackageInfo {
@@ -60,14 +60,17 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
     return {
       trackedPackages: devPackages,
       quotaUsed: devPackages.filter((p) => p.countsAgainstQuota).length,
-      quotaLimit: MAX_TRACKED_PACKAGES,
+      quotaLimit: DEFAULT_MAX_TRACKED_PACKAGES,
       downloadThreshold: WEEKLY_DOWNLOAD_THRESHOLD,
       userEmails: ['dev@example.com'],
     };
   }
 
   const db = getDb(env);
-  const userEmails = await getUserEmails(userId, env);
+  const [userEmails, quotaLimit] = await Promise.all([
+    getUserEmails(userId, env),
+    getUserQuota(db, userId),
+  ]);
 
   const trackedPkgs = await db
     .selectFrom('tracked_packages as tp')
@@ -101,7 +104,7 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
   return {
     trackedPackages,
     quotaUsed,
-    quotaLimit: MAX_TRACKED_PACKAGES,
+    quotaLimit,
     downloadThreshold: WEEKLY_DOWNLOAD_THRESHOLD,
     userEmails,
   };

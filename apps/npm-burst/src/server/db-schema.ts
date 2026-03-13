@@ -29,6 +29,11 @@ export interface TrackedPackages {
   package_name: string;
 }
 
+export interface UserQuotas {
+  user_id: string;
+  max_tracked_packages: Generated<number>;
+}
+
 export interface UserTrackedPackages {
   package_id: number;
   user_id: string;
@@ -38,5 +43,6 @@ export interface DB {
   npm_api_cache: NpmApiCache;
   snapshots: Snapshots;
   tracked_packages: TrackedPackages;
+  user_quotas: UserQuotas;
   user_tracked_packages: UserTrackedPackages;
 }

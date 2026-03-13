@@ -209,7 +209,8 @@
 }
 
 .treeMuted {
-  opacity: 0.35;
+  color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .treeChild {
