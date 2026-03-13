@@ -87,7 +87,9 @@ export function Popover({
       {isOpen && (
         <div
           ref={popoverRef}
-          className={`${styles.popoverContent} ${position === 'below' ? styles.below : ''}`}
+          className={`${styles.popoverContent} ${
+            position === 'below' ? styles.below : ''
+          }`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >

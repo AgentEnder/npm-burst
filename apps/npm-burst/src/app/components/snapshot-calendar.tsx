@@ -17,13 +17,33 @@ interface SnapshotCalendarProps {
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 const MONTH_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 const NEARBY_DAYS = 7;
@@ -51,7 +71,9 @@ function groupVersions(releases: VersionRelease[]): VersionGroup[] {
   }
 
   const groups: VersionGroup[] = [];
-  for (const [major, minorMap] of [...majors.entries()].sort((a, b) => b[0] - a[0])) {
+  for (const [major, minorMap] of [...majors.entries()].sort(
+    (a, b) => b[0] - a[0]
+  )) {
     const minors = [...minorMap.entries()]
       .sort((a, b) => b[0] - a[0])
       .map(([minor, releases]) => ({ minor, releases }));
@@ -119,7 +141,9 @@ export function SnapshotCalendar({
 
   const [viewYear, setViewYear] = useState(year);
   const [viewMonth, setViewMonth] = useState(month);
-  const [pickerMode, setPickerMode] = useState<'days' | 'months' | 'years'>('days');
+  const [pickerMode, setPickerMode] = useState<'days' | 'months' | 'years'>(
+    'days'
+  );
   const [expandedMajors, setExpandedMajors] = useState<Set<number>>(new Set());
   const [expandedMinors, setExpandedMinors] = useState<Set<string>>(new Set());
 
@@ -154,9 +178,15 @@ export function SnapshotCalendar({
   }, [viewYear, viewMonth]);
 
   const formatDate = (day: number) =>
-    `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(day).padStart(
+      2,
+      '0'
+    )}`;
 
-  const versionGroups = useMemo(() => groupVersions(versionReleases), [versionReleases]);
+  const versionGroups = useMemo(
+    () => groupVersions(versionReleases),
+    [versionReleases]
+  );
 
   const toggleMajor = useCallback((major: number) => {
     setExpandedMajors((prev) => {
@@ -178,7 +208,11 @@ export function SnapshotCalendar({
 
   const handleVersionClick = useCallback(
     (releaseDate: string) => {
-      const nearest = findNearestSnapshot(releaseDate, snapshotDates, NEARBY_DAYS);
+      const nearest = findNearestSnapshot(
+        releaseDate,
+        snapshotDates,
+        NEARBY_DAYS
+      );
       if (nearest) {
         onSelectDate(nearest);
       }
@@ -216,7 +250,9 @@ export function SnapshotCalendar({
 
             <div className={styles.dayLabels}>
               {DAY_LABELS.map((label) => (
-                <span key={label} className={styles.dayLabel}>{label}</span>
+                <span key={label} className={styles.dayLabel}>
+                  {label}
+                </span>
               ))}
             </div>
 
@@ -234,7 +270,9 @@ export function SnapshotCalendar({
                 return (
                   <button
                     key={day}
-                    className={`${styles.day} ${hasSnapshot ? styles.hasSnapshot : styles.noSnapshot} ${isSelected ? styles.selected : ''}`}
+                    className={`${styles.day} ${
+                      hasSnapshot ? styles.hasSnapshot : styles.noSnapshot
+                    } ${isSelected ? styles.selected : ''}`}
                     disabled={!hasSnapshot}
                     onClick={() => onSelectDate(dateStr)}
                   >
@@ -250,13 +288,22 @@ export function SnapshotCalendar({
         {pickerMode === 'months' && (
           <>
             <div className={styles.header}>
-              <button className={styles.monthNav} onClick={() => setViewYear((y) => y - 1)}>
+              <button
+                className={styles.monthNav}
+                onClick={() => setViewYear((y) => y - 1)}
+              >
                 <ChevronLeft size={14} />
               </button>
-              <button className={styles.headerButton} onClick={() => setPickerMode('years')}>
+              <button
+                className={styles.headerButton}
+                onClick={() => setPickerMode('years')}
+              >
                 {viewYear}
               </button>
-              <button className={styles.monthNav} onClick={() => setViewYear((y) => y + 1)}>
+              <button
+                className={styles.monthNav}
+                onClick={() => setViewYear((y) => y + 1)}
+              >
                 <ChevronRight size={14} />
               </button>
             </div>
@@ -268,9 +315,14 @@ export function SnapshotCalendar({
                 return (
                   <button
                     key={name}
-                    className={`${styles.pickerCell} ${hasData ? styles.hasSnapshot : styles.noSnapshot} ${isCurrent ? styles.selected : ''}`}
+                    className={`${styles.pickerCell} ${
+                      hasData ? styles.hasSnapshot : styles.noSnapshot
+                    } ${isCurrent ? styles.selected : ''}`}
                     disabled={!hasData}
-                    onClick={() => { setViewMonth(i + 1); setPickerMode('days'); }}
+                    onClick={() => {
+                      setViewMonth(i + 1);
+                      setPickerMode('days');
+                    }}
                   >
                     {name}
                   </button>
@@ -283,13 +335,19 @@ export function SnapshotCalendar({
         {pickerMode === 'years' && (
           <>
             <div className={styles.header}>
-              <button className={styles.monthNav} onClick={() => setViewYear((y) => y - 10)}>
+              <button
+                className={styles.monthNav}
+                onClick={() => setViewYear((y) => y - 10)}
+              >
                 <ChevronLeft size={14} />
               </button>
               <span className={styles.headerLabel}>
                 {yearRangeStart + 1}&ndash;{yearRangeStart + 10}
               </span>
-              <button className={styles.monthNav} onClick={() => setViewYear((y) => y + 10)}>
+              <button
+                className={styles.monthNav}
+                onClick={() => setViewYear((y) => y + 10)}
+              >
                 <ChevronRight size={14} />
               </button>
             </div>
@@ -300,9 +358,14 @@ export function SnapshotCalendar({
                 return (
                   <button
                     key={yr}
-                    className={`${styles.pickerCell} ${hasData ? styles.hasSnapshot : styles.noSnapshot} ${isCurrent ? styles.selected : ''}`}
+                    className={`${styles.pickerCell} ${
+                      hasData ? styles.hasSnapshot : styles.noSnapshot
+                    } ${isCurrent ? styles.selected : ''}`}
                     disabled={!hasData}
-                    onClick={() => { setViewYear(yr); setPickerMode('months'); }}
+                    onClick={() => {
+                      setViewYear(yr);
+                      setPickerMode('months');
+                    }}
                   >
                     {yr}
                   </button>
@@ -323,55 +386,88 @@ export function SnapshotCalendar({
               const majorExpanded = expandedMajors.has(group.major);
               // A major is "near" if any of its releases have a nearby snapshot
               const majorHasNearby = group.minors.some((m) =>
-                m.releases.some((r) => findNearestSnapshot(r.date, snapshotDates, NEARBY_DAYS) !== null)
+                m.releases.some(
+                  (r) =>
+                    findNearestSnapshot(r.date, snapshotDates, NEARBY_DAYS) !==
+                    null
+                )
               );
 
               return (
                 <div key={group.major} className={styles.treeNode}>
                   <button
-                    className={`${styles.treeBranch} ${majorHasNearby ? '' : styles.treeMuted}`}
+                    className={`${styles.treeBranch} ${
+                      majorHasNearby ? '' : styles.treeMuted
+                    }`}
                     onClick={() => toggleMajor(group.major)}
                   >
-                    {majorExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    {majorExpanded ? (
+                      <ChevronDown size={12} />
+                    ) : (
+                      <ChevronRight size={12} />
+                    )}
                     <span>v{group.major}</span>
                   </button>
 
-                  {majorExpanded && group.minors.map((minor) => {
-                    const minorKey = `${group.major}.${minor.minor}`;
-                    const minorExpanded = expandedMinors.has(minorKey);
-                    const minorHasNearby = minor.releases.some(
-                      (r) => findNearestSnapshot(r.date, snapshotDates, NEARBY_DAYS) !== null
-                    );
+                  {majorExpanded &&
+                    group.minors.map((minor) => {
+                      const minorKey = `${group.major}.${minor.minor}`;
+                      const minorExpanded = expandedMinors.has(minorKey);
+                      const minorHasNearby = minor.releases.some(
+                        (r) =>
+                          findNearestSnapshot(
+                            r.date,
+                            snapshotDates,
+                            NEARBY_DAYS
+                          ) !== null
+                      );
 
-                    return (
-                      <div key={minorKey} className={styles.treeChild}>
-                        <button
-                          className={`${styles.treeBranch} ${minorHasNearby ? '' : styles.treeMuted}`}
-                          onClick={() => toggleMinor(minorKey)}
-                        >
-                          {minorExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-                          <span>v{minorKey}</span>
-                        </button>
+                      return (
+                        <div key={minorKey} className={styles.treeChild}>
+                          <button
+                            className={`${styles.treeBranch} ${
+                              minorHasNearby ? '' : styles.treeMuted
+                            }`}
+                            onClick={() => toggleMinor(minorKey)}
+                          >
+                            {minorExpanded ? (
+                              <ChevronDown size={10} />
+                            ) : (
+                              <ChevronRight size={10} />
+                            )}
+                            <span>v{minorKey}</span>
+                          </button>
 
-                        {minorExpanded && minor.releases.map((r) => {
-                          const nearest = findNearestSnapshot(r.date, snapshotDates, NEARBY_DAYS);
-                          const hasNearby = nearest !== null;
+                          {minorExpanded &&
+                            minor.releases.map((r) => {
+                              const nearest = findNearestSnapshot(
+                                r.date,
+                                snapshotDates,
+                                NEARBY_DAYS
+                              );
+                              const hasNearby = nearest !== null;
 
-                          return (
-                            <button
-                              key={r.version}
-                              className={`${styles.treeLeaf} ${hasNearby ? '' : styles.treeMuted}`}
-                              onClick={() => handleVersionClick(r.date)}
-                              title={`${r.version} — ${r.date}`}
-                            >
-                              <span className={styles.leafVersion}>{r.version}</span>
-                              <span className={styles.leafDate}>{r.date.slice(5)}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
+                              return (
+                                <button
+                                  key={r.version}
+                                  className={`${styles.treeLeaf} ${
+                                    hasNearby ? '' : styles.treeMuted
+                                  }`}
+                                  onClick={() => handleVersionClick(r.date)}
+                                  title={`${r.version} — ${r.date}`}
+                                >
+                                  <span className={styles.leafVersion}>
+                                    {r.version}
+                                  </span>
+                                  <span className={styles.leafDate}>
+                                    {r.date.slice(5)}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      );
+                    })}
                 </div>
               );
             })}

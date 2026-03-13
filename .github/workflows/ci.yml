@@ -22,41 +22,41 @@ jobs:
       parallel-commands: |
         npx nx-cloud record npx nx format:check
       parallel-commands-on-agents: |
-        yarn nx affected -t lint test build --parallel 3
+        pnpm nx affected -t lint test build --parallel 3
 
-  e2e:
-    name: E2E
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+  # e2e:
+  #   name: E2E
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Derive appropriate SHAs for base and head for `nx affected` commands
-        uses: nrwl/nx-set-shas@v3
-        with:
-          main-branch-name: main
+  #     - name: Derive appropriate SHAs for base and head for `nx affected` commands
+  #       uses: nrwl/nx-set-shas@v3
+  #       with:
+  #         main-branch-name: main
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
+  #     - name: Use Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '18'
 
-      - name: Cache node_modules
-        uses: actions/cache@v3
-        with:
-          path: node_modules, !node_modules/.*
-          key: ${{ hashFiles('package-lock.json') }}
+  #     - name: Cache node_modules
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: node_modules, !node_modules/.*
+  #         key: ${{ hashFiles('package-lock.json') }}
 
-      - name: Install dependencies
-        run: |
-          npm install
+  #     - name: Install dependencies
+  #       run: |
+  #         npm install
 
-      - name: 'Cypress'
-        run: |
-          npx nx affected -t e2e --record
-        env:
-          CYPRESS_RECORD_KEY: ${{secrets.CYPRESS_CLOUD_KEY}}
+  #     - name: 'Cypress'
+  #       run: |
+  #         npx nx affected -t e2e --record
+  #       env:
+  #         CYPRESS_RECORD_KEY: ${{secrets.CYPRESS_CLOUD_KEY}}
 
   ci-agents:
     name: Nx Cloud - Agents

@@ -5,7 +5,11 @@ import { getAllFixturePackageNames } from '../fixtures/packages';
 import { getUserEmails } from '../clerk-utils';
 import { getPackageMaintainers, isUserMaintainer } from '../npm-maintainers';
 import { getPackageWeeklyDownloads } from '../npm-downloads';
-import { DEFAULT_MAX_TRACKED_PACKAGES, WEEKLY_DOWNLOAD_THRESHOLD, getUserQuota } from '../constants';
+import {
+  DEFAULT_MAX_TRACKED_PACKAGES,
+  WEEKLY_DOWNLOAD_THRESHOLD,
+  getUserQuota,
+} from '../constants';
 
 // In-memory tracked packages for dev mode (no DB required)
 const devTrackedPackages = new Set<string>(getAllFixturePackageNames());
@@ -61,7 +65,11 @@ export async function onTrackPackage(
       if (quotaCount >= maxPackages) {
         throw Abort({
           reason: 'QUOTA_EXCEEDED',
-          message: `You can track up to ${maxPackages} packages with under ${(WEEKLY_DOWNLOAD_THRESHOLD / 1000).toFixed(0)}k weekly downloads. Remove a tracked package or track packages you maintain.`,
+          message: `You can track up to ${maxPackages} packages with under ${(
+            WEEKLY_DOWNLOAD_THRESHOLD / 1000
+          ).toFixed(
+            0
+          )}k weekly downloads. Remove a tracked package or track packages you maintain.`,
           currentCount: quotaCount,
           limit: maxPackages,
         });

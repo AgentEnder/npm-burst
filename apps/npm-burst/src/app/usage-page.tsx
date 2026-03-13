@@ -27,10 +27,7 @@ function formatDownloads(n: number): string {
 function AddEmailButton() {
   const { openUserProfile } = useClerk();
   return (
-    <button
-      className={styles.addEmailButton}
-      onClick={() => openUserProfile()}
-    >
+    <button className={styles.addEmailButton} onClick={() => openUserProfile()}>
       <Plus size={14} />
       Add email
     </button>
@@ -53,7 +50,9 @@ function QuotaBar({ used, limit }: { used: number; limit: number }) {
       </div>
       <div className={styles.quotaBarTrack}>
         <div
-          className={`${styles.quotaBarFill} ${isFull ? styles.quotaBarFull : ''}`}
+          className={`${styles.quotaBarFill} ${
+            isFull ? styles.quotaBarFull : ''
+          }`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -101,7 +100,9 @@ function MaintainerEmails({
 function PackageRow({ pkg }: { pkg: TrackedPackageInfo }) {
   const base = import.meta.env.BASE_URL || '/';
   const baseNormalized = base.endsWith('/') ? base : base + '/';
-  const packageUrl = `${baseNormalized}package#/${encodeURIComponent(pkg.packageName)}`;
+  const packageUrl = `${baseNormalized}package#/${encodeURIComponent(
+    pkg.packageName
+  )}`;
 
   return (
     <tr className={pkg.countsAgainstQuota ? styles.quotaRow : styles.exemptRow}>
@@ -119,9 +120,13 @@ function PackageRow({ pkg }: { pkg: TrackedPackageInfo }) {
             <Shield size={12} /> Maintainer
           </span>
         ) : pkg.isLargePackage ? (
-          <span className={styles.badge + ' ' + styles.badgeLarge}>500k+ exempt</span>
+          <span className={styles.badge + ' ' + styles.badgeLarge}>
+            500k+ exempt
+          </span>
         ) : (
-          <span className={styles.badge + ' ' + styles.badgeQuota}>Uses slot</span>
+          <span className={styles.badge + ' ' + styles.badgeQuota}>
+            Uses slot
+          </span>
         )}
       </td>
       <td>

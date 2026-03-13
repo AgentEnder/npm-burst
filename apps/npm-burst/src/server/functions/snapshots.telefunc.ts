@@ -8,7 +8,9 @@ export interface Snapshot {
   downloads: Record<string, number>;
 }
 
-export async function onGetSnapshots(pkg: string): Promise<{ snapshots: Snapshot[] }> {
+export async function onGetSnapshots(
+  pkg: string
+): Promise<{ snapshots: Snapshot[] }> {
   const { env } = getContext();
 
   // In dev mode, return fixture snapshots

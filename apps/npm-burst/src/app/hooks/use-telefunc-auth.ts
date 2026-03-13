@@ -18,8 +18,8 @@ export function useTelefuncAuth() {
         typeof input === 'string'
           ? input
           : input instanceof URL
-            ? input.toString()
-            : input.url;
+          ? input.toString()
+          : input.url;
 
       if (url.includes('/_telefunc')) {
         const token = await getToken();

@@ -36,72 +36,72 @@ export const DashboardHeader = memo(function DashboardHeader() {
       {/* Controls bar */}
       <div className={styles.header}>
         {/* Toggle controls */}
-      <div className={styles.toggleGroup}>
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={sortByVersion}
-            onChange={() => setSortByVersion(!sortByVersion)}
-            className={styles.toggleInput}
-          />
-          <span className={styles.toggleTrack}>
-            <span className={styles.toggleThumb} />
-          </span>
-          <span className={styles.toggleLabel}>Sort by version</span>
-        </label>
+        <div className={styles.toggleGroup}>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={sortByVersion}
+              onChange={() => setSortByVersion(!sortByVersion)}
+              className={styles.toggleInput}
+            />
+            <span className={styles.toggleTrack}>
+              <span className={styles.toggleThumb} />
+            </span>
+            <span className={styles.toggleLabel}>Sort by version</span>
+          </label>
 
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={showDataTable}
-            onChange={() => setShowDataTable(!showDataTable)}
-            className={styles.toggleInput}
-          />
-          <span className={styles.toggleTrack}>
-            <span className={styles.toggleThumb} />
-          </span>
-          <span className={styles.toggleLabel}>Show table</span>
-        </label>
-      </div>
-
-      {/* Divider */}
-      <div className={styles.divider} />
-
-      {/* Low pass filter */}
-      <div className={styles.filterGroup}>
-        <label className={styles.filterLabel}>
-          LPF
-          <Popover
-            content={
-              <div className={styles.popoverContent}>
-                <strong>Low Pass Filter</strong>
-                <p>
-                  Versions with fewer than this percentage of downloads are
-                  aggregated into summary nodes. Click aggregated nodes to
-                  expand.
-                </p>
-              </div>
-            }
-          >
-            <Info size={14} className={styles.infoIcon} />
-          </Popover>
-        </label>
-        <div className={styles.filterInput}>
-          <input
-            type="number"
-            step={0.1}
-            min={0}
-            max={100}
-            value={lowPassFilter * 100}
-            onChange={(e) => {
-              const val = e.target.valueAsNumber;
-              if (!Number.isNaN(val)) setLowPassFilter(val / 100);
-            }}
-            className={styles.numberInput}
-          />
-          <span className={styles.filterSuffix}>%</span>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={showDataTable}
+              onChange={() => setShowDataTable(!showDataTable)}
+              className={styles.toggleInput}
+            />
+            <span className={styles.toggleTrack}>
+              <span className={styles.toggleThumb} />
+            </span>
+            <span className={styles.toggleLabel}>Show table</span>
+          </label>
         </div>
-      </div>
+
+        {/* Divider */}
+        <div className={styles.divider} />
+
+        {/* Low pass filter */}
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>
+            LPF
+            <Popover
+              content={
+                <div className={styles.popoverContent}>
+                  <strong>Low Pass Filter</strong>
+                  <p>
+                    Versions with fewer than this percentage of downloads are
+                    aggregated into summary nodes. Click aggregated nodes to
+                    expand.
+                  </p>
+                </div>
+              }
+            >
+              <Info size={14} className={styles.infoIcon} />
+            </Popover>
+          </label>
+          <div className={styles.filterInput}>
+            <input
+              type="number"
+              step={0.1}
+              min={0}
+              max={100}
+              value={lowPassFilter * 100}
+              onChange={(e) => {
+                const val = e.target.valueAsNumber;
+                if (!Number.isNaN(val)) setLowPassFilter(val / 100);
+              }}
+              className={styles.numberInput}
+            />
+            <span className={styles.filterSuffix}>%</span>
+          </div>
+        </div>
       </div>
     </div>
   );

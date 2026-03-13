@@ -28,5 +28,7 @@ export function isUserMaintainer(
   const maintainerEmailSet = new Set(
     maintainers.map((m) => m.email.toLowerCase())
   );
-  return userEmails.some((email) => maintainerEmailSet.has(email.toLowerCase()));
+  return userEmails.some((email) =>
+    maintainerEmailSet.has(email.toLowerCase())
+  );
 }

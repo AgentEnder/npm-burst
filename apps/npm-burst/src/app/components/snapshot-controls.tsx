@@ -72,15 +72,14 @@ export const SnapshotControls = memo(function SnapshotControls({
 
       <span className={styles.counter}>
         {isLive
-          ? `${totalSnapshots} snapshot${totalSnapshots !== 1 ? 's' : ''} available`
+          ? `${totalSnapshots} snapshot${
+              totalSnapshots !== 1 ? 's' : ''
+            } available`
           : `${currentIndex + 1} / ${totalSnapshots}`}
       </span>
 
       {!isLive && (
-        <button
-          className={styles.liveLink}
-          onClick={onLive}
-        >
+        <button className={styles.liveLink} onClick={onLive}>
           View live data
         </button>
       )}

@@ -36,7 +36,9 @@ export function TrackStar({ packageName }: TrackStarProps) {
       .then((res) => {
         if (!cancelled) setStatus(res.status);
       })
-      .catch(() => { /* keep status as 'none' */ });
+      .catch(() => {
+        /* keep status as 'none' */
+      });
     return () => {
       cancelled = true;
     };
@@ -75,7 +77,9 @@ export function TrackStar({ packageName }: TrackStarProps) {
     <Popover
       content={
         quotaError ? (
-          <span style={{ color: 'var(--error-main, #e53935)' }}>{quotaError}</span>
+          <span style={{ color: 'var(--error-main, #e53935)' }}>
+            {quotaError}
+          </span>
         ) : (
           <span>{tooltips[status]}</span>
         )

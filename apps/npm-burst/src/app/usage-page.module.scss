@@ -141,7 +141,8 @@
   border-collapse: collapse;
   font-size: var(--font-size-sm);
 
-  th, td {
+  th,
+  td {
     text-align: left;
     padding: var(--spacing-sm) var(--spacing-md);
     border-bottom: 1px solid var(--surface-2);

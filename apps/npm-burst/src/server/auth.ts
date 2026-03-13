@@ -17,7 +17,9 @@ export async function getAuthUserId(
 
   const token = authHeader.slice(7);
   try {
-    const payload = await verifyToken(token, { secretKey: env.CLERK_SECRET_KEY! });
+    const payload = await verifyToken(token, {
+      secretKey: env.CLERK_SECRET_KEY!,
+    });
     return payload.sub;
   } catch {
     return null;
