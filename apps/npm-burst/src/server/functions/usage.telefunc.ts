@@ -5,9 +5,7 @@ import { getUserEmails } from '../clerk-utils';
 import { getPackageMaintainers, isUserMaintainer } from '../npm-maintainers';
 import type { NpmMaintainer } from '../npm-maintainers';
 import { getPackageWeeklyDownloads } from '../npm-downloads';
-
-const MAX_TRACKED_PACKAGES = 5;
-const WEEKLY_DOWNLOAD_THRESHOLD = 500_000;
+import { MAX_TRACKED_PACKAGES, WEEKLY_DOWNLOAD_THRESHOLD } from '../constants';
 
 export interface TrackedPackageInfo {
   packageName: string;

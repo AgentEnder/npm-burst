@@ -1,0 +1,2 @@
+export const MAX_TRACKED_PACKAGES = 5;
+export const WEEKLY_DOWNLOAD_THRESHOLD = 500_000;
