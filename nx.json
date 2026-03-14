@@ -58,7 +58,6 @@
   "plugins": [
     {
       "plugin": "@nx/vite/plugin",
-      "exclude": ["apps/npm-burst/**"],
       "options": {
         "buildTargetName": "build",
         "testTargetName": "test",
