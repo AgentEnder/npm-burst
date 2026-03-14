@@ -9,32 +9,71 @@ import {
   getThemeChartColors,
 } from '../utils/theme-colors';
 import {
+  AdoptionGrouping,
   getVersionAdoptionData,
-  VersionAdoptionSeries,
 } from '../utils/version-adoption';
 import styles from './version-adoption-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 };
 const CHART_HEIGHT = 350;
 
+const GROUPING_LABELS: Record<AdoptionGrouping, string> = {
+  major: 'Major',
+  minor: 'Minor',
+  patch: 'Patch',
+};
+
+function buildColorMap(
+  labels: string[],
+  palette: string[],
+  latestColor: string
+): Map<string, string> {
+  const map = new Map<string, string>();
+  let idx = 0;
+  for (const label of labels) {
+    if (label === 'latest') {
+      map.set('latest', latestColor);
+    } else {
+      map.set(label, palette[idx % palette.length]);
+      idx++;
+    }
+  }
+  return map;
+}
+
 export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   snapshots,
   liveData,
   versionReleases,
+  lowPassFilter,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
+  lowPassFilter: number;
 }) {
   const { theme } = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+  const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
 
   const series = useMemo(
-    () => getVersionAdoptionData(snapshots, liveData, versionReleases),
-    [snapshots, liveData, versionReleases]
+    () =>
+      getVersionAdoptionData(
+        snapshots,
+        liveData,
+        versionReleases,
+        grouping,
+        lowPassFilter
+      ),
+    [snapshots, liveData, versionReleases, grouping, lowPassFilter]
   );
+
+  // Reset hidden series when grouping changes
+  useEffect(() => {
+    setHiddenSeries(new Set());
+  }, [grouping]);
 
   const toggleSeries = useCallback((label: string) => {
     setHiddenSeries((prev) => {
@@ -48,11 +87,35 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     });
   }, []);
 
+  const showAll = useCallback(() => setHiddenSeries(new Set()), []);
+
+  const showOnlyAboveThreshold = useCallback(() => {
+    setHiddenSeries(
+      new Set(series.filter((s) => s.belowThreshold).map((s) => s.label))
+    );
+  }, [series]);
+
   const visibleSeries = useMemo(
     () => series.filter((s) => !hiddenSeries.has(s.label)),
     [series, hiddenSeries]
   );
 
+  const chartColors = getThemeChartColors(theme);
+  const palette = generateThemeColorPalette(
+    series.filter((s) => s.label !== 'latest').length + 1,
+    theme
+  );
+  const colorMap = useMemo(
+    () =>
+      buildColorMap(
+        series.map((s) => s.label),
+        palette,
+        chartColors.centerFill
+      ),
+    [series, palette, chartColors.centerFill]
+  );
+
+  // D3 chart rendering
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || series.length === 0) return;
 
@@ -61,21 +124,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     const height = CHART_HEIGHT;
     const innerWidth = width - MARGIN.left - MARGIN.right;
     const innerHeight = height - MARGIN.top - MARGIN.bottom;
-
-    const chartColors = getThemeChartColors(theme);
-    const palette = generateThemeColorPalette(series.length, theme);
-
-    // Color scale: map series labels to colors, "latest" gets a special treatment
-    const colorMap = new Map<string, string>();
-    let paletteIdx = 0;
-    for (const s of series) {
-      if (s.label === 'latest') {
-        colorMap.set('latest', chartColors.centerFill);
-      } else {
-        colorMap.set(s.label, palette[paletteIdx % palette.length]);
-        paletteIdx++;
-      }
-    }
 
     // Collect all dates
     const allDates = Array.from(
@@ -88,10 +136,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       .range([0, innerWidth])
       .padding(0.1);
 
-    const yScale = d3
-      .scaleLinear()
-      .domain([0, 100])
-      .range([innerHeight, 0]);
+    const yScale = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
@@ -199,7 +244,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       .attr('fill', 'transparent')
       .on('mousemove', (event: MouseEvent) => {
         const [mx] = d3.pointer(event);
-        // Find closest date
         let closestDate = allDates[0];
         let closestDist = Infinity;
         for (const date of allDates) {
@@ -210,16 +254,21 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           }
         }
 
-        // Build tooltip content
         const lines = [`<strong>${closestDate}</strong>`];
-        for (const s of visibleSeries) {
-          const point = s.points.find((p) => p.date === closestDate);
-          if (point) {
-            const color = colorMap.get(s.label) ?? '#888';
-            lines.push(
-              `<span style="color:${color}">${s.label}</span>: ${point.percent.toFixed(1)}%`
-            );
-          }
+        // Sort tooltip entries by percent descending for this date
+        const entries = visibleSeries
+          .map((s) => ({
+            label: s.label,
+            point: s.points.find((p) => p.date === closestDate),
+            color: colorMap.get(s.label) ?? '#888',
+          }))
+          .filter((e) => e.point)
+          .sort((a, b) => (b.point?.percent ?? 0) - (a.point?.percent ?? 0));
+
+        for (const e of entries) {
+          lines.push(
+            `<span style="color:${e.color}">${e.label}</span>: ${e.point!.percent.toFixed(1)}%`
+          );
         }
 
         const containerRect = containerRef.current!.getBoundingClientRect();
@@ -237,7 +286,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           .style('top', `${tooltipY}px`)
           .style('opacity', 1);
 
-        // Vertical indicator line
         g.selectAll('.hover-line').remove();
         g.append('line')
           .attr('class', 'hover-line')
@@ -253,7 +301,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, theme]);
+  }, [series, visibleSeries, theme, colorMap, chartColors]);
 
   if (series.length === 0) {
     return (
@@ -264,34 +312,66 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     );
   }
 
-  // Build palette for legend
-  const chartColors = getThemeChartColors(theme);
-  const palette = generateThemeColorPalette(series.length, theme);
-  const colorMap = new Map<string, string>();
-  let paletteIdx = 0;
-  for (const s of series) {
-    if (s.label === 'latest') {
-      colorMap.set('latest', chartColors.centerFill);
-    } else {
-      colorMap.set(s.label, palette[paletteIdx % palette.length]);
-      paletteIdx++;
-    }
-  }
+  const hasHidden = hiddenSeries.size > 0;
+  const hasBelowThreshold = series.some((s) => s.belowThreshold);
 
   return (
-    <div className={styles.container} ref={containerRef} style={{ position: 'relative' }}>
+    <div
+      className={styles.container}
+      ref={containerRef}
+      style={{ position: 'relative' }}
+    >
+      {/* Grouping selector */}
+      <div className={styles.controls}>
+        <div className={styles.groupingSelector}>
+          <span className={styles.groupingLabel}>Group by</span>
+          {(['major', 'minor', 'patch'] as AdoptionGrouping[]).map((g) => (
+            <button
+              key={g}
+              className={`${styles.groupingButton} ${grouping === g ? styles.groupingActive : ''}`}
+              onClick={() => setGrouping(g)}
+            >
+              {GROUPING_LABELS[g]}
+            </button>
+          ))}
+        </div>
+        <div className={styles.visibilityControls}>
+          {hasHidden && (
+            <button className={styles.visibilityButton} onClick={showAll}>
+              Show all
+            </button>
+          )}
+          {hasBelowThreshold && !hasHidden && (
+            <button
+              className={styles.visibilityButton}
+              onClick={showOnlyAboveThreshold}
+            >
+              Hide below LPF
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className={styles.chart}>
         <svg ref={svgRef} />
       </div>
+
+      {/* Legend with click-to-toggle */}
       <div className={styles.legend}>
         {series.map((s) => {
           const color = colorMap.get(s.label) ?? '#888';
-          const isDimmed = hiddenSeries.has(s.label);
+          const isHidden = hiddenSeries.has(s.label);
+          const isBelowLPF = s.belowThreshold && s.label !== 'latest';
           return (
             <div
               key={s.label}
-              className={`${styles.legendItem} ${isDimmed ? styles.legendItemDimmed : ''}`}
+              className={`${styles.legendItem} ${isHidden ? styles.legendItemDimmed : ''} ${isBelowLPF && !isHidden ? styles.legendItemBelowLPF : ''}`}
               onClick={() => toggleSeries(s.label)}
+              title={
+                isBelowLPF
+                  ? `Below LPF threshold (${(lowPassFilter * 100).toFixed(1)}%)`
+                  : `Click to ${isHidden ? 'show' : 'hide'}`
+              }
             >
               <span
                 className={

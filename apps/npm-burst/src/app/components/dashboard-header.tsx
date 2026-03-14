@@ -89,48 +89,44 @@ export const DashboardHeader = memo(function DashboardHeader() {
           )}
         </div>
 
-        {viewMode === 'sunburst' && (
-          <>
-            {/* Divider */}
-            <div className={styles.divider} />
+        {/* Divider */}
+        <div className={styles.divider} />
 
-            {/* Low pass filter */}
-            <div className={styles.filterGroup}>
-              <label className={styles.filterLabel}>
-                LPF
-                <Popover
-                  content={
-                    <div className={styles.popoverContent}>
-                      <strong>Low Pass Filter</strong>
-                      <p>
-                        Versions with fewer than this percentage of downloads
-                        are aggregated into summary nodes. Click aggregated
-                        nodes to expand.
-                      </p>
-                    </div>
-                  }
-                >
-                  <Info size={14} className={styles.infoIcon} />
-                </Popover>
-              </label>
-              <div className={styles.filterInput}>
-                <input
-                  type="number"
-                  step={0.1}
-                  min={0}
-                  max={100}
-                  value={lowPassFilter * 100}
-                  onChange={(e) => {
-                    const val = e.target.valueAsNumber;
-                    if (!Number.isNaN(val)) setLowPassFilter(val / 100);
-                  }}
-                  className={styles.numberInput}
-                />
-                <span className={styles.filterSuffix}>%</span>
-              </div>
-            </div>
-          </>
-        )}
+        {/* Low pass filter */}
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>
+            LPF
+            <Popover
+              content={
+                <div className={styles.popoverContent}>
+                  <strong>Low Pass Filter</strong>
+                  <p>
+                    {viewMode === 'sunburst'
+                      ? 'Versions with fewer than this percentage of downloads are aggregated into summary nodes. Click aggregated nodes to expand.'
+                      : 'Version groups with a smaller average share of downloads are dimmed in the legend. Use "Hide below LPF" to remove them from the chart.'}
+                  </p>
+                </div>
+              }
+            >
+              <Info size={14} className={styles.infoIcon} />
+            </Popover>
+          </label>
+          <div className={styles.filterInput}>
+            <input
+              type="number"
+              step={0.1}
+              min={0}
+              max={100}
+              value={lowPassFilter * 100}
+              onChange={(e) => {
+                const val = e.target.valueAsNumber;
+                if (!Number.isNaN(val)) setLowPassFilter(val / 100);
+              }}
+              className={styles.numberInput}
+            />
+            <span className={styles.filterSuffix}>%</span>
+          </div>
+        </div>
       </div>
     </div>
   );

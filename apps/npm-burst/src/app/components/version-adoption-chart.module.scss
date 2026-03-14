@@ -4,6 +4,91 @@
   margin: var(--spacing-md) auto;
 }
 
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.groupingSelector {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 3px;
+}
+
+.groupingLabel {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  padding: 0 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.groupingButton {
+  padding: 4px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  font-family: var(--font-family);
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--text-secondary);
+    background-color: var(--hover-overlay);
+  }
+}
+
+.groupingActive {
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--primary-main), var(--accent-main));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  &:hover {
+    color: var(--text-primary);
+    background: linear-gradient(
+      135deg,
+      var(--primary-main),
+      var(--accent-main)
+    );
+  }
+}
+
+.visibilityControls {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.visibilityButton {
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  font-family: var(--font-family);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--text-primary);
+    border-color: var(--primary-main);
+  }
+}
+
 .chart {
   width: 100%;
 
@@ -53,7 +138,12 @@
 }
 
 .legendItemDimmed {
-  opacity: 0.35;
+  opacity: 0.3;
+}
+
+.legendItemBelowLPF {
+  opacity: 0.55;
+  font-style: italic;
 }
 
 .legendSwatch {
@@ -76,4 +166,19 @@
   padding: var(--spacing-xl);
   color: var(--text-tertiary);
   font-size: var(--font-size-sm);
+}
+
+@media (max-width: 768px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .groupingSelector {
+    justify-content: center;
+  }
+
+  .visibilityControls {
+    justify-content: center;
+  }
 }

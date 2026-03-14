@@ -57,6 +57,7 @@ export function PackageDashboard() {
   const versionReleases = useAppStore((s) => s.versionReleases);
   const viewMode = useAppStore((s) => s.viewMode);
   const liveData = useAppStore((s) => s.liveData);
+  const lowPassFilter = useAppStore((s) => s.lowPassFilter);
 
   const handleVersionClick = useAppStore((s) => s.handleVersionClick);
   const resetSelection = useAppStore((s) => s.resetSelection);
@@ -128,6 +129,7 @@ export function PackageDashboard() {
               snapshots={snapshots}
               liveData={liveData}
               versionReleases={versionReleases}
+              lowPassFilter={lowPassFilter}
             />
           )}
         </div>
