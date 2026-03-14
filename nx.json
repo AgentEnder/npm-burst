@@ -4,6 +4,8 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": [
+        "production",
+        "^production",
         {
           "env": "VITE_CLERK_PUBLISHABLE_KEY"
         }
