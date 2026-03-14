@@ -11,7 +11,10 @@ import {
   SunburstLeafNode,
 } from './components/sunburst';
 import { Table } from './components/table';
+import { DownloadVolumeChart } from './components/download-volume-chart';
+import { MigrationVelocityChart } from './components/migration-velocity-chart';
 import { VersionAdoptionChart } from './components/version-adoption-chart';
+import { VersionLifecycleChart } from './components/version-lifecycle-chart';
 import { usePackageData } from './hooks/use-package-data';
 import { appStore, useAppStore } from './store';
 import { findNodeByVersion } from './utils/chart-data';
@@ -124,14 +127,32 @@ export function PackageDashboard() {
                 />
               ) : null}
             </>
-          ) : (
+          ) : viewMode === 'adoption' ? (
             <VersionAdoptionChart
               snapshots={snapshots}
               liveData={liveData}
               versionReleases={versionReleases}
               lowPassFilter={lowPassFilter}
             />
-          )}
+          ) : viewMode === 'volume' ? (
+            <DownloadVolumeChart
+              snapshots={snapshots}
+              liveData={liveData}
+              versionReleases={versionReleases}
+            />
+          ) : viewMode === 'migration' ? (
+            <MigrationVelocityChart
+              snapshots={snapshots}
+              liveData={liveData}
+              versionReleases={versionReleases}
+            />
+          ) : viewMode === 'lifecycle' ? (
+            <VersionLifecycleChart
+              snapshots={snapshots}
+              liveData={liveData}
+              versionReleases={versionReleases}
+            />
+          ) : null}
         </div>
       )}
     </Card>
