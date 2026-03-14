@@ -11,7 +11,13 @@ export default defineConfig({
     port: 4200,
     host: 'localhost',
   },
-  plugins: [react(), nxViteTsPaths(), vike(), telefuncDevContext(), telefunc()],
+  plugins: [
+    react(),
+    nxViteTsPaths(),
+    ...((globalThis as any).NX_GRAPH_CREATION ? [] : [vike()]),
+    telefuncDevContext(),
+    telefunc(),
+  ],
   build: {
     outDir: './dist',
     reportCompressedSize: true,
