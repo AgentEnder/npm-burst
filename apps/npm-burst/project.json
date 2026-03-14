@@ -5,25 +5,6 @@
   "projectType": "application",
   "tags": [],
   "targets": {
-    "build": {
-      "command": "vite build",
-      "options": { "cwd": "apps/npm-burst" },
-      "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"],
-      "outputs": ["{projectRoot}/dist"]
-    },
-    "serve": {
-      "command": "vite",
-      "options": { "cwd": "apps/npm-burst" },
-      "continuous": true
-    },
-    "test": {
-      "command": "vitest",
-      "options": { "cwd": "apps/npm-burst" },
-      "cache": true,
-      "inputs": ["default", "^production"]
-    },
     "deploy": {
       "command": "wrangler pages deploy",
       "dependsOn": ["build"],
