@@ -48,8 +48,8 @@ export interface AppState {
   isLoading: boolean;
   error: string | null;
   showDataTable: boolean;
-  /** 'sunburst' or 'adoption' view */
-  viewMode: 'sunburst' | 'adoption';
+  /** View mode for the package dashboard */
+  viewMode: 'sunburst' | 'adoption' | 'volume' | 'migration' | 'lifecycle';
   /** Incremented to force re-fetch after cache invalidation */
   fetchGeneration: number;
 
@@ -77,7 +77,7 @@ export interface AppState {
   setLoading: (v: boolean) => void;
   setError: (v: string | null) => void;
   setShowDataTable: (v: boolean) => void;
-  setViewMode: (v: 'sunburst' | 'adoption') => void;
+  setViewMode: (v: 'sunburst' | 'adoption' | 'volume' | 'migration' | 'lifecycle') => void;
 
   recomputeChartData: () => void;
   cacheCurrentPackageData: () => void;
