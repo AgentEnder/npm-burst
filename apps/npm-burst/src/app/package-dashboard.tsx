@@ -11,6 +11,7 @@ import {
   SunburstLeafNode,
 } from './components/sunburst';
 import { Table } from './components/table';
+import { VersionAdoptionChart } from './components/version-adoption-chart';
 import { usePackageData } from './hooks/use-package-data';
 import { appStore, useAppStore } from './store';
 import { findNodeByVersion } from './utils/chart-data';
@@ -54,6 +55,9 @@ export function PackageDashboard() {
   const snapshots = useAppStore((s) => s.snapshots);
   const snapshotIndex = useAppStore((s) => s.snapshotIndex);
   const versionReleases = useAppStore((s) => s.versionReleases);
+  const viewMode = useAppStore((s) => s.viewMode);
+  const liveData = useAppStore((s) => s.liveData);
+  const lowPassFilter = useAppStore((s) => s.lowPassFilter);
 
   const handleVersionClick = useAppStore((s) => s.handleVersionClick);
   const resetSelection = useAppStore((s) => s.resetSelection);
@@ -94,23 +98,40 @@ export function PackageDashboard() {
             />
           )}
 
-          {sunburstChartData ? (
-            <Sunburst
-              data={sunburstChartData}
-              sortByVersion={sortByVersion}
-              onVersionChange={handleVersionClick}
-              initialSelection={selectedVersion}
-            />
-          ) : null}
+          {viewMode === 'sunburst' ? (
+            <>
+              {sunburstChartData ? (
+                <Sunburst
+                  data={sunburstChartData}
+                  sortByVersion={sortByVersion}
+                  onVersionChange={handleVersionClick}
+                  initialSelection={selectedVersion}
+                />
+              ) : null}
 
-          {(selectedVersion !== null || expandedNodes.length > 0) && (
-            <button className={styles.clearButton} onClick={resetSelection}>
-              ↺ Reset Selection
-            </button>
+              {(selectedVersion !== null || expandedNodes.length > 0) && (
+                <button
+                  className={styles.clearButton}
+                  onClick={resetSelection}
+                >
+                  ↺ Reset Selection
+                </button>
+              )}
+              {selectedNode && showDataTable ? (
+                <Table
+                  data={selectedNode}
+                  onVersionClick={handleVersionClick}
+                />
+              ) : null}
+            </>
+          ) : (
+            <VersionAdoptionChart
+              snapshots={snapshots}
+              liveData={liveData}
+              versionReleases={versionReleases}
+              lowPassFilter={lowPassFilter}
+            />
           )}
-          {selectedNode && showDataTable ? (
-            <Table data={selectedNode} onVersionClick={handleVersionClick} />
-          ) : null}
         </div>
       )}
     </Card>

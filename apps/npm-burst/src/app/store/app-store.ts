@@ -48,6 +48,8 @@ export interface AppState {
   isLoading: boolean;
   error: string | null;
   showDataTable: boolean;
+  /** 'sunburst' or 'adoption' view */
+  viewMode: 'sunburst' | 'adoption';
   /** Incremented to force re-fetch after cache invalidation */
   fetchGeneration: number;
 
@@ -75,6 +77,7 @@ export interface AppState {
   setLoading: (v: boolean) => void;
   setError: (v: string | null) => void;
   setShowDataTable: (v: boolean) => void;
+  setViewMode: (v: 'sunburst' | 'adoption') => void;
 
   recomputeChartData: () => void;
   cacheCurrentPackageData: () => void;
@@ -125,6 +128,7 @@ export const appStore = createStore<AppState>((set, get) => ({
   error: null,
   fetchGeneration: 0,
   showDataTable: true,
+  viewMode: 'sunburst',
 
   // === Actions ===
 
@@ -230,6 +234,7 @@ export const appStore = createStore<AppState>((set, get) => ({
   setLoading: (v) => set({ isLoading: v }),
   setError: (v) => set({ error: v }),
   setShowDataTable: (v) => set({ showDataTable: v }),
+  setViewMode: (v) => set({ viewMode: v }),
 
   recomputeChartData: () => {
     const state = get();
