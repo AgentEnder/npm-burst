@@ -1,9 +1,18 @@
-import { ExternalLink, Info } from 'lucide-react';
+import { ChevronDown, ExternalLink, Info } from 'lucide-react';
 import { memo } from 'react';
 import { useAppStore } from '../store';
+import type { AppState } from '../store/app-store';
 import styles from './dashboard-header.module.scss';
 import { Popover } from './popover';
 import { TrackStar } from './track-star';
+
+const VIEW_MODES: { value: AppState['viewMode']; label: string }[] = [
+  { value: 'sunburst', label: 'Breakdown' },
+  { value: 'adoption', label: 'Adoption' },
+  { value: 'volume', label: 'Volume' },
+  { value: 'migration', label: 'Migration' },
+  { value: 'lifecycle', label: 'Lifecycle' },
+];
 
 export const DashboardHeader = memo(function DashboardHeader() {
   const npmPackageName = useAppStore((s) => s.npmPackageName);
@@ -37,38 +46,35 @@ export const DashboardHeader = memo(function DashboardHeader() {
 
       {/* Controls bar */}
       <div className={styles.header}>
-        {/* View mode selector */}
+        {/* View mode selector — buttons on desktop */}
         <div className={styles.viewModeGroup}>
-          <button
-            className={`${styles.viewModeButton} ${viewMode === 'sunburst' ? styles.viewModeActive : ''}`}
-            onClick={() => setViewMode('sunburst')}
+          {VIEW_MODES.map((m) => (
+            <button
+              key={m.value}
+              className={`${styles.viewModeButton} ${viewMode === m.value ? styles.viewModeActive : ''}`}
+              onClick={() => setViewMode(m.value)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {/* View mode selector — dropdown on mobile */}
+        <div className={styles.viewModeSelect}>
+          <select
+            value={viewMode}
+            onChange={(e) =>
+              setViewMode(e.target.value as AppState['viewMode'])
+            }
+            className={styles.viewModeSelectInput}
           >
-            Breakdown
-          </button>
-          <button
-            className={`${styles.viewModeButton} ${viewMode === 'adoption' ? styles.viewModeActive : ''}`}
-            onClick={() => setViewMode('adoption')}
-          >
-            Adoption
-          </button>
-          <button
-            className={`${styles.viewModeButton} ${viewMode === 'volume' ? styles.viewModeActive : ''}`}
-            onClick={() => setViewMode('volume')}
-          >
-            Volume
-          </button>
-          <button
-            className={`${styles.viewModeButton} ${viewMode === 'migration' ? styles.viewModeActive : ''}`}
-            onClick={() => setViewMode('migration')}
-          >
-            Migration
-          </button>
-          <button
-            className={`${styles.viewModeButton} ${viewMode === 'lifecycle' ? styles.viewModeActive : ''}`}
-            onClick={() => setViewMode('lifecycle')}
-          >
-            Lifecycle
-          </button>
+            {VIEW_MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className={styles.viewModeSelectIcon} />
         </div>
 
         {viewMode === 'sunburst' && (
