@@ -6,17 +6,27 @@ export interface VolumePoint {
 }
 
 /**
- * Converts daily download data from the npm downloads API into volume points.
- * Uses the total downloads endpoint directly rather than aggregating
- * per-version data from snapshots.
+ * Converts daily download data from the npm downloads API into volume points
+ * using a rolling 7-day sum. Each point represents the total downloads for
+ * the preceding 7 days, which smooths out day-of-week noise.
  */
 export function getDownloadVolumeData(
   totalDownloads: DailyDownloadPoint[]
 ): VolumePoint[] {
-  return totalDownloads.map((d) => ({
-    date: d.day,
-    totalDownloads: d.downloads,
-  }));
+  if (totalDownloads.length < 7) return [];
+
+  const points: VolumePoint[] = [];
+  for (let i = 6; i < totalDownloads.length; i++) {
+    let sum = 0;
+    for (let j = i - 6; j <= i; j++) {
+      sum += totalDownloads[j].downloads;
+    }
+    points.push({
+      date: totalDownloads[i].day,
+      totalDownloads: sum,
+    });
+  }
+  return points;
 }
 
 /**

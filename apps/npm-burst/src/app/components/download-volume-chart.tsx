@@ -200,7 +200,7 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
 
         const lines = [
           `<strong>${point.date}</strong>`,
-          `Total: ${formatDownloadCount(point.totalDownloads)} downloads`,
+          `Total: ${formatDownloadCount(point.totalDownloads)} downloads/week`,
         ];
         for (const vr of releasesOnDate) {
           lines.push(
