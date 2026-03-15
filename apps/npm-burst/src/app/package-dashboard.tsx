@@ -60,6 +60,7 @@ export function PackageDashboard() {
   const versionReleases = useAppStore((s) => s.versionReleases);
   const viewMode = useAppStore((s) => s.viewMode);
   const liveData = useAppStore((s) => s.liveData);
+  const totalDownloads = useAppStore((s) => s.totalDownloads);
   const lowPassFilter = useAppStore((s) => s.lowPassFilter);
 
   const handleVersionClick = useAppStore((s) => s.handleVersionClick);
@@ -136,8 +137,7 @@ export function PackageDashboard() {
             />
           ) : viewMode === 'volume' ? (
             <DownloadVolumeChart
-              snapshots={snapshots}
-              liveData={liveData}
+              totalDownloads={totalDownloads}
               versionReleases={versionReleases}
             />
           ) : viewMode === 'migration' ? (

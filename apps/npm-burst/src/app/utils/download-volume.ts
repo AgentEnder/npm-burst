@@ -1,5 +1,4 @@
-import type { Snapshot } from '../../server/functions/snapshots.telefunc';
-import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
+import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 
 export interface VolumePoint {
   date: string;
@@ -7,33 +6,17 @@ export interface VolumePoint {
 }
 
 /**
- * Computes total download volume per snapshot date.
- * Sums all version downloads for each snapshot to get absolute totals.
+ * Converts daily download data from the npm downloads API into volume points.
+ * Uses the total downloads endpoint directly rather than aggregating
+ * per-version data from snapshots.
  */
 export function getDownloadVolumeData(
-  snapshots: Snapshot[],
-  liveData: NpmDownloadsByVersion | null
+  totalDownloads: DailyDownloadPoint[]
 ): VolumePoint[] {
-  const points: VolumePoint[] = snapshots.map((snap) => ({
-    date: snap.date,
-    totalDownloads: Object.values(snap.downloads).reduce(
-      (sum, c) => sum + c,
-      0
-    ),
+  return totalDownloads.map((d) => ({
+    date: d.day,
+    totalDownloads: d.downloads,
   }));
-
-  if (liveData) {
-    const today = new Date().toISOString().slice(0, 10);
-    points.push({
-      date: today,
-      totalDownloads: Object.values(liveData.downloads).reduce(
-        (sum, c) => sum + c,
-        0
-      ),
-    });
-  }
-
-  return points;
 }
 
 /**

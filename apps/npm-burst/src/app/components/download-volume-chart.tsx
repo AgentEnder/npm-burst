@@ -1,8 +1,7 @@
 import * as d3 from 'd3';
 import { memo, useEffect, useMemo, useRef } from 'react';
-import type { Snapshot } from '../../server/functions/snapshots.telefunc';
+import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
-import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { useTheme } from '../context/theme-context';
 import { getThemeChartColors } from '../utils/theme-colors';
 import {
@@ -15,12 +14,10 @@ const MARGIN = { top: 20, right: 20, bottom: 40, left: 60 };
 const CHART_HEIGHT = 350;
 
 export const DownloadVolumeChart = memo(function DownloadVolumeChart({
-  snapshots,
-  liveData,
+  totalDownloads,
   versionReleases,
 }: {
-  snapshots: Snapshot[];
-  liveData: NpmDownloadsByVersion | null;
+  totalDownloads: DailyDownloadPoint[];
   versionReleases: VersionRelease[];
 }) {
   const { theme } = useTheme();
@@ -28,8 +25,8 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const volumeData = useMemo(
-    () => getDownloadVolumeData(snapshots, liveData),
-    [snapshots, liveData]
+    () => getDownloadVolumeData(totalDownloads),
+    [totalDownloads]
   );
 
   const chartColors = getThemeChartColors(theme);
@@ -44,14 +41,14 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
     const innerWidth = width - MARGIN.left - MARGIN.right;
     const innerHeight = height - MARGIN.top - MARGIN.bottom;
 
-    const allDates = volumeData.map((d) => d.date);
+    const parseDate = (d: string) => new Date(d + 'T00:00:00');
+    const dates = volumeData.map((d) => parseDate(d.date));
     const maxDownloads = d3.max(volumeData, (d) => d.totalDownloads) ?? 0;
 
     const xScale = d3
-      .scalePoint<string>()
-      .domain(allDates)
-      .range([0, innerWidth])
-      .padding(0.1);
+      .scaleTime()
+      .domain(d3.extent(dates) as [Date, Date])
+      .range([0, innerWidth]);
 
     const yScale = d3
       .scaleLinear()
@@ -78,19 +75,14 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
       );
 
     // X axis
-    const tickInterval = Math.max(1, Math.floor(allDates.length / 8));
-    const tickValues = allDates.filter((_, i) => i % tickInterval === 0);
     g.append('g')
       .attr('class', 'axis')
       .attr('transform', `translate(0,${innerHeight})`)
       .call(
         d3
           .axisBottom(xScale)
-          .tickValues(tickValues)
-          .tickFormat((d) => {
-            const date = new Date(d + 'T00:00:00');
-            return d3.timeFormat('%b %d, %Y')(date);
-          })
+          .ticks(8)
+          .tickFormat((d) => d3.timeFormat('%b %d, %Y')(d as Date))
       )
       .selectAll('text')
       .attr('transform', 'rotate(-25)')
@@ -109,7 +101,7 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
     // Area fill
     const areaGen = d3
       .area<{ date: string; totalDownloads: number }>()
-      .x((d) => xScale(d.date) ?? 0)
+      .x((d) => xScale(parseDate(d.date)))
       .y0(innerHeight)
       .y1((d) => yScale(d.totalDownloads))
       .curve(d3.curveMonotoneX);
@@ -126,7 +118,7 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
     // Line
     const lineGen = d3
       .line<{ date: string; totalDownloads: number }>()
-      .x((d) => xScale(d.date) ?? 0)
+      .x((d) => xScale(parseDate(d.date)))
       .y((d) => yScale(d.totalDownloads))
       .curve(d3.curveMonotoneX);
 
@@ -137,28 +129,22 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
       .attr('stroke-width', 2.5)
       .attr('d', lineGen);
 
-    // Dots
-    g.selectAll(null)
-      .data(volumeData)
-      .join('circle')
-      .attr('cx', (d) => xScale(d.date) ?? 0)
-      .attr('cy', (d) => yScale(d.totalDownloads))
-      .attr('r', 3)
-      .attr('fill', lineColor)
-      .attr('stroke', theme === 'dark' ? '#1e1e1e' : '#ffffff')
-      .attr('stroke-width', 1.5);
-
-    // Version release markers
+    // Version release markers (vertical ticks)
+    const [domainStart, domainEnd] = xScale.domain();
     for (const vr of versionReleases) {
-      const x = xScale(vr.date);
-      if (x === undefined) continue;
+      const vrDate = parseDate(vr.date);
+      if (vrDate < domainStart || vrDate > domainEnd) continue;
 
+      const x = xScale(vrDate);
       g.append('line')
         .attr('x1', x)
         .attr('x2', x)
         .attr('y1', 0)
         .attr('y2', innerHeight)
-        .attr('stroke', theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
+        .attr(
+          'stroke',
+          theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'
+        )
         .attr('stroke-width', 1)
         .attr('stroke-dasharray', '4,3');
     }
@@ -189,27 +175,32 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
       .attr('fill', 'transparent')
       .on('mousemove', (event: MouseEvent) => {
         const [mx] = d3.pointer(event);
-        let closestDate = allDates[0];
+        const hoveredDate = xScale.invert(mx);
+
+        // Find closest data point
+        let closestIdx = 0;
         let closestDist = Infinity;
-        for (const date of allDates) {
-          const dx = Math.abs((xScale(date) ?? 0) - mx);
-          if (dx < closestDist) {
-            closestDist = dx;
-            closestDate = date;
+        for (let i = 0; i < volumeData.length; i++) {
+          const dist = Math.abs(
+            parseDate(volumeData[i].date).getTime() - hoveredDate.getTime()
+          );
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestIdx = i;
           }
         }
 
-        const point = volumeData.find((d) => d.date === closestDate);
+        const point = volumeData[closestIdx];
         if (!point) return;
 
         // Check if any version was released on this date
         const releasesOnDate = versionReleases.filter(
-          (vr) => vr.date === closestDate
+          (vr) => vr.date === point.date
         );
 
         const lines = [
-          `<strong>${closestDate}</strong>`,
-          `Total: ${formatDownloadCount(point.totalDownloads)} downloads/week`,
+          `<strong>${point.date}</strong>`,
+          `Total: ${formatDownloadCount(point.totalDownloads)} downloads`,
         ];
         for (const vr of releasesOnDate) {
           lines.push(
@@ -220,7 +211,7 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
         const containerRect = containerRef.current!.getBoundingClientRect();
         const svgRect = svgRef.current!.getBoundingClientRect();
         const tooltipX =
-          (xScale(closestDate) ?? 0) +
+          xScale(parseDate(point.date)) +
           MARGIN.left +
           (svgRect.left - containerRect.left) +
           15;
@@ -235,8 +226,8 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
         g.selectAll('.hover-line').remove();
         g.append('line')
           .attr('class', 'hover-line')
-          .attr('x1', xScale(closestDate) ?? 0)
-          .attr('x2', xScale(closestDate) ?? 0)
+          .attr('x1', xScale(parseDate(point.date)))
+          .attr('x2', xScale(parseDate(point.date)))
           .attr('y1', 0)
           .attr('y2', innerHeight)
           .attr('stroke', chartColors.tooltipBorder)
@@ -252,8 +243,7 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
   if (volumeData.length === 0) {
     return (
       <div className={styles.noData}>
-        No historical snapshot data available. Track this package to start
-        collecting download volume data over time.
+        No download volume data available for this package.
       </div>
     );
   }

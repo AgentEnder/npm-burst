@@ -1,7 +1,11 @@
-import { getDownloadsByVersion } from '@npm-burst/npm-data-access';
+import {
+  getDownloadsByVersion,
+  getTotalDownloadsRange,
+} from '@npm-burst/npm-data-access';
 import { useEffect, useRef } from 'react';
 import { onGetDownloads } from '../../server/functions/downloads.telefunc';
 import { onGetSnapshots } from '../../server/functions/snapshots.telefunc';
+import { onGetTotalDownloads } from '../../server/functions/total-downloads.telefunc';
 import { onGetVersionDates } from '../../server/functions/versions.telefunc';
 import { useSafeAuth } from '../context/auth-context';
 import { appStore, useAppStore } from '../store';
@@ -54,13 +58,31 @@ export function usePackageData() {
       .then(({ versions }) => versions)
       .catch(() => []);
 
-    Promise.all([fetchLive, fetchSnapshots, fetchVersions])
-      .then(([liveData, snapshots, versions]) => {
+    // Fetch total downloads for last 18 months (npm API max range)
+    const end = new Date().toISOString().slice(0, 10);
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 18);
+    const start = startDate.toISOString().slice(0, 10);
+
+    const fetchTotalDownloads = isSignedIn
+      ? onGetTotalDownloads(npmPackageName, start, end)
+          .then(({ downloads }) => downloads)
+          .catch(() => [])
+      : (() => {
+          const { get } = getTotalDownloadsRange(npmPackageName, start, end);
+          return get()
+            .then((data) => data.downloads)
+            .catch(() => []);
+        })();
+
+    Promise.all([fetchLive, fetchSnapshots, fetchVersions, fetchTotalDownloads])
+      .then(([liveData, snapshots, versions, totalDownloads]) => {
         if (cancelled) return;
         const s = appStore.getState();
         s.setLiveData(liveData);
         s.setSnapshots(snapshots);
         s.setVersionReleases(versions);
+        s.setTotalDownloads(totalDownloads);
         s.setSnapshotIndex(null);
         s.cacheCurrentPackageData();
         s.recomputeChartData();

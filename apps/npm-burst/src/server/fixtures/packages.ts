@@ -503,3 +503,52 @@ export function getFixtureVersionDates(
 ): Record<string, string> | null {
   return versionReleaseDates[name] ?? null;
 }
+
+/**
+ * Generate fixture total download data from snapshot fixtures.
+ * Returns daily download points derived from snapshot data by
+ * filling in daily data between snapshot dates with interpolation.
+ */
+export function getFixtureTotalDownloads(
+  name: string
+): { day: string; downloads: number }[] {
+  const snapshots = snapshotFixtures[name];
+  if (!snapshots || snapshots.length === 0) return [];
+
+  const points: { day: string; downloads: number }[] = [];
+
+  for (let i = 0; i < snapshots.length; i++) {
+    const snap = snapshots[i];
+    const total = Object.values(snap.downloads).reduce(
+      (sum, c) => sum + c,
+      0
+    );
+    const startDate = new Date(snap.date + 'T00:00:00');
+
+    if (i < snapshots.length - 1) {
+      const endDate = new Date(snapshots[i + 1].date + 'T00:00:00');
+      const endTotal = Object.values(snapshots[i + 1].downloads).reduce(
+        (sum, c) => sum + c,
+        0
+      );
+      const days = Math.round(
+        (endDate.getTime() - startDate.getTime()) / 86400000
+      );
+
+      for (let d = 0; d < days; d++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + d);
+        const t = d / days;
+        const interpolated = Math.round(total + (endTotal - total) * t);
+        points.push({
+          day: date.toISOString().slice(0, 10),
+          downloads: interpolated,
+        });
+      }
+    } else {
+      points.push({ day: snap.date, downloads: total });
+    }
+  }
+
+  return points;
+}
