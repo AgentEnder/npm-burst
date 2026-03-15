@@ -70,6 +70,45 @@
   top: -1px;
 }
 
+.exportButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  font-family: var(--font-family);
+  color: var(--text-secondary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+
+  &:hover:not(:disabled) {
+    color: var(--text-primary);
+    border-color: var(--primary-main);
+    background-color: var(--hover-overlay);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+  }
+}
+
 .divider {
   width: 1px;
   height: 18px;
