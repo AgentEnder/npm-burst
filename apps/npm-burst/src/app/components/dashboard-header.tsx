@@ -1,8 +1,7 @@
 import { Download, ExternalLink, Info } from 'lucide-react';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback } from 'react';
 import { useAppStore } from '../store';
 import type { AppState } from '../store/app-store';
-import { exportDataAsZip } from '../utils/export-data';
 import styles from './dashboard-header.module.scss';
 import { Popover } from './popover';
 import { SegmentedControl } from './segmented-control';
@@ -23,32 +22,16 @@ export const DashboardHeader = memo(function DashboardHeader() {
   const lowPassFilter = useAppStore((s) => s.lowPassFilter);
   const viewMode = useAppStore((s) => s.viewMode);
   const liveData = useAppStore((s) => s.liveData);
-  const snapshots = useAppStore((s) => s.snapshots);
-  const versionReleases = useAppStore((s) => s.versionReleases);
-  const totalDownloads = useAppStore((s) => s.totalDownloads);
-  const snapshotIndex = useAppStore((s) => s.snapshotIndex);
   const setSortByVersion = useAppStore((s) => s.setSortByVersion);
   const setShowDataTable = useAppStore((s) => s.setShowDataTable);
   const setLowPassFilter = useAppStore((s) => s.setLowPassFilter);
   const setViewMode = useAppStore((s) => s.setViewMode);
 
-  const [isExporting, setIsExporting] = useState(false);
-
-  const handleExport = useCallback(async () => {
-    setIsExporting(true);
-    try {
-      await exportDataAsZip({
-        packageName: npmPackageName,
-        liveData,
-        snapshots,
-        versionReleases,
-        totalDownloads,
-        snapshotIndex,
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  }, [npmPackageName, liveData, snapshots, versionReleases, totalDownloads, snapshotIndex]);
+  const handleExport = useCallback(() => {
+    const base = import.meta.env.BASE_URL || '/';
+    const baseNormalized = base.endsWith('/') ? base : base + '/';
+    window.open(`${baseNormalized}export`, '_blank');
+  }, []);
 
   return (
     <div className={styles.wrapper}>
@@ -70,11 +53,11 @@ export const DashboardHeader = memo(function DashboardHeader() {
         <button
           className={styles.exportButton}
           onClick={handleExport}
-          disabled={isExporting || !liveData}
-          title="Export data as ZIP"
+          disabled={!liveData}
+          title="Export data"
         >
           <Download size={14} />
-          <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+          <span>Export</span>
         </button>
       </div>
 
