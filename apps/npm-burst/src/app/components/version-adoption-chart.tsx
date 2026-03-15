@@ -218,6 +218,34 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         .attr('stroke-width', 1.5);
     }
 
+    // Version release markers (vertical ticks)
+    if (allDates.length >= 2) {
+      const firstDate = new Date(allDates[0] + 'T00:00:00');
+      const lastDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
+      const timeScale = d3
+        .scaleTime()
+        .domain([firstDate, lastDate])
+        .range([xScale(allDates[0]) ?? 0, xScale(allDates[allDates.length - 1]) ?? innerWidth]);
+
+      for (const vr of versionReleases) {
+        const vrDate = new Date(vr.date + 'T00:00:00');
+        if (vrDate < firstDate || vrDate > lastDate) continue;
+
+        const x = timeScale(vrDate);
+        g.append('line')
+          .attr('x1', x)
+          .attr('x2', x)
+          .attr('y1', 0)
+          .attr('y2', innerHeight)
+          .attr(
+            'stroke',
+            theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'
+          )
+          .attr('stroke-width', 1)
+          .attr('stroke-dasharray', '4,3');
+      }
+    }
+
     // Tooltip
     const tooltip = d3
       .select(containerRef.current)
@@ -301,7 +329,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, theme, colorMap, chartColors]);
+  }, [series, visibleSeries, versionReleases, theme, colorMap, chartColors]);
 
   if (series.length === 0) {
     return (

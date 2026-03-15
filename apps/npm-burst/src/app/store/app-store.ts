@@ -2,6 +2,7 @@ import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
+import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { SunburstData } from '../components/sunburst';
 import {
@@ -20,6 +21,7 @@ interface PackageCache {
   liveData: NpmDownloadsByVersion;
   snapshots: Snapshot[];
   versionReleases: VersionRelease[];
+  totalDownloads: DailyDownloadPoint[];
 }
 
 export interface AppState {
@@ -34,6 +36,7 @@ export interface AppState {
   liveData: NpmDownloadsByVersion | null;
   snapshots: Snapshot[];
   versionReleases: VersionRelease[];
+  totalDownloads: DailyDownloadPoint[];
 
   // Per-package cache
   packageCache: Record<string, PackageCache>;
@@ -63,6 +66,7 @@ export interface AppState {
   setLiveData: (data: NpmDownloadsByVersion | null) => void;
   setSnapshots: (snapshots: Snapshot[]) => void;
   setVersionReleases: (releases: VersionRelease[]) => void;
+  setTotalDownloads: (downloads: DailyDownloadPoint[]) => void;
 
   setSnapshotIndex: (idx: number | null) => void;
   previousSnapshot: () => void;
@@ -115,6 +119,7 @@ export const appStore = createStore<AppState>((set, get) => ({
   liveData: null,
   snapshots: [],
   versionReleases: [],
+  totalDownloads: [],
   packageCache: {},
 
   // Navigation
@@ -150,6 +155,7 @@ export const appStore = createStore<AppState>((set, get) => ({
   setLiveData: (data) => set({ liveData: data }),
   setSnapshots: (snapshots) => set({ snapshots }),
   setVersionReleases: (releases) => set({ versionReleases: releases }),
+  setTotalDownloads: (downloads) => set({ totalDownloads: downloads }),
 
   setSnapshotIndex: (idx) => {
     set({ snapshotIndex: idx });
@@ -266,13 +272,14 @@ export const appStore = createStore<AppState>((set, get) => ({
       liveData,
       snapshots,
       versionReleases,
+      totalDownloads,
       packageCache,
     } = get();
     if (!liveData) return;
     set({
       packageCache: {
         ...packageCache,
-        [npmPackageName]: { liveData, snapshots, versionReleases },
+        [npmPackageName]: { liveData, snapshots, versionReleases, totalDownloads },
       },
     });
   },
@@ -285,6 +292,7 @@ export const appStore = createStore<AppState>((set, get) => ({
       liveData: cached.liveData,
       snapshots: cached.snapshots,
       versionReleases: cached.versionReleases,
+      totalDownloads: cached.totalDownloads,
       snapshotIndex: null,
     });
     return true;
