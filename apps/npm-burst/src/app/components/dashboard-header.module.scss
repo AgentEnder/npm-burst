@@ -292,21 +292,25 @@
   }
 }
 
-// Responsive: stack on mobile
-@media (max-width: 768px) {
-  .header {
-    flex-wrap: wrap;
-    gap: var(--spacing-xs);
-    padding: 6px;
-    border-radius: var(--radius-lg);
-  }
-
+// Mid-size screens: controls wrap but dividers look wrong
+@media (max-width: 960px) {
   .divider {
     display: none;
   }
 
   .filterGroup {
     margin-left: 0;
+  }
+}
+
+// Mobile: stack fully
+@media (max-width: 768px) {
+  .header {
+    gap: var(--spacing-xs);
+    padding: 6px;
+  }
+
+  .filterGroup {
     width: 100%;
     justify-content: center;
   }
