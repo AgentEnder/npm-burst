@@ -8,7 +8,7 @@ import {
   generateThemeColorPalette,
   getThemeChartColors,
 } from '../utils/theme-colors';
-import { getTimeWindowCutoff } from '../utils/time-window';
+import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
 import {
   getVersionLifecycleData,
@@ -20,14 +20,6 @@ import styles from './version-lifecycle-chart.module.scss';
 const MARGIN = { top: 20, right: 200, bottom: 30, left: 60 };
 const ROW_HEIGHT = 50;
 const BAR_HEIGHT = 20;
-
-const TIME_WINDOW_OPTIONS = [
-  { value: '30d' as const, label: '30d' },
-  { value: '90d' as const, label: '90d' },
-  { value: '6mo' as const, label: '6mo' },
-  { value: '1y' as const, label: '1y' },
-  { value: 'all' as const, label: 'All' },
-];
 
 export const VersionLifecycleChart = memo(function VersionLifecycleChart({
   snapshots,
@@ -327,15 +319,6 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     }
   }, [filteredMilestones, threshold, theme, palette, chartColors]);
 
-  if (filteredMilestones.length === 0) {
-    return (
-      <div className={styles.noData}>
-        No historical snapshot data or version release information available.
-        Track this package to start collecting lifecycle data.
-      </div>
-    );
-  }
-
   return (
     <div
       className={styles.container}
@@ -344,7 +327,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     >
       <div className={styles.controls}>
         <SegmentedControl
-          options={[...TIME_WINDOW_OPTIONS]}
+          options={TIME_WINDOW_OPTIONS}
           value={timeWindow}
           onChange={onTimeWindowChange}
           label="Window"
@@ -394,9 +377,16 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         </label>
       </div>
 
-      <div className={styles.chart}>
-        <svg ref={svgRef} />
-      </div>
+      {filteredMilestones.length === 0 ? (
+        <div className={styles.noData}>
+          No historical snapshot data or version release information available.
+          Track this package to start collecting lifecycle data.
+        </div>
+      ) : (
+        <div className={styles.chart}>
+          <svg ref={svgRef} />
+        </div>
+      )}
     </div>
   );
 });

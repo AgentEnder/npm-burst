@@ -4,6 +4,12 @@ import type { Selection } from 'd3';
 
 export type ReleaseTickLevel = 'major' | 'minor' | 'patch';
 
+export const RELEASE_TICK_OPTIONS = [
+  { value: 'major' as const, label: 'Major' },
+  { value: 'minor' as const, label: 'Minor' },
+  { value: 'patch' as const, label: 'Patch' },
+] as const;
+
 /**
  * Filters version releases by semver level.
  * - 'major': only X.0.0 releases

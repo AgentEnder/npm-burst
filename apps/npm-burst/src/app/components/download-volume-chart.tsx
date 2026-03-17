@@ -3,9 +3,9 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import { useTheme } from '../context/theme-context';
-import { filterReleasesByLevel, renderReleaseTicks } from '../utils/release-ticks';
+import { filterReleasesByLevel, renderReleaseTicks, RELEASE_TICK_OPTIONS } from '../utils/release-ticks';
 import type { ReleaseTickLevel } from '../utils/release-ticks';
-import { getTimeWindowCutoff } from '../utils/time-window';
+import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
 import { getThemeChartColors } from '../utils/theme-colors';
 import {
@@ -17,20 +17,6 @@ import styles from './download-volume-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 60 };
 const CHART_HEIGHT = 350;
-
-const TIME_WINDOW_OPTIONS = [
-  { value: '30d' as const, label: '30d' },
-  { value: '90d' as const, label: '90d' },
-  { value: '6mo' as const, label: '6mo' },
-  { value: '1y' as const, label: '1y' },
-  { value: 'all' as const, label: 'All' },
-];
-
-const RELEASE_TICK_OPTIONS = [
-  { value: 'major' as const, label: 'Major' },
-  { value: 'minor' as const, label: 'Minor' },
-  { value: 'patch' as const, label: 'Patch' },
-];
 
 export const DownloadVolumeChart = memo(function DownloadVolumeChart({
   totalDownloads,
@@ -269,14 +255,6 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
       });
   }, [filteredVolumeData, versionReleases, releaseTickFilter, theme, chartColors]);
 
-  if (filteredVolumeData.length === 0) {
-    return (
-      <div className={styles.noData}>
-        No download volume data available for this package.
-      </div>
-    );
-  }
-
   return (
     <div
       className={styles.container}
@@ -285,21 +263,27 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
     >
       <div className={styles.controls}>
         <SegmentedControl
-          options={[...TIME_WINDOW_OPTIONS]}
+          options={TIME_WINDOW_OPTIONS}
           value={timeWindow}
           onChange={onTimeWindowChange}
           label="Window"
         />
         <SegmentedControl
-          options={[...RELEASE_TICK_OPTIONS]}
+          options={RELEASE_TICK_OPTIONS}
           value={releaseTickFilter}
           onChange={onReleaseTickFilterChange}
           label="Releases"
         />
       </div>
-      <div className={styles.chart}>
-        <svg ref={svgRef} />
-      </div>
+      {filteredVolumeData.length === 0 ? (
+        <div className={styles.noData}>
+          No download volume data available for this package.
+        </div>
+      ) : (
+        <div className={styles.chart}>
+          <svg ref={svgRef} />
+        </div>
+      )}
     </div>
   );
 });

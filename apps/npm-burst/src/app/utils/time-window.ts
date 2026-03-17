@@ -1,6 +1,21 @@
 export type TimeWindow = '30d' | '90d' | '6mo' | '1y' | 'all';
 export type MigrationTimeWindow = '90d' | '180d' | '1y' | 'all';
 
+export const TIME_WINDOW_OPTIONS = [
+  { value: '30d' as const, label: '30d' },
+  { value: '90d' as const, label: '90d' },
+  { value: '6mo' as const, label: '6mo' },
+  { value: '1y' as const, label: '1y' },
+  { value: 'all' as const, label: 'All' },
+] as const;
+
+export const MIGRATION_WINDOW_OPTIONS = [
+  { value: '90d' as const, label: '90d' },
+  { value: '180d' as const, label: '180d' },
+  { value: '1y' as const, label: '1y' },
+  { value: 'all' as const, label: 'All' },
+] as const;
+
 /**
  * Returns the cutoff date for a given time window relative to today.
  * Returns null for 'all' (no filtering).
