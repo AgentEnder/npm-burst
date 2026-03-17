@@ -12,16 +12,17 @@ import {
   AdoptionGrouping,
   getVersionAdoptionData,
 } from '../utils/version-adoption';
+import { SegmentedControl } from './segmented-control';
 import styles from './version-adoption-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 };
 const CHART_HEIGHT = 350;
 
-const GROUPING_LABELS: Record<AdoptionGrouping, string> = {
-  major: 'Major',
-  minor: 'Minor',
-  patch: 'Patch',
-};
+const GROUPING_OPTIONS = [
+  { value: 'major', label: 'Major' },
+  { value: 'minor', label: 'Minor' },
+  { value: 'patch', label: 'Patch' },
+] as const;
 
 function buildColorMap(
   labels: string[],
@@ -351,18 +352,12 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     >
       {/* Grouping selector */}
       <div className={styles.controls}>
-        <div className={styles.groupingSelector}>
-          <span className={styles.groupingLabel}>Group by</span>
-          {(['major', 'minor', 'patch'] as AdoptionGrouping[]).map((g) => (
-            <button
-              key={g}
-              className={`${styles.groupingButton} ${grouping === g ? styles.groupingActive : ''}`}
-              onClick={() => setGrouping(g)}
-            >
-              {GROUPING_LABELS[g]}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={[...GROUPING_OPTIONS]}
+          value={grouping}
+          onChange={(v) => setGrouping(v as AdoptionGrouping)}
+          label="Group by"
+        />
         <div className={styles.visibilityControls}>
           {hasHidden && (
             <button className={styles.visibilityButton} onClick={showAll}>
