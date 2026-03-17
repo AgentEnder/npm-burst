@@ -9,19 +9,33 @@ import {
   getThemeChartColors,
 } from '../utils/theme-colors';
 import { getMigrationVelocityData } from '../utils/migration-velocity';
+import { getMigrationMaxDays } from '../utils/time-window';
+import type { MigrationTimeWindow } from '../utils/time-window';
+import { SegmentedControl } from './segmented-control';
 import styles from './migration-velocity-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 };
 const CHART_HEIGHT = 350;
 
+const MIGRATION_WINDOW_OPTIONS = [
+  { value: '90d' as const, label: '90d' },
+  { value: '180d' as const, label: '180d' },
+  { value: '1y' as const, label: '1y' },
+  { value: 'all' as const, label: 'All' },
+];
+
 export const MigrationVelocityChart = memo(function MigrationVelocityChart({
   snapshots,
   liveData,
   versionReleases,
+  migrationTimeWindow,
+  onMigrationTimeWindowChange,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
+  migrationTimeWindow: MigrationTimeWindow;
+  onMigrationTimeWindowChange: (v: MigrationTimeWindow) => void;
 }) {
   const { theme } = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -75,9 +89,19 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
         d3.max(s.points, (p) => p.daysSinceRelease)
       ) ?? 30;
 
+    const windowMaxDays = getMigrationMaxDays(migrationTimeWindow);
+    const effectiveMaxDays = windowMaxDays !== null ? Math.min(maxDays, windowMaxDays) : maxDays;
+
+    const cappedSeries = visibleSeries.map((s) => ({
+      ...s,
+      points: windowMaxDays !== null
+        ? s.points.filter((p) => p.daysSinceRelease <= windowMaxDays)
+        : s.points,
+    }));
+
     const xScale = d3
       .scaleLinear()
-      .domain([0, maxDays])
+      .domain([0, effectiveMaxDays])
       .range([0, innerWidth]);
 
     const yScale = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
@@ -139,7 +163,7 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
       .curve(d3.curveMonotoneX);
 
     // Draw lines
-    for (const s of visibleSeries) {
+    for (const s of cappedSeries) {
       const color = colorMap.get(s.label) ?? '#888';
 
       g.append('path')
@@ -190,7 +214,7 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
         const hoveredDay = Math.round(xScale.invert(mx));
 
         const lines = [`<strong>Day ${hoveredDay}</strong>`];
-        const entries = visibleSeries
+        const entries = cappedSeries
           .map((s) => {
             // Find closest point to this day
             let closest = s.points[0];
@@ -248,7 +272,7 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, theme, colorMap, chartColors]);
+  }, [series, visibleSeries, theme, colorMap, chartColors, migrationTimeWindow]);
 
   if (series.length === 0) {
     return (
@@ -265,6 +289,14 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
       ref={containerRef}
       style={{ position: 'relative' }}
     >
+      <div className={styles.controls}>
+        <SegmentedControl
+          options={[...MIGRATION_WINDOW_OPTIONS]}
+          value={migrationTimeWindow}
+          onChange={onMigrationTimeWindowChange}
+          label="Window"
+        />
+      </div>
       <div className={styles.chart}>
         <svg ref={svgRef} />
       </div>
