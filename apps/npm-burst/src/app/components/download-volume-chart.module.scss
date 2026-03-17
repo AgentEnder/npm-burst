@@ -4,6 +4,15 @@
   margin: var(--spacing-md) auto;
 }
 
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
 .chart {
   width: 100%;
 
@@ -24,6 +33,13 @@
 
   :global(.grid .domain) {
     stroke: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 

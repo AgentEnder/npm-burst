@@ -3,22 +3,49 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import { useTheme } from '../context/theme-context';
+import { filterReleasesByLevel, renderReleaseTicks } from '../utils/release-ticks';
+import type { ReleaseTickLevel } from '../utils/release-ticks';
+import { getTimeWindowCutoff } from '../utils/time-window';
+import type { TimeWindow } from '../utils/time-window';
 import { getThemeChartColors } from '../utils/theme-colors';
 import {
   getDownloadVolumeData,
   formatDownloadCount,
 } from '../utils/download-volume';
+import { SegmentedControl } from './segmented-control';
 import styles from './download-volume-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 60 };
 const CHART_HEIGHT = 350;
 
+const TIME_WINDOW_OPTIONS = [
+  { value: '30d' as const, label: '30d' },
+  { value: '90d' as const, label: '90d' },
+  { value: '6mo' as const, label: '6mo' },
+  { value: '1y' as const, label: '1y' },
+  { value: 'all' as const, label: 'All' },
+];
+
+const RELEASE_TICK_OPTIONS = [
+  { value: 'major' as const, label: 'Major' },
+  { value: 'minor' as const, label: 'Minor' },
+  { value: 'patch' as const, label: 'Patch' },
+];
+
 export const DownloadVolumeChart = memo(function DownloadVolumeChart({
   totalDownloads,
   versionReleases,
+  timeWindow,
+  onTimeWindowChange,
+  releaseTickFilter,
+  onReleaseTickFilterChange,
 }: {
   totalDownloads: DailyDownloadPoint[];
   versionReleases: VersionRelease[];
+  timeWindow: TimeWindow;
+  onTimeWindowChange: (v: TimeWindow) => void;
+  releaseTickFilter: ReleaseTickLevel;
+  onReleaseTickFilterChange: (v: ReleaseTickLevel) => void;
 }) {
   const { theme } = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -29,10 +56,17 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
     [totalDownloads]
   );
 
+  const filteredVolumeData = useMemo(() => {
+    const cutoff = getTimeWindowCutoff(timeWindow);
+    if (!cutoff) return volumeData;
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return volumeData.filter((d) => d.date >= cutoffStr);
+  }, [volumeData, timeWindow]);
+
   const chartColors = getThemeChartColors(theme);
 
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current || volumeData.length === 0)
+    if (!svgRef.current || !containerRef.current || filteredVolumeData.length === 0)
       return;
 
     const containerWidth = containerRef.current.clientWidth;
@@ -42,8 +76,8 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
     const innerHeight = height - MARGIN.top - MARGIN.bottom;
 
     const parseDate = (d: string) => new Date(d + 'T00:00:00');
-    const dates = volumeData.map((d) => parseDate(d.date));
-    const maxDownloads = d3.max(volumeData, (d) => d.totalDownloads) ?? 0;
+    const dates = filteredVolumeData.map((d) => parseDate(d.date));
+    const maxDownloads = d3.max(filteredVolumeData, (d) => d.totalDownloads) ?? 0;
 
     const xScale = d3
       .scaleTime()
@@ -110,7 +144,7 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
       theme === 'dark' ? chartColors.centerFill : chartColors.centerHover;
 
     g.append('path')
-      .datum(volumeData)
+      .datum(filteredVolumeData)
       .attr('fill', lineColor)
       .attr('fill-opacity', 0.15)
       .attr('d', areaGen);
@@ -123,7 +157,7 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
       .curve(d3.curveMonotoneX);
 
     g.append('path')
-      .datum(volumeData)
+      .datum(filteredVolumeData)
       .attr('fill', 'none')
       .attr('stroke', lineColor)
       .attr('stroke-width', 2.5)
@@ -131,23 +165,18 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
 
     // Version release markers (vertical ticks)
     const [domainStart, domainEnd] = xScale.domain();
-    for (const vr of versionReleases) {
-      const vrDate = parseDate(vr.date);
-      if (vrDate < domainStart || vrDate > domainEnd) continue;
-
-      const x = xScale(vrDate);
-      g.append('line')
-        .attr('x1', x)
-        .attr('x2', x)
-        .attr('y1', 0)
-        .attr('y2', innerHeight)
-        .attr(
-          'stroke',
-          theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'
-        )
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '4,3');
-    }
+    const filteredReleases = filterReleasesByLevel(versionReleases, releaseTickFilter);
+    renderReleaseTicks(
+      g as unknown as d3.Selection<SVGGElement, unknown, null, undefined>,
+      filteredReleases,
+      (date) => {
+        const vrDate = parseDate(date);
+        if (vrDate < domainStart || vrDate > domainEnd) return null;
+        return xScale(vrDate);
+      },
+      innerHeight,
+      theme
+    );
 
     // Tooltip
     const tooltip = d3
@@ -180,9 +209,9 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
         // Find closest data point
         let closestIdx = 0;
         let closestDist = Infinity;
-        for (let i = 0; i < volumeData.length; i++) {
+        for (let i = 0; i < filteredVolumeData.length; i++) {
           const dist = Math.abs(
-            parseDate(volumeData[i].date).getTime() - hoveredDate.getTime()
+            parseDate(filteredVolumeData[i].date).getTime() - hoveredDate.getTime()
           );
           if (dist < closestDist) {
             closestDist = dist;
@@ -190,7 +219,7 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
           }
         }
 
-        const point = volumeData[closestIdx];
+        const point = filteredVolumeData[closestIdx];
         if (!point) return;
 
         // Check if any version was released on this date
@@ -238,9 +267,9 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [volumeData, versionReleases, theme, chartColors]);
+  }, [filteredVolumeData, versionReleases, releaseTickFilter, theme, chartColors]);
 
-  if (volumeData.length === 0) {
+  if (filteredVolumeData.length === 0) {
     return (
       <div className={styles.noData}>
         No download volume data available for this package.
@@ -254,6 +283,20 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
       ref={containerRef}
       style={{ position: 'relative' }}
     >
+      <div className={styles.controls}>
+        <SegmentedControl
+          options={[...TIME_WINDOW_OPTIONS]}
+          value={timeWindow}
+          onChange={onTimeWindowChange}
+          label="Window"
+        />
+        <SegmentedControl
+          options={[...RELEASE_TICK_OPTIONS]}
+          value={releaseTickFilter}
+          onChange={onReleaseTickFilterChange}
+          label="Releases"
+        />
+      </div>
       <div className={styles.chart}>
         <svg ref={svgRef} />
       </div>

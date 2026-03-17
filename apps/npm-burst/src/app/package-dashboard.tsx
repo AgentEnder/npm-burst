@@ -147,6 +147,10 @@ export function PackageDashboard() {
             <DownloadVolumeChart
               totalDownloads={totalDownloads}
               versionReleases={versionReleases}
+              timeWindow={timeWindow}
+              onTimeWindowChange={setTimeWindow}
+              releaseTickFilter={releaseTickFilter}
+              onReleaseTickFilterChange={setReleaseTickFilter}
             />
           ) : viewMode === 'migration' ? (
             <MigrationVelocityChart
