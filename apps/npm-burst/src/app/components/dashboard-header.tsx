@@ -1,9 +1,10 @@
-import { ChevronDown, ExternalLink, Info } from 'lucide-react';
+import { ExternalLink, Info } from 'lucide-react';
 import { memo } from 'react';
 import { useAppStore } from '../store';
 import type { AppState } from '../store/app-store';
 import styles from './dashboard-header.module.scss';
 import { Popover } from './popover';
+import { SegmentedControl } from './segmented-control';
 import { TrackStar } from './track-star';
 
 const VIEW_MODES: { value: AppState['viewMode']; label: string }[] = [
@@ -46,36 +47,12 @@ export const DashboardHeader = memo(function DashboardHeader() {
 
       {/* Controls bar */}
       <div className={styles.header}>
-        {/* View mode selector — buttons on desktop */}
-        <div className={styles.viewModeGroup}>
-          {VIEW_MODES.map((m) => (
-            <button
-              key={m.value}
-              className={`${styles.viewModeButton} ${viewMode === m.value ? styles.viewModeActive : ''}`}
-              onClick={() => setViewMode(m.value)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-
-        {/* View mode selector — dropdown on mobile */}
-        <div className={styles.viewModeSelect}>
-          <select
-            value={viewMode}
-            onChange={(e) =>
-              setViewMode(e.target.value as AppState['viewMode'])
-            }
-            className={styles.viewModeSelectInput}
-          >
-            {VIEW_MODES.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={14} className={styles.viewModeSelectIcon} />
-        </div>
+        {/* View mode selector */}
+        <SegmentedControl
+          options={VIEW_MODES}
+          value={viewMode}
+          onChange={setViewMode}
+        />
 
         {viewMode === 'sunburst' && (
           <>
