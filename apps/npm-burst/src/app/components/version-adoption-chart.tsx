@@ -12,6 +12,7 @@ import {
   AdoptionGrouping,
   getVersionAdoptionData,
 } from '../utils/version-adoption';
+import { formatDownloadCount } from '../utils/download-volume';
 import { filterReleasesByLevel, renderReleaseTicks, RELEASE_TICK_OPTIONS } from '../utils/release-ticks';
 import type { ReleaseTickLevel } from '../utils/release-ticks';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
@@ -27,6 +28,13 @@ const GROUPING_OPTIONS = [
   { value: 'minor', label: 'Minor' },
   { value: 'patch', label: 'Patch' },
 ] as const;
+
+const Y_AXIS_OPTIONS = [
+  { value: 'percent', label: '% Share' },
+  { value: 'count', label: 'Downloads' },
+] as const;
+
+type YAxisMode = 'percent' | 'count';
 
 
 function buildColorMap(
@@ -64,6 +72,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
+  const [yAxisMode, setYAxisMode] = useState<YAxisMode>('percent');
 
   const filteredSnapshots = useMemo(() => {
     const cutoff = getTimeWindowCutoff(timeWindow);
@@ -141,7 +150,18 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       .range([0, innerWidth])
       .padding(0.1);
 
-    const yScale = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
+    const valueKey = yAxisMode === 'percent' ? 'percent' : 'count';
+    const maxCount = yAxisMode === 'count'
+      ? d3.max(allDates, (date) => {
+          let sum = 0;
+          for (const s of visibleSeries) {
+            const pt = s.points.find((p) => p.date === date);
+            sum += pt?.count ?? 0;
+          }
+          return sum;
+        }) ?? 0
+      : 100;
+    const yScale = d3.scaleLinear().domain([0, maxCount * (yAxisMode === 'count' ? 1.1 : 1)]).range([innerHeight, 0]);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
@@ -188,7 +208,9 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         d3
           .axisLeft(yScale)
           .ticks(5)
-          .tickFormat((d) => `${d}%`)
+          .tickFormat((d) =>
+            yAxisMode === 'percent' ? `${d}%` : formatDownloadCount(d as number)
+          )
       );
 
     // Stacked area chart — most recent version on top
@@ -199,7 +221,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       const row: Record<string, number> = {};
       for (const s of stackSeries) {
         const pt = s.points.find((p) => p.date === date);
-        row[s.label] = pt?.percent ?? 0;
+        row[s.label] = pt?.[valueKey] ?? 0;
       }
       return { date, ...row };
     });
@@ -332,7 +354,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, versionReleases, releaseTickFilter, theme, colorMap, chartColors]);
+  }, [series, visibleSeries, versionReleases, releaseTickFilter, yAxisMode, theme, colorMap, chartColors]);
 
   const hasHidden = hiddenSeries.size > 0;
   const hasBelowThreshold = series.some((s) => s.belowThreshold);
@@ -345,6 +367,11 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     >
       {/* Controls — always visible so users can change filters */}
       <div className={styles.controls}>
+        <SegmentedControl
+          options={Y_AXIS_OPTIONS}
+          value={yAxisMode}
+          onChange={(v) => setYAxisMode(v as YAxisMode)}
+        />
         <SegmentedControl
           options={GROUPING_OPTIONS}
           value={grouping}
