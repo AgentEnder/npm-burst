@@ -539,15 +539,13 @@ export function getFixtureVersionDates(
 
 /**
  * Generate fixture total download data from snapshot fixtures.
- * Returns daily download points derived from snapshot data by
- * filling in daily data between snapshot dates with interpolation.
+ * Returns daily download points derived from snapshot data.
  *
- * The total is inflated by ~20% above the sum of known versions
- * to simulate the "unknown" downloads gap (bots, CDN caches, CI
- * with no version specifier, etc.).
+ * Snapshot totals are weekly counts, so daily values = weeklyTotal / 7.
+ * No artificial inflation — fixtures have consistent data between
+ * the version-level and aggregate APIs so "unknown" stays near zero
+ * at snapshot points. In production, the real npm APIs may diverge.
  */
-const UNKNOWN_MULTIPLIER = 1.22;
-
 export function getFixtureTotalDownloads(
   name: string
 ): { day: string; downloads: number }[] {
@@ -558,21 +556,20 @@ export function getFixtureTotalDownloads(
 
   for (let i = 0; i < snapshots.length; i++) {
     const snap = snapshots[i];
-    const knownTotal = Object.values(snap.downloads).reduce(
+    const weeklyTotal = Object.values(snap.downloads).reduce(
       (sum, c) => sum + c,
       0
     );
-    // Inflate to simulate unknown downloads
-    const total = Math.round(knownTotal * UNKNOWN_MULTIPLIER);
+    const dailyRate = weeklyTotal / 7;
     const startDate = new Date(snap.date + 'T00:00:00');
 
     if (i < snapshots.length - 1) {
       const endDate = new Date(snapshots[i + 1].date + 'T00:00:00');
-      const endKnown = Object.values(snapshots[i + 1].downloads).reduce(
+      const endWeekly = Object.values(snapshots[i + 1].downloads).reduce(
         (sum, c) => sum + c,
         0
       );
-      const endTotal = Math.round(endKnown * UNKNOWN_MULTIPLIER);
+      const endDailyRate = endWeekly / 7;
       const days = Math.round(
         (endDate.getTime() - startDate.getTime()) / 86400000
       );
@@ -581,10 +578,8 @@ export function getFixtureTotalDownloads(
         const date = new Date(startDate);
         date.setDate(date.getDate() + d);
         const t = d / days;
-        // Add daily noise (±8%) for realism
-        const noise = 0.92 + Math.random() * 0.16;
         const interpolated = Math.round(
-          (total + (endTotal - total) * t) * noise
+          dailyRate + (endDailyRate - dailyRate) * t
         );
         points.push({
           day: date.toISOString().slice(0, 10),
@@ -596,10 +591,9 @@ export function getFixtureTotalDownloads(
       for (let d = 0; d < 14; d++) {
         const date = new Date(startDate);
         date.setDate(date.getDate() + d);
-        const noise = 0.92 + Math.random() * 0.16;
         points.push({
           day: date.toISOString().slice(0, 10),
-          downloads: Math.round(total * noise),
+          downloads: Math.round(dailyRate),
         });
       }
     }
