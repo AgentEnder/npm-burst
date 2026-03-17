@@ -36,6 +36,12 @@ const Y_AXIS_OPTIONS = [
 
 type YAxisMode = 'percent' | 'count';
 
+const CHART_MODE_OPTIONS = [
+  { value: 'stacked', label: 'Stacked' },
+  { value: 'lines', label: 'Lines' },
+] as const;
+
+type ChartMode = 'stacked' | 'lines';
 
 function buildColorMap(
   labels: string[],
@@ -73,6 +79,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
   const [yAxisMode, setYAxisMode] = useState<YAxisMode>('percent');
+  const [chartMode, setChartMode] = useState<ChartMode>('stacked');
 
   const filteredSnapshots = useMemo(() => {
     const cutoff = getTimeWindowCutoff(timeWindow);
@@ -213,39 +220,68 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           )
       );
 
-    // Stacked area chart — most recent version on top
-    const stackSeries = visibleSeries.slice().reverse();
+    if (chartMode === 'stacked') {
+      // Stacked area chart — most recent version on top
+      const stackSeries = visibleSeries.slice().reverse();
 
-    // Build tabular data: one row per date, one column per series
-    const tableData = allDates.map((date) => {
-      const row: Record<string, number> = {};
-      for (const s of stackSeries) {
-        const pt = s.points.find((p) => p.date === date);
-        row[s.label] = pt?.[valueKey] ?? 0;
+      const tableData = allDates.map((date) => {
+        const row: Record<string, number> = {};
+        for (const s of stackSeries) {
+          const pt = s.points.find((p) => p.date === date);
+          row[s.label] = pt?.[valueKey] ?? 0;
+        }
+        return { date, ...row };
+      });
+
+      const keys = stackSeries.map((s) => s.label);
+      const stack = d3.stack<Record<string, unknown>>().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetNone);
+      const stacked = stack(tableData as unknown as Array<Record<string, unknown>>);
+
+      const areaGen = d3
+        .area<d3.SeriesPoint<Record<string, unknown>>>()
+        .x((d) => xScale((d.data as Record<string, string>).date) ?? 0)
+        .y0((d) => yScale(d[0]))
+        .y1((d) => yScale(d[1]))
+        .curve(d3.curveMonotoneX);
+
+      for (const layer of stacked) {
+        const color = colorMap.get(layer.key) ?? '#888';
+        g.append('path')
+          .datum(layer)
+          .attr('fill', color)
+          .attr('fill-opacity', 0.7)
+          .attr('stroke', color)
+          .attr('stroke-width', 0.5)
+          .attr('d', areaGen);
       }
-      return { date, ...row };
-    });
+    } else {
+      // Line chart mode
+      const lineGen = d3
+        .line<{ date: string; percent: number; count: number }>()
+        .x((d) => xScale(d.date) ?? 0)
+        .y((d) => yScale(d[valueKey]))
+        .curve(d3.curveMonotoneX);
 
-    const keys = stackSeries.map((s) => s.label);
-    const stack = d3.stack<Record<string, unknown>>().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetNone);
-    const stacked = stack(tableData as unknown as Array<Record<string, unknown>>);
+      for (const s of visibleSeries) {
+        const color = colorMap.get(s.label) ?? '#888';
 
-    const areaGen = d3
-      .area<d3.SeriesPoint<Record<string, unknown>>>()
-      .x((d) => xScale((d.data as Record<string, string>).date) ?? 0)
-      .y0((d) => yScale(d[0]))
-      .y1((d) => yScale(d[1]))
-      .curve(d3.curveMonotoneX);
+        g.append('path')
+          .datum(s.points)
+          .attr('fill', 'none')
+          .attr('stroke', color)
+          .attr('stroke-width', 2)
+          .attr('d', lineGen);
 
-    for (const layer of stacked) {
-      const color = colorMap.get(layer.key) ?? '#888';
-      g.append('path')
-        .datum(layer)
-        .attr('fill', color)
-        .attr('fill-opacity', 0.7)
-        .attr('stroke', color)
-        .attr('stroke-width', 0.5)
-        .attr('d', areaGen);
+        g.selectAll(null)
+          .data(s.points)
+          .join('circle')
+          .attr('cx', (d) => xScale(d.date) ?? 0)
+          .attr('cy', (d) => yScale(d[valueKey]))
+          .attr('r', 3)
+          .attr('fill', color)
+          .attr('stroke', theme === 'dark' ? '#1e1e1e' : '#ffffff')
+          .attr('stroke-width', 1.5);
+      }
     }
 
     // Version release markers (vertical ticks)
@@ -354,7 +390,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, versionReleases, releaseTickFilter, yAxisMode, theme, colorMap, chartColors]);
+  }, [series, visibleSeries, versionReleases, releaseTickFilter, yAxisMode, chartMode, theme, colorMap, chartColors]);
 
   const hasHidden = hiddenSeries.size > 0;
   const hasBelowThreshold = series.some((s) => s.belowThreshold);
@@ -367,6 +403,11 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     >
       {/* Controls — always visible so users can change filters */}
       <div className={styles.controls}>
+        <SegmentedControl
+          options={CHART_MODE_OPTIONS}
+          value={chartMode}
+          onChange={(v) => setChartMode(v as ChartMode)}
+        />
         <SegmentedControl
           options={Y_AXIS_OPTIONS}
           value={yAxisMode}
