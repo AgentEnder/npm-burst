@@ -11,7 +11,6 @@ import {
   SunburstLeafNode,
 } from './components/sunburst';
 import { Table } from './components/table';
-import { DownloadVolumeChart } from './components/download-volume-chart';
 import { MigrationVelocityChart } from './components/migration-velocity-chart';
 import { VersionAdoptionChart } from './components/version-adoption-chart';
 import { VersionLifecycleChart } from './components/version-lifecycle-chart';
@@ -144,15 +143,7 @@ export function PackageDashboard() {
               liveData={liveData}
               versionReleases={versionReleases}
               lowPassFilter={lowPassFilter}
-              timeWindow={timeWindow}
-              onTimeWindowChange={setTimeWindow}
-              releaseTickFilter={releaseTickFilter}
-              onReleaseTickFilterChange={setReleaseTickFilter}
-            />
-          ) : viewMode === 'volume' ? (
-            <DownloadVolumeChart
               totalDownloads={totalDownloads}
-              versionReleases={versionReleases}
               timeWindow={timeWindow}
               onTimeWindowChange={setTimeWindow}
               releaseTickFilter={releaseTickFilter}
