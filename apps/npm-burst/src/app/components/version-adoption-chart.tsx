@@ -12,9 +12,9 @@ import {
   AdoptionGrouping,
   getVersionAdoptionData,
 } from '../utils/version-adoption';
-import { filterReleasesByLevel, renderReleaseTicks } from '../utils/release-ticks';
+import { filterReleasesByLevel, renderReleaseTicks, RELEASE_TICK_OPTIONS } from '../utils/release-ticks';
 import type { ReleaseTickLevel } from '../utils/release-ticks';
-import { getTimeWindowCutoff } from '../utils/time-window';
+import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
 import { SegmentedControl } from './segmented-control';
 import styles from './version-adoption-chart.module.scss';
@@ -27,20 +27,6 @@ const GROUPING_OPTIONS = [
   { value: 'minor', label: 'Minor' },
   { value: 'patch', label: 'Patch' },
 ] as const;
-
-const TIME_WINDOW_OPTIONS = [
-  { value: '30d' as const, label: '30d' },
-  { value: '90d' as const, label: '90d' },
-  { value: '6mo' as const, label: '6mo' },
-  { value: '1y' as const, label: '1y' },
-  { value: 'all' as const, label: 'All' },
-];
-
-const RELEASE_TICK_OPTIONS = [
-  { value: 'major' as const, label: 'Major' },
-  { value: 'minor' as const, label: 'Minor' },
-  { value: 'patch' as const, label: 'Patch' },
-];
 
 function buildColorMap(
   labels: string[],
@@ -360,15 +346,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       });
   }, [series, visibleSeries, versionReleases, releaseTickFilter, theme, colorMap, chartColors]);
 
-  if (series.length === 0) {
-    return (
-      <div className={styles.noData}>
-        No historical snapshot data available. Track this package to start
-        collecting adoption data over time.
-      </div>
-    );
-  }
-
   const hasHidden = hiddenSeries.size > 0;
   const hasBelowThreshold = series.some((s) => s.belowThreshold);
 
@@ -378,22 +355,22 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       ref={containerRef}
       style={{ position: 'relative' }}
     >
-      {/* Grouping selector */}
+      {/* Controls — always visible so users can change filters */}
       <div className={styles.controls}>
         <SegmentedControl
-          options={[...GROUPING_OPTIONS]}
+          options={GROUPING_OPTIONS}
           value={grouping}
           onChange={(v) => setGrouping(v as AdoptionGrouping)}
           label="Group by"
         />
         <SegmentedControl
-          options={[...TIME_WINDOW_OPTIONS]}
+          options={TIME_WINDOW_OPTIONS}
           value={timeWindow}
           onChange={onTimeWindowChange}
           label="Window"
         />
         <SegmentedControl
-          options={[...RELEASE_TICK_OPTIONS]}
+          options={RELEASE_TICK_OPTIONS}
           value={releaseTickFilter}
           onChange={onReleaseTickFilterChange}
           label="Releases"
@@ -415,44 +392,53 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         </div>
       </div>
 
-      <div className={styles.chart}>
-        <svg ref={svgRef} />
-      </div>
+      {series.length === 0 ? (
+        <div className={styles.noData}>
+          No historical snapshot data available. Track this package to start
+          collecting adoption data over time.
+        </div>
+      ) : (
+        <>
+          <div className={styles.chart}>
+            <svg ref={svgRef} />
+          </div>
 
-      {/* Legend with click-to-toggle */}
-      <div className={styles.legend}>
-        {series.map((s) => {
-          const color = colorMap.get(s.label) ?? '#888';
-          const isHidden = hiddenSeries.has(s.label);
-          const isBelowLPF = s.belowThreshold && s.label !== 'latest';
-          return (
-            <div
-              key={s.label}
-              className={`${styles.legendItem} ${isHidden ? styles.legendItemDimmed : ''} ${isBelowLPF && !isHidden ? styles.legendItemBelowLPF : ''}`}
-              onClick={() => toggleSeries(s.label)}
-              title={
-                isBelowLPF
-                  ? `Below LPF threshold (${(lowPassFilter * 100).toFixed(1)}%)`
-                  : `Click to ${isHidden ? 'show' : 'hide'}`
-              }
-            >
-              <span
-                className={
-                  s.label === 'latest'
-                    ? styles.legendSwatchLatest
-                    : styles.legendSwatch
-                }
-                style={
-                  s.label === 'latest'
-                    ? { borderColor: color }
-                    : { backgroundColor: color }
-                }
-              />
-              {s.label}
-            </div>
-          );
-        })}
-      </div>
+          {/* Legend with click-to-toggle */}
+          <div className={styles.legend}>
+            {series.map((s) => {
+              const color = colorMap.get(s.label) ?? '#888';
+              const isHidden = hiddenSeries.has(s.label);
+              const isBelowLPF = s.belowThreshold && s.label !== 'latest';
+              return (
+                <div
+                  key={s.label}
+                  className={`${styles.legendItem} ${isHidden ? styles.legendItemDimmed : ''} ${isBelowLPF && !isHidden ? styles.legendItemBelowLPF : ''}`}
+                  onClick={() => toggleSeries(s.label)}
+                  title={
+                    isBelowLPF
+                      ? `Below LPF threshold (${(lowPassFilter * 100).toFixed(1)}%)`
+                      : `Click to ${isHidden ? 'show' : 'hide'}`
+                  }
+                >
+                  <span
+                    className={
+                      s.label === 'latest'
+                        ? styles.legendSwatchLatest
+                        : styles.legendSwatch
+                    }
+                    style={
+                      s.label === 'latest'
+                        ? { borderColor: color }
+                        : { backgroundColor: color }
+                    }
+                  />
+                  {s.label}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 });

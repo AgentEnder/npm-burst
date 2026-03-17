@@ -9,20 +9,13 @@ import {
   getThemeChartColors,
 } from '../utils/theme-colors';
 import { getMigrationVelocityData } from '../utils/migration-velocity';
-import { getMigrationMaxDays } from '../utils/time-window';
+import { getMigrationMaxDays, MIGRATION_WINDOW_OPTIONS } from '../utils/time-window';
 import type { MigrationTimeWindow } from '../utils/time-window';
 import { SegmentedControl } from './segmented-control';
 import styles from './migration-velocity-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 };
 const CHART_HEIGHT = 350;
-
-const MIGRATION_WINDOW_OPTIONS = [
-  { value: '90d' as const, label: '90d' },
-  { value: '180d' as const, label: '180d' },
-  { value: '1y' as const, label: '1y' },
-  { value: 'all' as const, label: 'All' },
-];
 
 export const MigrationVelocityChart = memo(function MigrationVelocityChart({
   snapshots,
@@ -274,15 +267,6 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
       });
   }, [series, visibleSeries, theme, colorMap, chartColors, migrationTimeWindow]);
 
-  if (series.length === 0) {
-    return (
-      <div className={styles.noData}>
-        No historical snapshot data or version release information available.
-        Track this package to start collecting migration velocity data.
-      </div>
-    );
-  }
-
   return (
     <div
       className={styles.container}
@@ -291,37 +275,46 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
     >
       <div className={styles.controls}>
         <SegmentedControl
-          options={[...MIGRATION_WINDOW_OPTIONS]}
+          options={MIGRATION_WINDOW_OPTIONS}
           value={migrationTimeWindow}
           onChange={onMigrationTimeWindowChange}
           label="Window"
         />
       </div>
-      <div className={styles.chart}>
-        <svg ref={svgRef} />
-      </div>
+      {series.length === 0 ? (
+        <div className={styles.noData}>
+          No historical snapshot data or version release information available.
+          Track this package to start collecting migration velocity data.
+        </div>
+      ) : (
+        <>
+          <div className={styles.chart}>
+            <svg ref={svgRef} />
+          </div>
 
-      {/* Legend with click-to-toggle */}
-      <div className={styles.legend}>
-        {series.map((s) => {
-          const color = colorMap.get(s.label) ?? '#888';
-          const isHidden = hiddenSeries.has(s.label);
-          return (
-            <div
-              key={s.label}
-              className={`${styles.legendItem} ${isHidden ? styles.legendItemDimmed : ''}`}
-              onClick={() => toggleSeries(s.label)}
-              title={`Released ${s.releaseDate} · Click to ${isHidden ? 'show' : 'hide'}`}
-            >
-              <span
-                className={styles.legendSwatch}
-                style={{ backgroundColor: color }}
-              />
-              {s.label}
-            </div>
-          );
-        })}
-      </div>
+          {/* Legend with click-to-toggle */}
+          <div className={styles.legend}>
+            {series.map((s) => {
+              const color = colorMap.get(s.label) ?? '#888';
+              const isHidden = hiddenSeries.has(s.label);
+              return (
+                <div
+                  key={s.label}
+                  className={`${styles.legendItem} ${isHidden ? styles.legendItemDimmed : ''}`}
+                  onClick={() => toggleSeries(s.label)}
+                  title={`Released ${s.releaseDate} · Click to ${isHidden ? 'show' : 'hide'}`}
+                >
+                  <span
+                    className={styles.legendSwatch}
+                    style={{ backgroundColor: color }}
+                  />
+                  {s.label}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 });
