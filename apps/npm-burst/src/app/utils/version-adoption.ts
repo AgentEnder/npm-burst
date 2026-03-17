@@ -144,18 +144,32 @@ export function getVersionAdoptionData(
     (a, b) => (totalByGroup[b] ?? 0) - (totalByGroup[a] ?? 0)
   );
 
+  // When totalDownloads is available, use the actual total (from npm API)
+  // as the denominator so known versions + unknown = 100%
+  const hasActualTotals = totalDownloads.length >= 7;
+  const rollingMap = hasActualTotals ? buildRollingTotalMap(totalDownloads) : null;
+
+  // Resolve the effective total for each timeline point
+  const effectiveTotals = timeline.map((snap, i) => {
+    if (rollingMap) {
+      const actual = findClosestTotal(rollingMap, snap.date);
+      if (actual !== null && actual > 0) return actual;
+    }
+    return totals[i];
+  });
+
   // Build series
   const result: VersionAdoptionSeries[] = [];
 
   for (const group of sortedGroups) {
     const points: VersionAdoptionPoint[] = [];
     for (let i = 0; i < timeline.length; i++) {
-      const total = totals[i];
-      if (total === 0) continue;
+      const effectiveTotal = effectiveTotals[i];
+      if (effectiveTotal === 0) continue;
       const count = groupedBySnap[i][group] ?? 0;
       points.push({
         date: timeline[i].date,
-        percent: (count / total) * 100,
+        percent: (count / effectiveTotal) * 100,
         count,
       });
     }
@@ -168,18 +182,17 @@ export function getVersionAdoptionData(
     });
   }
 
-  // "unknown" series — gap between total downloads and sum of known versions
-  if (totalDownloads.length >= 7) {
-    const rollingMap = buildRollingTotalMap(totalDownloads);
+  // "unknown" series — gap between actual total and sum of known versions
+  if (rollingMap) {
     const unknownPoints: VersionAdoptionPoint[] = [];
 
     for (let i = 0; i < timeline.length; i++) {
+      const effectiveTotal = effectiveTotals[i];
       const knownTotal = totals[i];
-      const actualTotal = findClosestTotal(rollingMap, timeline[i].date);
-      if (actualTotal === null) continue;
+      if (effectiveTotal === 0) continue;
 
-      const unknownCount = Math.max(0, actualTotal - knownTotal);
-      const unknownPercent = actualTotal > 0 ? (unknownCount / actualTotal) * 100 : 0;
+      const unknownCount = Math.max(0, effectiveTotal - knownTotal);
+      const unknownPercent = (unknownCount / effectiveTotal) * 100;
       unknownPoints.push({
         date: timeline[i].date,
         percent: unknownPercent,
