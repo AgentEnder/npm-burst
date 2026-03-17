@@ -51,6 +51,32 @@
   color: var(--text-tertiary);
 }
 
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  white-space: nowrap;
+  font-weight: 500;
+  transition: border-color var(--transition-fast);
+
+  &:hover {
+    border-color: var(--primary-main);
+  }
+}
+
+.checkbox {
+  accent-color: var(--primary-main);
+  margin: 0;
+}
+
 .chart {
   width: 100%;
 
