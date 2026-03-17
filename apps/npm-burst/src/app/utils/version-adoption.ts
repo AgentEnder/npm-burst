@@ -184,10 +184,40 @@ export function getVersionAdoptionData(
     });
   }
 
-  // "unknown" series — gap between actual total and sum of known versions
+  // "unknown" series — gap between actual total and sum of known versions,
+  // plus pre-snapshot dates where all downloads are unknown.
   if (rollingMap) {
     const unknownPoints: VersionAdoptionPoint[] = [];
 
+    // Pre-snapshot period: dates in totalDownloads before the first snapshot.
+    // All downloads are "unknown" since we have no version breakdown.
+    const firstSnapshotDate = timeline.length > 0 ? timeline[0].date : null;
+    if (firstSnapshotDate) {
+      // Sample weekly from the rolling map for pre-snapshot dates
+      const preDates = Array.from(rollingMap.keys())
+        .filter((d) => d < firstSnapshotDate)
+        .sort();
+      // Sample every 7th date to avoid overwhelming the chart
+      const step = Math.max(1, Math.floor(preDates.length / 26));
+      for (let i = 0; i < preDates.length; i += step) {
+        const date = preDates[i];
+        const total = rollingMap.get(date)!;
+        unknownPoints.push({
+          date,
+          percent: 100,
+          count: total,
+        });
+      }
+      // Also add known version series points at 0 for pre-snapshot dates
+      // so the stacked chart has matching date entries
+      for (const s of result) {
+        for (const up of unknownPoints) {
+          s.points.unshift({ date: up.date, percent: 0, count: 0 });
+        }
+      }
+    }
+
+    // Snapshot period: unknown = actual total - known version total
     for (let i = 0; i < timeline.length; i++) {
       const effectiveTotal = effectiveTotals[i];
       const knownTotal = totals[i];
