@@ -66,6 +66,8 @@ export function PackageDashboard() {
   const setTimeWindow = useAppStore((s) => s.setTimeWindow);
   const releaseTickFilter = useAppStore((s) => s.releaseTickFilter);
   const setReleaseTickFilter = useAppStore((s) => s.setReleaseTickFilter);
+  const migrationTimeWindow = useAppStore((s) => s.migrationTimeWindow);
+  const setMigrationTimeWindow = useAppStore((s) => s.setMigrationTimeWindow);
 
   const handleVersionClick = useAppStore((s) => s.handleVersionClick);
   const resetSelection = useAppStore((s) => s.resetSelection);
@@ -157,6 +159,8 @@ export function PackageDashboard() {
               snapshots={snapshots}
               liveData={liveData}
               versionReleases={versionReleases}
+              migrationTimeWindow={migrationTimeWindow}
+              onMigrationTimeWindowChange={setMigrationTimeWindow}
             />
           ) : viewMode === 'lifecycle' ? (
             <VersionLifecycleChart
