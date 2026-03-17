@@ -608,13 +608,16 @@ export function getFixtureVersionDates(
 }
 
 /**
- * Generate fixture total download data from snapshot fixtures.
- * Returns daily download points derived from snapshot data.
+ * Generate fixture total download data simulating the npm range API.
+ * Returns daily download points covering up to 18 months back from "today"
+ * (2026-03-17), matching the real API's behavior.
  *
- * Snapshot totals are weekly counts, so daily values = weeklyTotal / 7.
- * No artificial inflation — fixtures have consistent data between
- * the version-level and aggregate APIs so "unknown" stays near zero
- * at snapshot points. In production, the real npm APIs may diverge.
+ * - Pre-snapshot period: uses first snapshot's daily rate as baseline,
+ *   growing gradually toward the first snapshot's actual total.
+ *   These show as "unknown" in the adoption chart since we have no
+ *   version breakdown for this period.
+ * - Snapshot period: interpolates between snapshot totals (weekly / 7).
+ * - Post-last-snapshot: extrapolates forward 14 days.
  */
 export function getFixtureTotalDownloads(
   name: string
@@ -624,6 +627,35 @@ export function getFixtureTotalDownloads(
 
   const points: { day: string; downloads: number }[] = [];
 
+  // Start 18 months before "today" (2026-03-17), matching real npm API
+  const apiStart = new Date('2024-09-17T00:00:00');
+  const firstSnapDate = new Date(snapshots[0].date + 'T00:00:00');
+  const firstWeekly = Object.values(snapshots[0].downloads).reduce(
+    (sum, c) => sum + c,
+    0
+  );
+  const firstDailyRate = firstWeekly / 7;
+
+  // Pre-snapshot backfill: generate daily data from API start to first snapshot.
+  // Use ~80% of the first snapshot's rate at the start, growing to match.
+  const preSnapshotDays = Math.round(
+    (firstSnapDate.getTime() - apiStart.getTime()) / 86400000
+  );
+  if (preSnapshotDays > 0) {
+    const startRate = firstDailyRate * 0.7;
+    for (let d = 0; d < preSnapshotDays; d++) {
+      const date = new Date(apiStart);
+      date.setDate(date.getDate() + d);
+      const t = d / preSnapshotDays;
+      const rate = startRate + (firstDailyRate - startRate) * t;
+      points.push({
+        day: date.toISOString().slice(0, 10),
+        downloads: Math.round(rate),
+      });
+    }
+  }
+
+  // Snapshot period: interpolate between snapshots
   for (let i = 0; i < snapshots.length; i++) {
     const snap = snapshots[i];
     const weeklyTotal = Object.values(snap.downloads).reduce(
@@ -657,7 +689,7 @@ export function getFixtureTotalDownloads(
         });
       }
     } else {
-      // Last snapshot — extrapolate a few weeks forward
+      // Last snapshot — extrapolate forward
       for (let d = 0; d < 14; d++) {
         const date = new Date(startDate);
         date.setDate(date.getDate() + d);
