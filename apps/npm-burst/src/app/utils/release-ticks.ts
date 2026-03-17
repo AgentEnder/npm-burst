@@ -44,7 +44,9 @@ export function renderReleaseTicks(
   theme: string
 ): void {
   const stroke =
-    theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)';
+    theme === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.25)';
+  const labelFill =
+    theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)';
 
   for (const vr of releases) {
     const x = xMap(vr.date);
@@ -58,5 +60,13 @@ export function renderReleaseTicks(
       .attr('stroke', stroke)
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '4,3');
+
+    // Version label at top of tick
+    g.append('text')
+      .attr('x', x + 4)
+      .attr('y', -4)
+      .attr('font-size', '9px')
+      .attr('fill', labelFill)
+      .text(vr.version);
   }
 }
