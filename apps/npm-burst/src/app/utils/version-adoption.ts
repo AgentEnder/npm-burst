@@ -1,6 +1,5 @@
-import { parse, gt, SemVer } from 'semver';
+import { parse } from 'semver';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
-import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 
 export interface VersionAdoptionSeries {
@@ -13,27 +12,6 @@ export interface VersionAdoptionSeries {
 }
 
 export type AdoptionGrouping = 'major' | 'minor' | 'patch';
-
-/**
- * Determines the "latest" stable version for a given snapshot date based on
- * version release dates. Returns the highest version released on or before
- * that date.
- */
-function getLatestVersionAtDate(
-  date: string,
-  versionReleases: VersionRelease[]
-): string | null {
-  let latest: { version: string; parsed: SemVer } | null = null;
-  for (const vr of versionReleases) {
-    if (vr.date > date) continue;
-    const parsed = parse(vr.version);
-    if (!parsed || parsed.prerelease.length > 0) continue;
-    if (!latest || gt(parsed, latest.parsed)) {
-      latest = { version: vr.version, parsed };
-    }
-  }
-  return latest?.version ?? null;
-}
 
 /**
  * Groups download counts at the specified granularity level.
@@ -67,12 +45,11 @@ function groupDownloads(
  * Transforms snapshot history + live data into version adoption percentage
  * time series at the specified grouping level. Applies a low-pass filter
  * to mark series below the threshold. Includes a special "latest" series
- * showing the adoption of whatever exact version was "latest" at each point.
+ * to mark series below the threshold.
  */
 export function getVersionAdoptionData(
   snapshots: Snapshot[],
   liveData: NpmDownloadsByVersion | null,
-  versionReleases: VersionRelease[],
   grouping: AdoptionGrouping = 'major',
   lowPassFilter: number = 0
 ): VersionAdoptionSeries[] {
@@ -139,32 +116,6 @@ export function getVersionAdoptionData(
       label: group,
       points,
       belowThreshold: avgShare < lowPassFilter,
-    });
-  }
-
-  // "latest" series — tracks the exact latest stable version at each point
-  const latestPoints: { date: string; percent: number }[] = [];
-  for (let i = 0; i < timeline.length; i++) {
-    const total = totals[i];
-    if (total === 0) continue;
-    const latestVersion = getLatestVersionAtDate(
-      timeline[i].date,
-      versionReleases
-    );
-    if (latestVersion) {
-      const latestCount = timeline[i].downloads[latestVersion] ?? 0;
-      latestPoints.push({
-        date: timeline[i].date,
-        percent: (latestCount / total) * 100,
-      });
-    }
-  }
-
-  if (latestPoints.length > 0) {
-    result.push({
-      label: 'latest',
-      points: latestPoints,
-      belowThreshold: false,
     });
   }
 
