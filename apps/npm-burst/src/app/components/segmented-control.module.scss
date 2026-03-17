@@ -1,0 +1,105 @@
+.group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 3px;
+}
+
+.pill {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  height: calc(100% - 6px);
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--primary-main), var(--accent-main));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    width 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  padding: 0 8px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.button {
+  position: relative;
+  z-index: 1;
+  padding: 4px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  font-family: var(--font-family);
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--text-secondary);
+  }
+}
+
+.active {
+  color: var(--text-primary);
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+// Mobile select — hidden on desktop
+.selectWrapper {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.selectLabel {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.select {
+  appearance: none;
+  padding: 6px 28px 6px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--primary-main), var(--accent-main));
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  &:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+@media (max-width: 768px) {
+  .group {
+    display: none;
+  }
+
+  .selectWrapper {
+    display: flex;
+  }
+}
