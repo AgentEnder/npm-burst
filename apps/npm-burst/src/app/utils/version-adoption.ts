@@ -1,5 +1,6 @@
 import { parse } from 'semver';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
+import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 
 export interface VersionAdoptionPoint {
@@ -48,16 +49,57 @@ function groupDownloads(
 }
 
 /**
- * Transforms snapshot history + live data into version adoption percentage
+ * Builds a map of date → 7-day rolling sum from daily download data.
+ */
+function buildRollingTotalMap(
+  dailyDownloads: DailyDownloadPoint[]
+): Map<string, number> {
+  const map = new Map<string, number>();
+  for (let i = 6; i < dailyDownloads.length; i++) {
+    let sum = 0;
+    for (let j = i - 6; j <= i; j++) {
+      sum += dailyDownloads[j].downloads;
+    }
+    map.set(dailyDownloads[i].day, sum);
+  }
+  return map;
+}
+
+/**
+ * Finds the closest rolling total for a given date.
+ * Falls back to nearest available date within 7 days.
+ */
+function findClosestTotal(
+  rollingMap: Map<string, number>,
+  date: string
+): number | null {
+  if (rollingMap.has(date)) return rollingMap.get(date)!;
+  // Search nearby dates (±7 days)
+  const target = new Date(date + 'T00:00:00').getTime();
+  let closest: number | null = null;
+  let closestDist = Infinity;
+  for (const [d, total] of rollingMap) {
+    const dist = Math.abs(new Date(d + 'T00:00:00').getTime() - target);
+    if (dist < closestDist && dist <= 7 * 86400000) {
+      closestDist = dist;
+      closest = total;
+    }
+  }
+  return closest;
+}
+
+/**
+ * Transforms snapshot history + live data into version adoption
  * time series at the specified grouping level. Applies a low-pass filter
- * to mark series below the threshold. Includes a special "latest" series
- * to mark series below the threshold.
+ * to mark series below the threshold. When totalDownloads is provided,
+ * adds an "unknown" series for downloads not attributable to known versions.
  */
 export function getVersionAdoptionData(
   snapshots: Snapshot[],
   liveData: NpmDownloadsByVersion | null,
   grouping: AdoptionGrouping = 'major',
-  lowPassFilter: number = 0
+  lowPassFilter: number = 0,
+  totalDownloads: DailyDownloadPoint[] = []
 ): VersionAdoptionSeries[] {
   // Build combined timeline: snapshots + live data
   const timeline: { date: string; downloads: Record<string, number> }[] = [
@@ -124,6 +166,34 @@ export function getVersionAdoptionData(
       points,
       belowThreshold: avgShare < lowPassFilter,
     });
+  }
+
+  // "unknown" series — gap between total downloads and sum of known versions
+  if (totalDownloads.length >= 7) {
+    const rollingMap = buildRollingTotalMap(totalDownloads);
+    const unknownPoints: VersionAdoptionPoint[] = [];
+
+    for (let i = 0; i < timeline.length; i++) {
+      const knownTotal = totals[i];
+      const actualTotal = findClosestTotal(rollingMap, timeline[i].date);
+      if (actualTotal === null) continue;
+
+      const unknownCount = Math.max(0, actualTotal - knownTotal);
+      const unknownPercent = actualTotal > 0 ? (unknownCount / actualTotal) * 100 : 0;
+      unknownPoints.push({
+        date: timeline[i].date,
+        percent: unknownPercent,
+        count: unknownCount,
+      });
+    }
+
+    if (unknownPoints.some((p) => p.count > 0)) {
+      result.push({
+        label: 'unknown',
+        points: unknownPoints,
+        belowThreshold: false,
+      });
+    }
   }
 
   return result;

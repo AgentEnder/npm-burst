@@ -52,7 +52,7 @@ export interface AppState {
   error: string | null;
   showDataTable: boolean;
   /** View mode for the package dashboard */
-  viewMode: 'sunburst' | 'adoption' | 'volume' | 'migration' | 'lifecycle';
+  viewMode: 'sunburst' | 'adoption' | 'migration' | 'lifecycle';
   /** Incremented to force re-fetch after cache invalidation */
   fetchGeneration: number;
 
@@ -88,7 +88,7 @@ export interface AppState {
   setLoading: (v: boolean) => void;
   setError: (v: string | null) => void;
   setShowDataTable: (v: boolean) => void;
-  setViewMode: (v: 'sunburst' | 'adoption' | 'volume' | 'migration' | 'lifecycle') => void;
+  setViewMode: (v: 'sunburst' | 'adoption' | 'migration' | 'lifecycle') => void;
   setTimeWindow: (v: '30d' | '90d' | '6mo' | '1y' | 'all') => void;
   setMigrationTimeWindow: (v: '90d' | '180d' | '1y' | 'all') => void;
   setReleaseTickFilter: (v: 'major' | 'minor' | 'patch') => void;

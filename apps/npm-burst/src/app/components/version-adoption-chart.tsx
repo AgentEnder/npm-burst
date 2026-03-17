@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
+import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import { useTheme } from '../context/theme-context';
 import {
   generateThemeColorPalette,
@@ -59,6 +60,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   liveData,
   versionReleases,
   lowPassFilter,
+  totalDownloads,
   timeWindow,
   onTimeWindowChange,
   releaseTickFilter,
@@ -68,6 +70,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
   lowPassFilter: number;
+  totalDownloads: DailyDownloadPoint[];
   timeWindow: TimeWindow;
   onTimeWindowChange: (v: TimeWindow) => void;
   releaseTickFilter: ReleaseTickLevel;
@@ -94,9 +97,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         filteredSnapshots,
         liveData,
         grouping,
-        lowPassFilter
+        lowPassFilter,
+        totalDownloads
       ),
-    [filteredSnapshots, liveData, grouping, lowPassFilter]
+    [filteredSnapshots, liveData, grouping, lowPassFilter, totalDownloads]
   );
 
   // Reset hidden series when grouping changes

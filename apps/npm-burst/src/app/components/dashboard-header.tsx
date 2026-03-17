@@ -10,7 +10,6 @@ import { TrackStar } from './track-star';
 const VIEW_MODES: { value: AppState['viewMode']; label: string }[] = [
   { value: 'sunburst', label: 'Breakdown' },
   { value: 'adoption', label: 'Adoption' },
-  { value: 'volume', label: 'Volume' },
   { value: 'migration', label: 'Migration' },
   { value: 'lifecycle', label: 'Lifecycle' },
 ];
