@@ -28,6 +28,13 @@ const GROUPING_OPTIONS = [
   { value: 'patch', label: 'Patch' },
 ] as const;
 
+const CHART_MODE_OPTIONS = [
+  { value: 'lines', label: 'Lines' },
+  { value: 'stacked', label: 'Stacked' },
+] as const;
+
+type ChartMode = 'lines' | 'stacked';
+
 function buildColorMap(
   labels: string[],
   palette: string[],
@@ -70,6 +77,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
+  const [chartMode, setChartMode] = useState<ChartMode>('lines');
 
   const filteredSnapshots = useMemo(() => {
     const cutoff = getTimeWindowCutoff(timeWindow);
@@ -206,36 +214,77 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           .tickFormat((d) => `${d}%`)
       );
 
-    // Line generator
-    const lineGen = d3
-      .line<{ date: string; percent: number }>()
-      .x((d) => xScale(d.date) ?? 0)
-      .y((d) => yScale(d.percent))
-      .curve(d3.curveMonotoneX);
+    if (chartMode === 'stacked') {
+      // Stacked area chart — exclude 'latest' since it's not a partition
+      // Sort: most recent version on top (reverse version order so newest is last in stack = on top)
+      const stackSeries = visibleSeries
+        .filter((s) => s.label !== 'latest')
+        .reverse();
 
-    // Draw lines for visible series
-    for (const s of visibleSeries) {
-      const color = colorMap.get(s.label) ?? '#888';
-      const isLatest = s.label === 'latest';
+      // Build tabular data: one row per date, one column per series
+      const tableData = allDates.map((date) => {
+        const row: Record<string, number> = { _date: 0 };
+        // Store date index for x positioning
+        row._dateIdx = allDates.indexOf(date);
+        for (const s of stackSeries) {
+          const pt = s.points.find((p) => p.date === date);
+          row[s.label] = pt?.percent ?? 0;
+        }
+        return { date, ...row };
+      });
 
-      g.append('path')
-        .datum(s.points)
-        .attr('fill', 'none')
-        .attr('stroke', color)
-        .attr('stroke-width', isLatest ? 2.5 : 2)
-        .attr('stroke-dasharray', isLatest ? '6,3' : 'none')
-        .attr('d', lineGen);
+      const keys = stackSeries.map((s) => s.label);
+      const stack = d3.stack<Record<string, unknown>>().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetNone);
+      const stacked = stack(tableData as unknown as Array<Record<string, unknown>>);
 
-      // Dots
-      g.selectAll(null)
-        .data(s.points)
-        .join('circle')
-        .attr('cx', (d) => xScale(d.date) ?? 0)
-        .attr('cy', (d) => yScale(d.percent))
-        .attr('r', 3)
-        .attr('fill', color)
-        .attr('stroke', theme === 'dark' ? '#1e1e1e' : '#ffffff')
-        .attr('stroke-width', 1.5);
+      const areaGen = d3
+        .area<d3.SeriesPoint<Record<string, unknown>>>()
+        .x((d) => xScale((d.data as Record<string, string>).date) ?? 0)
+        .y0((d) => yScale(d[0]))
+        .y1((d) => yScale(d[1]))
+        .curve(d3.curveMonotoneX);
+
+      for (const layer of stacked) {
+        const color = colorMap.get(layer.key) ?? '#888';
+        g.append('path')
+          .datum(layer)
+          .attr('fill', color)
+          .attr('fill-opacity', 0.7)
+          .attr('stroke', color)
+          .attr('stroke-width', 0.5)
+          .attr('d', areaGen);
+      }
+    } else {
+      // Line chart mode
+      const lineGen = d3
+        .line<{ date: string; percent: number }>()
+        .x((d) => xScale(d.date) ?? 0)
+        .y((d) => yScale(d.percent))
+        .curve(d3.curveMonotoneX);
+
+      for (const s of visibleSeries) {
+        const color = colorMap.get(s.label) ?? '#888';
+        const isLatest = s.label === 'latest';
+
+        g.append('path')
+          .datum(s.points)
+          .attr('fill', 'none')
+          .attr('stroke', color)
+          .attr('stroke-width', isLatest ? 2.5 : 2)
+          .attr('stroke-dasharray', isLatest ? '6,3' : 'none')
+          .attr('d', lineGen);
+
+        // Dots
+        g.selectAll(null)
+          .data(s.points)
+          .join('circle')
+          .attr('cx', (d) => xScale(d.date) ?? 0)
+          .attr('cy', (d) => yScale(d.percent))
+          .attr('r', 3)
+          .attr('fill', color)
+          .attr('stroke', theme === 'dark' ? '#1e1e1e' : '#ffffff')
+          .attr('stroke-width', 1.5);
+      }
     }
 
     // Version release markers (vertical ticks)
@@ -344,7 +393,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, versionReleases, releaseTickFilter, theme, colorMap, chartColors]);
+  }, [series, visibleSeries, versionReleases, releaseTickFilter, chartMode, theme, colorMap, chartColors]);
 
   const hasHidden = hiddenSeries.size > 0;
   const hasBelowThreshold = series.some((s) => s.belowThreshold);
@@ -357,6 +406,11 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     >
       {/* Controls — always visible so users can change filters */}
       <div className={styles.controls}>
+        <SegmentedControl
+          options={CHART_MODE_OPTIONS}
+          value={chartMode}
+          onChange={(v) => setChartMode(v as ChartMode)}
+        />
         <SegmentedControl
           options={GROUPING_OPTIONS}
           value={grouping}
