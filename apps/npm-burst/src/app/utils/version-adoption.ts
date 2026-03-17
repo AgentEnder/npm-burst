@@ -149,11 +149,13 @@ export function getVersionAdoptionData(
   const hasActualTotals = totalDownloads.length >= 7;
   const rollingMap = hasActualTotals ? buildRollingTotalMap(totalDownloads) : null;
 
-  // Resolve the effective total for each timeline point
+  // Resolve the effective total for each timeline point.
+  // Use the larger of the rolling total (from npm aggregate API) and the
+  // known version sum — ensures percentages never exceed 100%.
   const effectiveTotals = timeline.map((snap, i) => {
     if (rollingMap) {
       const actual = findClosestTotal(rollingMap, snap.date);
-      if (actual !== null && actual > 0) return actual;
+      if (actual !== null && actual > 0) return Math.max(actual, totals[i]);
     }
     return totals[i];
   });
