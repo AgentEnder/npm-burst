@@ -257,15 +257,36 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
           }
         }
       } else {
-        // Never reached threshold — show a thin line from release to today
+        // Never reached threshold — cap at next major release if concluded,
+        // otherwise extend to today (still pending)
+        const endDate = m.neverReached && m.nextMajorReleaseDate
+          ? parseDate(m.nextMajorReleaseDate)
+          : todayDate;
         g.append('rect')
           .attr('x', releaseX)
           .attr('y', y - BAR_HEIGHT / 2)
-          .attr('width', Math.max(0, xScale(todayDate) - releaseX))
+          .attr('width', Math.max(0, xScale(endDate) - releaseX))
           .attr('height', BAR_HEIGHT)
           .attr('fill', color)
           .attr('fill-opacity', 0.15)
           .attr('rx', 3);
+
+        // Show "never reached" label for concluded versions
+        if (m.neverReached) {
+          const midX = (releaseX + xScale(endDate)) / 2;
+          g.append('text')
+            .attr('x', midX)
+            .attr('y', y + 4)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '9px')
+            .attr(
+              'fill',
+              theme === 'dark'
+                ? 'rgba(255,255,255,0.4)'
+                : 'rgba(0,0,0,0.3)'
+            )
+            .text(`peak ${m.peakPercent.toFixed(0)}%`);
+        }
       }
 
       // Release date marker (diamond)

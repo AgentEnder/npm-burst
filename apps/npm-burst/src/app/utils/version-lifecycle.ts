@@ -21,6 +21,8 @@ export interface LifecycleMilestone {
   droppedBelowDate: string | null;
   /** Whether this version is still above threshold at the latest data point */
   stillAboveThreshold: boolean;
+  /** True if the version never reached the threshold and a newer major exists (concluded) */
+  neverReached: boolean;
   /** Peak adoption % */
   peakPercent: number;
   /** Current adoption % (at latest snapshot) */
@@ -166,6 +168,11 @@ export function getVersionLifecycleData(
     );
     if (!hasData) continue;
 
+    // If a version never reached the threshold and a newer major exists,
+    // it's concluded — it will never reach it.
+    const neverReached =
+      reachedThresholdDate === null && nextMajorReleaseDate !== null;
+
     result.push({
       label: majorKey,
       releaseDate,
@@ -175,6 +182,7 @@ export function getVersionLifecycleData(
       daysPersistingAfterNext,
       droppedBelowDate,
       stillAboveThreshold,
+      neverReached,
       peakPercent: peakPercent * 100,
       currentPercent: currentPercent * 100,
     });
