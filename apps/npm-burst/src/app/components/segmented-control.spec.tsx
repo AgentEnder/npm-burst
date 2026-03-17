@@ -30,7 +30,7 @@ describe('SegmentedControl', () => {
     const { getByRole } = render(
       <SegmentedControl options={options} value="a" onChange={onChange} />
     );
-    fireEvent.click(getByRole('button', { name: 'Beta' }));
+    fireEvent.click(getByRole('radio', { name: 'Beta' }));
     expect(onChange).toHaveBeenCalledWith('b');
   });
 
@@ -39,7 +39,7 @@ describe('SegmentedControl', () => {
     const { getByRole } = render(
       <SegmentedControl options={options} value="a" onChange={onChange} />
     );
-    fireEvent.click(getByRole('button', { name: 'Alpha' }));
+    fireEvent.click(getByRole('radio', { name: 'Alpha' }));
     expect(onChange).not.toHaveBeenCalled();
   });
 

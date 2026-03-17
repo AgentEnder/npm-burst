@@ -47,7 +47,12 @@ export const SegmentedControl = memo(function SegmentedControl<
   return (
     <>
       {/* Desktop: button group with animated pill */}
-      <div className={styles.group} ref={containerRef}>
+      <div
+        className={styles.group}
+        ref={containerRef}
+        role="radiogroup"
+        aria-label={label}
+      >
         {/* Animated pill background */}
         {pillStyle && (
           <div
@@ -58,7 +63,7 @@ export const SegmentedControl = memo(function SegmentedControl<
             }}
           />
         )}
-        {label && <span className={styles.label}>{label}</span>}
+        {label && <span className={styles.label} aria-hidden="true">{label}</span>}
         {options.map((opt) => (
           <button
             key={opt.value}
@@ -66,6 +71,8 @@ export const SegmentedControl = memo(function SegmentedControl<
               if (el) buttonRefs.current.set(opt.value, el);
               else buttonRefs.current.delete(opt.value);
             }}
+            role="radio"
+            aria-checked={value === opt.value}
             className={`${styles.button} ${value === opt.value ? styles.active : ''}`}
             onClick={() => {
               if (opt.value !== value) onChange(opt.value);
@@ -90,6 +97,7 @@ export const SegmentedControl = memo(function SegmentedControl<
             </option>
           ))}
         </select>
+        <span className={styles.selectChevron} aria-hidden="true">▾</span>
       </div>
     </>
   );
