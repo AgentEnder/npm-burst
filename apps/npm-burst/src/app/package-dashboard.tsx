@@ -62,6 +62,10 @@ export function PackageDashboard() {
   const liveData = useAppStore((s) => s.liveData);
   const totalDownloads = useAppStore((s) => s.totalDownloads);
   const lowPassFilter = useAppStore((s) => s.lowPassFilter);
+  const timeWindow = useAppStore((s) => s.timeWindow);
+  const setTimeWindow = useAppStore((s) => s.setTimeWindow);
+  const releaseTickFilter = useAppStore((s) => s.releaseTickFilter);
+  const setReleaseTickFilter = useAppStore((s) => s.setReleaseTickFilter);
 
   const handleVersionClick = useAppStore((s) => s.handleVersionClick);
   const resetSelection = useAppStore((s) => s.resetSelection);
@@ -86,7 +90,7 @@ export function PackageDashboard() {
         <ErrorMessage message={error} onRetry={invalidateCache} />
       ) : (
         <div className="container-with-table">
-          {snapshots.length > 0 && (
+          {viewMode === 'sunburst' && snapshots.length > 0 && (
             <SnapshotControls
               currentIndex={snapshotIndex ?? snapshots.length}
               totalSnapshots={snapshots.length}
@@ -134,6 +138,10 @@ export function PackageDashboard() {
               liveData={liveData}
               versionReleases={versionReleases}
               lowPassFilter={lowPassFilter}
+              timeWindow={timeWindow}
+              onTimeWindowChange={setTimeWindow}
+              releaseTickFilter={releaseTickFilter}
+              onReleaseTickFilterChange={setReleaseTickFilter}
             />
           ) : viewMode === 'volume' ? (
             <DownloadVolumeChart

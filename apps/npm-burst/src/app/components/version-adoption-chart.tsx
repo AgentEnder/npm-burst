@@ -12,6 +12,10 @@ import {
   AdoptionGrouping,
   getVersionAdoptionData,
 } from '../utils/version-adoption';
+import { filterReleasesByLevel, renderReleaseTicks } from '../utils/release-ticks';
+import type { ReleaseTickLevel } from '../utils/release-ticks';
+import { getTimeWindowCutoff } from '../utils/time-window';
+import type { TimeWindow } from '../utils/time-window';
 import { SegmentedControl } from './segmented-control';
 import styles from './version-adoption-chart.module.scss';
 
@@ -23,6 +27,20 @@ const GROUPING_OPTIONS = [
   { value: 'minor', label: 'Minor' },
   { value: 'patch', label: 'Patch' },
 ] as const;
+
+const TIME_WINDOW_OPTIONS = [
+  { value: '30d' as const, label: '30d' },
+  { value: '90d' as const, label: '90d' },
+  { value: '6mo' as const, label: '6mo' },
+  { value: '1y' as const, label: '1y' },
+  { value: 'all' as const, label: 'All' },
+];
+
+const RELEASE_TICK_OPTIONS = [
+  { value: 'major' as const, label: 'Major' },
+  { value: 'minor' as const, label: 'Minor' },
+  { value: 'patch' as const, label: 'Patch' },
+];
 
 function buildColorMap(
   labels: string[],
@@ -47,11 +65,19 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   liveData,
   versionReleases,
   lowPassFilter,
+  timeWindow,
+  onTimeWindowChange,
+  releaseTickFilter,
+  onReleaseTickFilterChange,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
   lowPassFilter: number;
+  timeWindow: TimeWindow;
+  onTimeWindowChange: (v: TimeWindow) => void;
+  releaseTickFilter: ReleaseTickLevel;
+  onReleaseTickFilterChange: (v: ReleaseTickLevel) => void;
 }) {
   const { theme } = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -59,16 +85,23 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
 
+  const filteredSnapshots = useMemo(() => {
+    const cutoff = getTimeWindowCutoff(timeWindow);
+    if (!cutoff) return snapshots;
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return snapshots.filter((s) => s.date >= cutoffStr);
+  }, [snapshots, timeWindow]);
+
   const series = useMemo(
     () =>
       getVersionAdoptionData(
-        snapshots,
+        filteredSnapshots,
         liveData,
         versionReleases,
         grouping,
         lowPassFilter
       ),
-    [snapshots, liveData, versionReleases, grouping, lowPassFilter]
+    [filteredSnapshots, liveData, versionReleases, grouping, lowPassFilter]
   );
 
   // Reset hidden series when grouping changes
@@ -228,23 +261,18 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         .domain([firstDate, lastDate])
         .range([xScale(allDates[0]) ?? 0, xScale(allDates[allDates.length - 1]) ?? innerWidth]);
 
-      for (const vr of versionReleases) {
-        const vrDate = new Date(vr.date + 'T00:00:00');
-        if (vrDate < firstDate || vrDate > lastDate) continue;
-
-        const x = timeScale(vrDate);
-        g.append('line')
-          .attr('x1', x)
-          .attr('x2', x)
-          .attr('y1', 0)
-          .attr('y2', innerHeight)
-          .attr(
-            'stroke',
-            theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'
-          )
-          .attr('stroke-width', 1)
-          .attr('stroke-dasharray', '4,3');
-      }
+      const filtered = filterReleasesByLevel(versionReleases, releaseTickFilter);
+      renderReleaseTicks(
+        g as unknown as d3.Selection<SVGGElement, unknown, null, undefined>,
+        filtered,
+        (date) => {
+          const vrDate = new Date(date + 'T00:00:00');
+          if (vrDate < firstDate || vrDate > lastDate) return null;
+          return timeScale(vrDate);
+        },
+        innerHeight,
+        theme
+      );
     }
 
     // Tooltip
@@ -330,7 +358,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, versionReleases, theme, colorMap, chartColors]);
+  }, [series, visibleSeries, versionReleases, releaseTickFilter, theme, colorMap, chartColors]);
 
   if (series.length === 0) {
     return (
@@ -357,6 +385,18 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           value={grouping}
           onChange={(v) => setGrouping(v as AdoptionGrouping)}
           label="Group by"
+        />
+        <SegmentedControl
+          options={[...TIME_WINDOW_OPTIONS]}
+          value={timeWindow}
+          onChange={onTimeWindowChange}
+          label="Window"
+        />
+        <SegmentedControl
+          options={[...RELEASE_TICK_OPTIONS]}
+          value={releaseTickFilter}
+          onChange={onReleaseTickFilterChange}
+          label="Releases"
         />
         <div className={styles.visibilityControls}>
           {hasHidden && (
