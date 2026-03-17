@@ -28,27 +28,14 @@ const GROUPING_OPTIONS = [
   { value: 'patch', label: 'Patch' },
 ] as const;
 
-const CHART_MODE_OPTIONS = [
-  { value: 'lines', label: 'Lines' },
-  { value: 'stacked', label: 'Stacked' },
-] as const;
-
-type ChartMode = 'lines' | 'stacked';
 
 function buildColorMap(
   labels: string[],
-  palette: string[],
-  latestColor: string
+  palette: string[]
 ): Map<string, string> {
   const map = new Map<string, string>();
-  let idx = 0;
-  for (const label of labels) {
-    if (label === 'latest') {
-      map.set('latest', latestColor);
-    } else {
-      map.set(label, palette[idx % palette.length]);
-      idx++;
-    }
+  for (let i = 0; i < labels.length; i++) {
+    map.set(labels[i], palette[i % palette.length]);
   }
   return map;
 }
@@ -77,7 +64,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
-  const [chartMode, setChartMode] = useState<ChartMode>('lines');
 
   const filteredSnapshots = useMemo(() => {
     const cutoff = getTimeWindowCutoff(timeWindow);
@@ -91,11 +77,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       getVersionAdoptionData(
         filteredSnapshots,
         liveData,
-        versionReleases,
         grouping,
         lowPassFilter
       ),
-    [filteredSnapshots, liveData, versionReleases, grouping, lowPassFilter]
+    [filteredSnapshots, liveData, grouping, lowPassFilter]
   );
 
   // Reset hidden series when grouping changes
@@ -129,18 +114,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   );
 
   const chartColors = getThemeChartColors(theme);
-  const palette = generateThemeColorPalette(
-    series.filter((s) => s.label !== 'latest').length + 1,
-    theme
-  );
+  const palette = generateThemeColorPalette(series.length + 1, theme);
   const colorMap = useMemo(
-    () =>
-      buildColorMap(
-        series.map((s) => s.label),
-        palette,
-        chartColors.centerFill
-      ),
-    [series, palette, chartColors.centerFill]
+    () => buildColorMap(series.map((s) => s.label), palette),
+    [series, palette]
   );
 
   // D3 chart rendering
@@ -214,77 +191,39 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           .tickFormat((d) => `${d}%`)
       );
 
-    if (chartMode === 'stacked') {
-      // Stacked area chart — exclude 'latest' since it's not a partition
-      // Sort: most recent version on top (reverse version order so newest is last in stack = on top)
-      const stackSeries = visibleSeries
-        .filter((s) => s.label !== 'latest')
-        .reverse();
+    // Stacked area chart — most recent version on top
+    const stackSeries = visibleSeries.slice().reverse();
 
-      // Build tabular data: one row per date, one column per series
-      const tableData = allDates.map((date) => {
-        const row: Record<string, number> = { _date: 0 };
-        // Store date index for x positioning
-        row._dateIdx = allDates.indexOf(date);
-        for (const s of stackSeries) {
-          const pt = s.points.find((p) => p.date === date);
-          row[s.label] = pt?.percent ?? 0;
-        }
-        return { date, ...row };
-      });
-
-      const keys = stackSeries.map((s) => s.label);
-      const stack = d3.stack<Record<string, unknown>>().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetNone);
-      const stacked = stack(tableData as unknown as Array<Record<string, unknown>>);
-
-      const areaGen = d3
-        .area<d3.SeriesPoint<Record<string, unknown>>>()
-        .x((d) => xScale((d.data as Record<string, string>).date) ?? 0)
-        .y0((d) => yScale(d[0]))
-        .y1((d) => yScale(d[1]))
-        .curve(d3.curveMonotoneX);
-
-      for (const layer of stacked) {
-        const color = colorMap.get(layer.key) ?? '#888';
-        g.append('path')
-          .datum(layer)
-          .attr('fill', color)
-          .attr('fill-opacity', 0.7)
-          .attr('stroke', color)
-          .attr('stroke-width', 0.5)
-          .attr('d', areaGen);
+    // Build tabular data: one row per date, one column per series
+    const tableData = allDates.map((date) => {
+      const row: Record<string, number> = {};
+      for (const s of stackSeries) {
+        const pt = s.points.find((p) => p.date === date);
+        row[s.label] = pt?.percent ?? 0;
       }
-    } else {
-      // Line chart mode
-      const lineGen = d3
-        .line<{ date: string; percent: number }>()
-        .x((d) => xScale(d.date) ?? 0)
-        .y((d) => yScale(d.percent))
-        .curve(d3.curveMonotoneX);
+      return { date, ...row };
+    });
 
-      for (const s of visibleSeries) {
-        const color = colorMap.get(s.label) ?? '#888';
-        const isLatest = s.label === 'latest';
+    const keys = stackSeries.map((s) => s.label);
+    const stack = d3.stack<Record<string, unknown>>().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetNone);
+    const stacked = stack(tableData as unknown as Array<Record<string, unknown>>);
 
-        g.append('path')
-          .datum(s.points)
-          .attr('fill', 'none')
-          .attr('stroke', color)
-          .attr('stroke-width', isLatest ? 2.5 : 2)
-          .attr('stroke-dasharray', isLatest ? '6,3' : 'none')
-          .attr('d', lineGen);
+    const areaGen = d3
+      .area<d3.SeriesPoint<Record<string, unknown>>>()
+      .x((d) => xScale((d.data as Record<string, string>).date) ?? 0)
+      .y0((d) => yScale(d[0]))
+      .y1((d) => yScale(d[1]))
+      .curve(d3.curveMonotoneX);
 
-        // Dots
-        g.selectAll(null)
-          .data(s.points)
-          .join('circle')
-          .attr('cx', (d) => xScale(d.date) ?? 0)
-          .attr('cy', (d) => yScale(d.percent))
-          .attr('r', 3)
-          .attr('fill', color)
-          .attr('stroke', theme === 'dark' ? '#1e1e1e' : '#ffffff')
-          .attr('stroke-width', 1.5);
-      }
+    for (const layer of stacked) {
+      const color = colorMap.get(layer.key) ?? '#888';
+      g.append('path')
+        .datum(layer)
+        .attr('fill', color)
+        .attr('fill-opacity', 0.7)
+        .attr('stroke', color)
+        .attr('stroke-width', 0.5)
+        .attr('d', areaGen);
     }
 
     // Version release markers (vertical ticks)
@@ -393,7 +332,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, versionReleases, releaseTickFilter, chartMode, theme, colorMap, chartColors]);
+  }, [series, visibleSeries, versionReleases, releaseTickFilter, theme, colorMap, chartColors]);
 
   const hasHidden = hiddenSeries.size > 0;
   const hasBelowThreshold = series.some((s) => s.belowThreshold);
@@ -406,11 +345,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     >
       {/* Controls — always visible so users can change filters */}
       <div className={styles.controls}>
-        <SegmentedControl
-          options={CHART_MODE_OPTIONS}
-          value={chartMode}
-          onChange={(v) => setChartMode(v as ChartMode)}
-        />
         <SegmentedControl
           options={GROUPING_OPTIONS}
           value={grouping}
@@ -462,7 +396,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
             {series.map((s) => {
               const color = colorMap.get(s.label) ?? '#888';
               const isHidden = hiddenSeries.has(s.label);
-              const isBelowLPF = s.belowThreshold && s.label !== 'latest';
+              const isBelowLPF = s.belowThreshold;
               return (
                 <div
                   key={s.label}
@@ -475,16 +409,8 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
                   }
                 >
                   <span
-                    className={
-                      s.label === 'latest'
-                        ? styles.legendSwatchLatest
-                        : styles.legendSwatch
-                    }
-                    style={
-                      s.label === 'latest'
-                        ? { borderColor: color }
-                        : { backgroundColor: color }
-                    }
+                    className={styles.legendSwatch}
+                    style={{ backgroundColor: color }}
                   />
                   {s.label}
                 </div>
