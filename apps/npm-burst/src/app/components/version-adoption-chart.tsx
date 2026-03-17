@@ -19,7 +19,7 @@ import type { TimeWindow } from '../utils/time-window';
 import { SegmentedControl } from './segmented-control';
 import styles from './version-adoption-chart.module.scss';
 
-const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 };
+const MARGIN = { top: 20, right: 20, bottom: 60, left: 50 };
 const CHART_HEIGHT = 350;
 
 const GROUPING_OPTIONS = [

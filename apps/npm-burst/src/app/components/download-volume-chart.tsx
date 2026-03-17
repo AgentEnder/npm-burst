@@ -15,7 +15,7 @@ import {
 import { SegmentedControl } from './segmented-control';
 import styles from './download-volume-chart.module.scss';
 
-const MARGIN = { top: 20, right: 20, bottom: 40, left: 60 };
+const MARGIN = { top: 20, right: 20, bottom: 60, left: 60 };
 const CHART_HEIGHT = 350;
 
 export const DownloadVolumeChart = memo(function DownloadVolumeChart({
