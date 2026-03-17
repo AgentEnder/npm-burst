@@ -8,24 +8,47 @@ import {
   generateThemeColorPalette,
   getThemeChartColors,
 } from '../utils/theme-colors';
+import { getTimeWindowCutoff } from '../utils/time-window';
+import type { TimeWindow } from '../utils/time-window';
 import {
   getVersionLifecycleData,
   LifecycleMilestone,
 } from '../utils/version-lifecycle';
+import { SegmentedControl } from './segmented-control';
 import styles from './version-lifecycle-chart.module.scss';
 
 const MARGIN = { top: 20, right: 200, bottom: 30, left: 60 };
 const ROW_HEIGHT = 50;
 const BAR_HEIGHT = 20;
 
+const TIME_WINDOW_OPTIONS = [
+  { value: '30d' as const, label: '30d' },
+  { value: '90d' as const, label: '90d' },
+  { value: '6mo' as const, label: '6mo' },
+  { value: '1y' as const, label: '1y' },
+  { value: 'all' as const, label: 'All' },
+];
+
 export const VersionLifecycleChart = memo(function VersionLifecycleChart({
   snapshots,
   liveData,
   versionReleases,
+  timeWindow,
+  onTimeWindowChange,
+  showOnlySnapshotted,
+  onShowOnlySnapshottedChange,
+  minPeak,
+  onMinPeakChange,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
+  timeWindow: TimeWindow;
+  onTimeWindowChange: (v: TimeWindow) => void;
+  showOnlySnapshotted: boolean;
+  onShowOnlySnapshottedChange: (v: boolean) => void;
+  minPeak: number;
+  onMinPeakChange: (v: number) => void;
 }) {
   const { theme } = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -43,21 +66,47 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     [snapshots, liveData, versionReleases, threshold]
   );
 
+  const filteredMilestones = useMemo(() => {
+    let result = milestones;
+
+    // Filter by time window
+    const cutoff = getTimeWindowCutoff(timeWindow);
+    if (cutoff) {
+      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      result = result.filter((m) => {
+        return m.releaseDate >= cutoffStr || m.stillAboveThreshold || (m.droppedBelowDate && m.droppedBelowDate >= cutoffStr);
+      });
+    }
+
+    // Filter pre-snapshot versions
+    if (showOnlySnapshotted && snapshots.length > 0) {
+      const earliestSnapshot = snapshots[0].date;
+      result = result.filter((m) => m.releaseDate >= earliestSnapshot);
+    }
+
+    // Filter by min peak
+    if (minPeak > 0) {
+      result = result.filter((m) => m.peakPercent >= minPeak);
+    }
+
+    return result;
+  }, [milestones, timeWindow, showOnlySnapshotted, snapshots, minPeak]);
+
   const chartColors = getThemeChartColors(theme);
-  const palette = generateThemeColorPalette(milestones.length + 1, theme);
+  const palette = generateThemeColorPalette(filteredMilestones.length + 1, theme);
 
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current || milestones.length === 0)
+    if (!svgRef.current || !containerRef.current || filteredMilestones.length === 0)
       return;
 
     const containerWidth = containerRef.current.clientWidth;
     const width = containerWidth;
-    const height = MARGIN.top + milestones.length * ROW_HEIGHT + MARGIN.bottom;
+    const height = MARGIN.top + filteredMilestones.length * ROW_HEIGHT + MARGIN.bottom;
     const innerWidth = width - MARGIN.left - MARGIN.right;
 
     // Find the range of dates
     const allDates: string[] = [];
-    for (const m of milestones) {
+    for (const m of filteredMilestones) {
       allDates.push(m.releaseDate);
       if (m.reachedThresholdDate) allDates.push(m.reachedThresholdDate);
       if (m.nextMajorReleaseDate) allDates.push(m.nextMajorReleaseDate);
@@ -90,7 +139,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
       .attr('class', 'axis')
       .attr(
         'transform',
-        `translate(0,${milestones.length * ROW_HEIGHT})`
+        `translate(0,${filteredMilestones.length * ROW_HEIGHT})`
       )
       .call(
         d3
@@ -106,7 +155,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         d3
           .axisBottom(xScale)
           .ticks(6)
-          .tickSize(milestones.length * ROW_HEIGHT)
+          .tickSize(filteredMilestones.length * ROW_HEIGHT)
           .tickFormat(() => '')
       )
       .attr('transform', 'translate(0,0)');
@@ -114,8 +163,8 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     const parseDate = (d: string) => new Date(d + 'T00:00:00');
     const todayDate = parseDate(today);
 
-    for (let i = 0; i < milestones.length; i++) {
-      const m = milestones[i];
+    for (let i = 0; i < filteredMilestones.length; i++) {
+      const m = filteredMilestones[i];
       const y = i * ROW_HEIGHT + ROW_HEIGHT / 2;
       const color = palette[i % palette.length];
 
@@ -253,7 +302,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     }
 
     // Legend explaining bar segments
-    const legendY = milestones.length * ROW_HEIGHT + 25;
+    const legendY = filteredMilestones.length * ROW_HEIGHT + 25;
     const legendItems = [
       { label: `Ramp-up (below ${threshold}%)`, opacity: 0.3 },
       { label: `Above ${threshold}%`, opacity: 0.7 },
@@ -276,9 +325,9 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         .text(item.label);
       legendX += item.label.length * 6 + 30;
     }
-  }, [milestones, threshold, theme, palette, chartColors]);
+  }, [filteredMilestones, threshold, theme, palette, chartColors]);
 
-  if (milestones.length === 0) {
+  if (filteredMilestones.length === 0) {
     return (
       <div className={styles.noData}>
         No historical snapshot data or version release information available.
@@ -294,6 +343,12 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
       style={{ position: 'relative' }}
     >
       <div className={styles.controls}>
+        <SegmentedControl
+          options={[...TIME_WINDOW_OPTIONS]}
+          value={timeWindow}
+          onChange={onTimeWindowChange}
+          label="Window"
+        />
         <div className={styles.thresholdGroup}>
           <span className={styles.thresholdLabel}>Threshold</span>
           <input
@@ -311,6 +366,32 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
           />
           <span className={styles.thresholdSuffix}>%</span>
         </div>
+        <div className={styles.thresholdGroup}>
+          <span className={styles.thresholdLabel}>Min peak</span>
+          <input
+            type="number"
+            step={5}
+            min={0}
+            max={100}
+            value={minPeak}
+            onChange={(e) => {
+              const val = e.target.valueAsNumber;
+              if (!Number.isNaN(val) && val >= 0 && val <= 100)
+                onMinPeakChange(val);
+            }}
+            className={styles.thresholdInput}
+          />
+          <span className={styles.thresholdSuffix}>%</span>
+        </div>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={showOnlySnapshotted}
+            onChange={(e) => onShowOnlySnapshottedChange(e.target.checked)}
+            className={styles.checkbox}
+          />
+          Only tracked versions
+        </label>
       </div>
 
       <div className={styles.chart}>

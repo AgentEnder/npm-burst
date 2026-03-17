@@ -68,6 +68,10 @@ export function PackageDashboard() {
   const setReleaseTickFilter = useAppStore((s) => s.setReleaseTickFilter);
   const migrationTimeWindow = useAppStore((s) => s.migrationTimeWindow);
   const setMigrationTimeWindow = useAppStore((s) => s.setMigrationTimeWindow);
+  const lifecycleShowOnlySnapshotted = useAppStore((s) => s.lifecycleShowOnlySnapshotted);
+  const setLifecycleShowOnlySnapshotted = useAppStore((s) => s.setLifecycleShowOnlySnapshotted);
+  const lifecycleMinPeak = useAppStore((s) => s.lifecycleMinPeak);
+  const setLifecycleMinPeak = useAppStore((s) => s.setLifecycleMinPeak);
 
   const handleVersionClick = useAppStore((s) => s.handleVersionClick);
   const resetSelection = useAppStore((s) => s.resetSelection);
@@ -167,6 +171,12 @@ export function PackageDashboard() {
               snapshots={snapshots}
               liveData={liveData}
               versionReleases={versionReleases}
+              timeWindow={timeWindow}
+              onTimeWindowChange={setTimeWindow}
+              showOnlySnapshotted={lifecycleShowOnlySnapshotted}
+              onShowOnlySnapshottedChange={setLifecycleShowOnlySnapshotted}
+              minPeak={lifecycleMinPeak}
+              onMinPeakChange={setLifecycleMinPeak}
             />
           ) : null}
         </div>
