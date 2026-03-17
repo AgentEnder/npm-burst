@@ -17,7 +17,7 @@ import {
 import { SegmentedControl } from './segmented-control';
 import styles from './version-lifecycle-chart.module.scss';
 
-const MARGIN = { top: 20, right: 200, bottom: 30, left: 60 };
+const MARGIN = { top: 20, right: 200, bottom: 50, left: 60 };
 const ROW_HEIGHT = 50;
 const BAR_HEIGHT = 20;
 
