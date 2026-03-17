@@ -56,6 +56,13 @@ export interface AppState {
   /** Incremented to force re-fetch after cache invalidation */
   fetchGeneration: number;
 
+  // Chart controls
+  timeWindow: '30d' | '90d' | '6mo' | '1y' | 'all';
+  migrationTimeWindow: '90d' | '180d' | '1y' | 'all';
+  releaseTickFilter: 'major' | 'minor' | 'patch';
+  lifecycleShowOnlySnapshotted: boolean;
+  lifecycleMinPeak: number;
+
   // Actions
   setNpmPackageName: (pkg: string) => void;
   setSortByVersion: (v: boolean) => void;
@@ -82,6 +89,11 @@ export interface AppState {
   setError: (v: string | null) => void;
   setShowDataTable: (v: boolean) => void;
   setViewMode: (v: 'sunburst' | 'adoption' | 'volume' | 'migration' | 'lifecycle') => void;
+  setTimeWindow: (v: '30d' | '90d' | '6mo' | '1y' | 'all') => void;
+  setMigrationTimeWindow: (v: '90d' | '180d' | '1y' | 'all') => void;
+  setReleaseTickFilter: (v: 'major' | 'minor' | 'patch') => void;
+  setLifecycleShowOnlySnapshotted: (v: boolean) => void;
+  setLifecycleMinPeak: (v: number) => void;
 
   recomputeChartData: () => void;
   cacheCurrentPackageData: () => void;
@@ -134,6 +146,11 @@ export const appStore = createStore<AppState>((set, get) => ({
   fetchGeneration: 0,
   showDataTable: true,
   viewMode: 'sunburst',
+  timeWindow: 'all',
+  migrationTimeWindow: 'all',
+  releaseTickFilter: 'major',
+  lifecycleShowOnlySnapshotted: false,
+  lifecycleMinPeak: 0,
 
   // === Actions ===
 
@@ -240,7 +257,21 @@ export const appStore = createStore<AppState>((set, get) => ({
   setLoading: (v) => set({ isLoading: v }),
   setError: (v) => set({ error: v }),
   setShowDataTable: (v) => set({ showDataTable: v }),
-  setViewMode: (v) => set({ viewMode: v }),
+  setViewMode: (v) => {
+    const updates: Partial<AppState> = { viewMode: v };
+    if (v !== 'sunburst') {
+      updates.snapshotIndex = null;
+    }
+    set(updates);
+    if (v !== 'sunburst') {
+      get().recomputeChartData();
+    }
+  },
+  setTimeWindow: (v) => set({ timeWindow: v }),
+  setMigrationTimeWindow: (v) => set({ migrationTimeWindow: v }),
+  setReleaseTickFilter: (v) => set({ releaseTickFilter: v }),
+  setLifecycleShowOnlySnapshotted: (v) => set({ lifecycleShowOnlySnapshotted: v }),
+  setLifecycleMinPeak: (v) => set({ lifecycleMinPeak: v }),
 
   recomputeChartData: () => {
     const state = get();
