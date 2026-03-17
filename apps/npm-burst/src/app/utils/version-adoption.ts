@@ -2,11 +2,17 @@ import { parse } from 'semver';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 
+export interface VersionAdoptionPoint {
+  date: string;
+  percent: number;
+  count: number;
+}
+
 export interface VersionAdoptionSeries {
-  /** Version label, e.g. "v18", "v18.3", "v18.3.0", or "latest" */
+  /** Version label, e.g. "v18", "v18.3", "v18.3.0" */
   label: string;
   /** Data points sorted by date */
-  points: { date: string; percent: number }[];
+  points: VersionAdoptionPoint[];
   /** Whether this series was below the LPF threshold */
   belowThreshold: boolean;
 }
@@ -100,7 +106,7 @@ export function getVersionAdoptionData(
   const result: VersionAdoptionSeries[] = [];
 
   for (const group of sortedGroups) {
-    const points: { date: string; percent: number }[] = [];
+    const points: VersionAdoptionPoint[] = [];
     for (let i = 0; i < timeline.length; i++) {
       const total = totals[i];
       if (total === 0) continue;
@@ -108,6 +114,7 @@ export function getVersionAdoptionData(
       points.push({
         date: timeline[i].date,
         percent: (count / total) * 100,
+        count,
       });
     }
 
