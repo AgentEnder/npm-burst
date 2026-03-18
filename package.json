@@ -5,7 +5,8 @@
   "scripts": {
     "start": "nx serve",
     "build": "nx build",
-    "test": "nx test"
+    "test": "nx test",
+    "generate:github-secrets": "tsx tools/generate-github-secrets.ts"
   },
   "private": true,
   "devDependencies": {
@@ -62,6 +63,7 @@
   "dependencies": {
     "@clerk/backend": "^3.2.0",
     "@clerk/clerk-react": "^5.61.3",
+    "@npm-burst/github-data-access": "workspace:",
     "@icons-pack/react-simple-icons": "^13.12.0",
     "@libsql/client": "^0.17.0",
     "better-sqlite3": "^12.6.2",

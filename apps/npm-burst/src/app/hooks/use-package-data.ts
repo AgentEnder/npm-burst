@@ -4,6 +4,7 @@ import {
 } from '@npm-burst/npm-data-access';
 import { useEffect, useRef } from 'react';
 import { onGetDownloads } from '../../server/functions/downloads.telefunc';
+import { onGetHealthMetrics } from '../../server/functions/health.telefunc';
 import { onGetSnapshots } from '../../server/functions/snapshots.telefunc';
 import { onGetTotalDownloads } from '../../server/functions/total-downloads.telefunc';
 import { onGetVersionDates } from '../../server/functions/versions.telefunc';
@@ -39,6 +40,7 @@ export function usePackageData() {
     // Cache miss — fetch everything in parallel
     store.setLoading(true);
     store.setError(null);
+    store.setHealth(null);
 
     let cancelled = false;
 
@@ -75,19 +77,26 @@ export function usePackageData() {
             .catch(() => []);
         })();
 
-    Promise.all([fetchLive, fetchSnapshots, fetchVersions, fetchTotalDownloads])
-      .then(([liveData, snapshots, versions, totalDownloads]) => {
+    const fetchHealth = onGetHealthMetrics(npmPackageName).catch(() => null);
+
+    Promise.all([
+      fetchLive,
+      fetchSnapshots,
+      fetchVersions,
+      fetchTotalDownloads,
+      fetchHealth,
+    ]).then(([liveData, snapshots, versions, totalDownloads, health]) => {
         if (cancelled) return;
         const s = appStore.getState();
         s.setLiveData(liveData);
         s.setSnapshots(snapshots);
         s.setVersionReleases(versions);
         s.setTotalDownloads(totalDownloads);
+        s.setHealth(health);
         s.setSnapshotIndex(null);
         s.cacheCurrentPackageData();
         s.recomputeChartData();
-      })
-      .catch((e) => {
+      }).catch((e) => {
         if (cancelled || e?.name === 'AbortError') return;
         appStore
           .getState()

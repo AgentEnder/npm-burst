@@ -19,6 +19,19 @@
   margin: 0;
 }
 
+.noticeBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin: var(--spacing-lg) var(--spacing-lg) 0;
+  border: 1px solid rgba(33, 150, 243, 0.28);
+  border-radius: var(--radius-md);
+  background: rgba(33, 150, 243, 0.12);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
 // Quota bar
 .quotaSection {
   padding: var(--spacing-lg);
@@ -91,6 +104,50 @@
   font-size: var(--font-size-sm);
   color: var(--text-tertiary);
   margin: 0 0 var(--spacing-md);
+}
+
+.installList {
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.installCard {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  align-items: center;
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(126, 87, 194, 0.08);
+}
+
+.installOwner {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.installPackages {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.installButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  background: var(--accent-main);
+  color: #fff;
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.installButton:hover {
+  opacity: 0.9;
 }
 
 // Email list
@@ -226,6 +283,11 @@
   color: #ff9800;
 }
 
+.badgeHealth {
+  background: rgba(126, 87, 194, 0.18);
+  color: #c3a4ff;
+}
+
 // Maintainer expand
 .expandButton {
   background: none;
@@ -260,6 +322,22 @@
   font-family: var(--font-mono, monospace);
 }
 
+.healthRowPrimary {
+  margin-bottom: 4px;
+}
+
+.healthRowMeta {
+  display: grid;
+  gap: 2px;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.muted {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
 // Empty states
 .emptyState {
   display: flex;
@@ -278,9 +356,4 @@
     margin: 0;
     color: var(--text-secondary);
   }
-}
-
-.muted {
-  color: var(--text-tertiary);
-  font-style: italic;
 }

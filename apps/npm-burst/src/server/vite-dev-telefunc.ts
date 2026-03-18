@@ -18,11 +18,9 @@ function readBody(req: IncomingMessage): Promise<string> {
 
 /**
  * Vite plugin that handles telefunc requests during local dev.
- * Telefunc's built-in dev middleware only matches exact `/_telefunc`,
- * but Vite's base path makes the client post to `/npm-burst/_telefunc`.
- * This plugin intercepts the base-prefixed URL, provides dev context,
- * and calls telefunc directly — passing context inline just like the
- * production Cloudflare handler does.
+ * Telefunc's built-in dev middleware only matches exact `/_telefunc`.
+ * This plugin intercepts that request, provides dev context, and calls
+ * telefunc directly just like the production Cloudflare handler does.
  */
 export function telefuncDevContext(): Plugin {
   return {

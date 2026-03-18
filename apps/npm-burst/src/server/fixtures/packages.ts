@@ -13,6 +13,21 @@ export interface FixturePackage {
   package: string;
 }
 
+export interface FixtureHealthMetricPoint {
+  snapshotDate: string;
+  issuesOpened30d: number;
+  issuesClosed30d: number;
+  prsOpened30d: number;
+  prsMerged30d: number;
+  prsClosedUnmerged30d: number;
+  medianIssueFirstResponseHours: number | null;
+  medianIssueCloseHours: number | null;
+  medianPrFirstReviewHours: number | null;
+  medianPrMergeHours: number | null;
+  activeContributors30d: number;
+  staleIssuesCount: number;
+}
+
 /**
  * "Live" data — current week's downloads by version.
  * This is what the npm downloads-by-version API returns right now.
@@ -64,6 +79,231 @@ const fixtures: Record<string, FixturePackage> = {
       '4.17.21': 8900000,
     },
   },
+};
+
+const fixtureHealthRepos: Record<string, { owner: string; name: string }> = {
+  nx: { owner: 'nrwl', name: 'nx' },
+  react: { owner: 'facebook', name: 'react' },
+  lodash: { owner: 'lodash', name: 'lodash' },
+};
+
+const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
+  nx: [
+    {
+      snapshotDate: '2026-01-12',
+      issuesOpened30d: 118,
+      issuesClosed30d: 124,
+      prsOpened30d: 52,
+      prsMerged30d: 47,
+      prsClosedUnmerged30d: 5,
+      medianIssueFirstResponseHours: 7.4,
+      medianIssueCloseHours: 96.2,
+      medianPrFirstReviewHours: 14.6,
+      medianPrMergeHours: 51.8,
+      activeContributors30d: 19,
+      staleIssuesCount: 38,
+    },
+    {
+      snapshotDate: '2026-01-26',
+      issuesOpened30d: 123,
+      issuesClosed30d: 119,
+      prsOpened30d: 55,
+      prsMerged30d: 49,
+      prsClosedUnmerged30d: 4,
+      medianIssueFirstResponseHours: 6.9,
+      medianIssueCloseHours: 89.1,
+      medianPrFirstReviewHours: 13.1,
+      medianPrMergeHours: 48.3,
+      activeContributors30d: 21,
+      staleIssuesCount: 37,
+    },
+    {
+      snapshotDate: '2026-02-09',
+      issuesOpened30d: 131,
+      issuesClosed30d: 127,
+      prsOpened30d: 57,
+      prsMerged30d: 51,
+      prsClosedUnmerged30d: 5,
+      medianIssueFirstResponseHours: 5.8,
+      medianIssueCloseHours: 82.5,
+      medianPrFirstReviewHours: 11.2,
+      medianPrMergeHours: 43.7,
+      activeContributors30d: 22,
+      staleIssuesCount: 35,
+    },
+    {
+      snapshotDate: '2026-02-23',
+      issuesOpened30d: 142,
+      issuesClosed30d: 135,
+      prsOpened30d: 60,
+      prsMerged30d: 54,
+      prsClosedUnmerged30d: 6,
+      medianIssueFirstResponseHours: 4.9,
+      medianIssueCloseHours: 78.4,
+      medianPrFirstReviewHours: 10.6,
+      medianPrMergeHours: 41.1,
+      activeContributors30d: 24,
+      staleIssuesCount: 33,
+    },
+    {
+      snapshotDate: '2026-03-09',
+      issuesOpened30d: 138,
+      issuesClosed30d: 144,
+      prsOpened30d: 63,
+      prsMerged30d: 59,
+      prsClosedUnmerged30d: 3,
+      medianIssueFirstResponseHours: 4.2,
+      medianIssueCloseHours: 71.6,
+      medianPrFirstReviewHours: 9.8,
+      medianPrMergeHours: 36.9,
+      activeContributors30d: 26,
+      staleIssuesCount: 30,
+    },
+  ],
+  react: [
+    {
+      snapshotDate: '2026-01-12',
+      issuesOpened30d: 76,
+      issuesClosed30d: 62,
+      prsOpened30d: 38,
+      prsMerged30d: 29,
+      prsClosedUnmerged30d: 7,
+      medianIssueFirstResponseHours: 18.5,
+      medianIssueCloseHours: 164.4,
+      medianPrFirstReviewHours: 27.1,
+      medianPrMergeHours: 89.3,
+      activeContributors30d: 14,
+      staleIssuesCount: 112,
+    },
+    {
+      snapshotDate: '2026-01-26',
+      issuesOpened30d: 81,
+      issuesClosed30d: 69,
+      prsOpened30d: 41,
+      prsMerged30d: 31,
+      prsClosedUnmerged30d: 8,
+      medianIssueFirstResponseHours: 17.2,
+      medianIssueCloseHours: 158.2,
+      medianPrFirstReviewHours: 24.8,
+      medianPrMergeHours: 84.7,
+      activeContributors30d: 15,
+      staleIssuesCount: 110,
+    },
+    {
+      snapshotDate: '2026-02-09',
+      issuesOpened30d: 88,
+      issuesClosed30d: 74,
+      prsOpened30d: 43,
+      prsMerged30d: 34,
+      prsClosedUnmerged30d: 6,
+      medianIssueFirstResponseHours: 15.3,
+      medianIssueCloseHours: 144.5,
+      medianPrFirstReviewHours: 22.9,
+      medianPrMergeHours: 78.2,
+      activeContributors30d: 17,
+      staleIssuesCount: 104,
+    },
+    {
+      snapshotDate: '2026-02-23',
+      issuesOpened30d: 86,
+      issuesClosed30d: 79,
+      prsOpened30d: 44,
+      prsMerged30d: 36,
+      prsClosedUnmerged30d: 5,
+      medianIssueFirstResponseHours: 13.9,
+      medianIssueCloseHours: 132.8,
+      medianPrFirstReviewHours: 20.2,
+      medianPrMergeHours: 72.5,
+      activeContributors30d: 18,
+      staleIssuesCount: 101,
+    },
+    {
+      snapshotDate: '2026-03-09',
+      issuesOpened30d: 79,
+      issuesClosed30d: 84,
+      prsOpened30d: 46,
+      prsMerged30d: 39,
+      prsClosedUnmerged30d: 4,
+      medianIssueFirstResponseHours: 12.6,
+      medianIssueCloseHours: 121.4,
+      medianPrFirstReviewHours: 18.7,
+      medianPrMergeHours: 69.1,
+      activeContributors30d: 20,
+      staleIssuesCount: 96,
+    },
+  ],
+  lodash: [
+    {
+      snapshotDate: '2026-01-12',
+      issuesOpened30d: 12,
+      issuesClosed30d: 8,
+      prsOpened30d: 4,
+      prsMerged30d: 3,
+      prsClosedUnmerged30d: 1,
+      medianIssueFirstResponseHours: 54.1,
+      medianIssueCloseHours: 320.2,
+      medianPrFirstReviewHours: 41.5,
+      medianPrMergeHours: 96.8,
+      activeContributors30d: 4,
+      staleIssuesCount: 47,
+    },
+    {
+      snapshotDate: '2026-01-26',
+      issuesOpened30d: 13,
+      issuesClosed30d: 10,
+      prsOpened30d: 5,
+      prsMerged30d: 4,
+      prsClosedUnmerged30d: 1,
+      medianIssueFirstResponseHours: 49.7,
+      medianIssueCloseHours: 288.1,
+      medianPrFirstReviewHours: 36.1,
+      medianPrMergeHours: 90.4,
+      activeContributors30d: 5,
+      staleIssuesCount: 44,
+    },
+    {
+      snapshotDate: '2026-02-09',
+      issuesOpened30d: 11,
+      issuesClosed30d: 12,
+      prsOpened30d: 5,
+      prsMerged30d: 5,
+      prsClosedUnmerged30d: 0,
+      medianIssueFirstResponseHours: 45.2,
+      medianIssueCloseHours: 256.3,
+      medianPrFirstReviewHours: 31.7,
+      medianPrMergeHours: 83.6,
+      activeContributors30d: 6,
+      staleIssuesCount: 41,
+    },
+    {
+      snapshotDate: '2026-02-23',
+      issuesOpened30d: 10,
+      issuesClosed30d: 11,
+      prsOpened30d: 6,
+      prsMerged30d: 5,
+      prsClosedUnmerged30d: 1,
+      medianIssueFirstResponseHours: 38.5,
+      medianIssueCloseHours: 224.8,
+      medianPrFirstReviewHours: 28.3,
+      medianPrMergeHours: 76.4,
+      activeContributors30d: 7,
+      staleIssuesCount: 39,
+    },
+    {
+      snapshotDate: '2026-03-09',
+      issuesOpened30d: 9,
+      issuesClosed30d: 13,
+      prsOpened30d: 6,
+      prsMerged30d: 6,
+      prsClosedUnmerged30d: 0,
+      medianIssueFirstResponseHours: 32.1,
+      medianIssueCloseHours: 198.7,
+      medianPrFirstReviewHours: 24.9,
+      medianPrMergeHours: 64.2,
+      activeContributors30d: 8,
+      staleIssuesCount: 35,
+    },
+  ],
 };
 
 /**
@@ -525,6 +765,19 @@ export function getFixtureSnapshots(
 
 export function getAllFixturePackageNames(): string[] {
   return Object.keys(fixtures);
+}
+
+export function getFixtureHealthRepo(name: string): {
+  owner: string;
+  name: string;
+} | null {
+  return fixtureHealthRepos[name] ?? null;
+}
+
+export function getFixtureHealthMetrics(
+  name: string
+): FixtureHealthMetricPoint[] {
+  return fixtureHealthMetrics[name] ?? [];
 }
 
 /**

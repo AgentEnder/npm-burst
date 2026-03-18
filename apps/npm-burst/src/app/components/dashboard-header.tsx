@@ -12,6 +12,7 @@ const VIEW_MODES: { value: AppState['viewMode']; label: string }[] = [
   { value: 'adoption', label: 'Adoption' },
   { value: 'migration', label: 'Migration' },
   { value: 'lifecycle', label: 'Lifecycle' },
+  { value: 'health', label: 'Health' },
 ];
 
 export const DashboardHeader = memo(function DashboardHeader() {

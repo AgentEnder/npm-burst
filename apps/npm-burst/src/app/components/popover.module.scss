@@ -26,6 +26,12 @@
   min-width: 280px;
   white-space: normal;
   word-wrap: break-word;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
   backdrop-filter: blur(12px);
   animation: popoverFadeIn 0.15s ease-out;
 

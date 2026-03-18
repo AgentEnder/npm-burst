@@ -1,5 +1,6 @@
 import { getDb } from './db';
 import type { Env } from './env';
+import { snapshotGitHubHealth } from './github-health';
 import { cachedFetch } from './npm-fetch';
 import { getYesterdayDate } from './utils';
 
@@ -57,4 +58,6 @@ export async function handleCron(env: Env): Promise<void> {
       console.error(`Failed to fetch snapshot for ${packageName}:`, e);
     }
   }
+
+  await snapshotGitHubHealth(db, env);
 }

@@ -1,4 +1,6 @@
 import { Abort, getContext } from 'telefunc';
+import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
+import { buildGitHubAppInstallPath } from '../github-app';
 import { getDb } from '../db';
 import { isDevMode } from '../env';
 import { getUserEmails } from '../clerk-utils';
@@ -14,6 +16,38 @@ import {
   getFixturePackage,
   getAllFixturePackageNames,
 } from '../fixtures/packages';
+import { getFixturePackageHealthData, getPackageHealthData } from '../github-health';
+
+interface HealthSummary {
+  repo: { owner: string; name: string } | null;
+  latestSnapshotDate: string | null;
+  issueCloseRatio: number | null;
+  medianIssueFirstResponseHours: number | null;
+  medianPrFirstReviewHours: number | null;
+}
+
+export interface GitHubInstallationCandidate {
+  owner: string;
+  packageNames: string[];
+  installPath: string;
+}
+
+function getHealthSummary(
+  snapshots: HealthMetricSeriesPoint[]
+): HealthSummary {
+  const latest = snapshots[snapshots.length - 1];
+  return {
+    repo: null,
+    latestSnapshotDate: latest?.snapshotDate ?? null,
+    issueCloseRatio:
+      latest && latest.issuesOpened30d > 0
+        ? latest.issuesClosed30d / latest.issuesOpened30d
+        : null,
+    medianIssueFirstResponseHours:
+      latest?.medianIssueFirstResponseHours ?? null,
+    medianPrFirstReviewHours: latest?.medianPrFirstReviewHours ?? null,
+  };
+}
 
 export interface TrackedPackageInfo {
   packageName: string;
@@ -22,6 +56,7 @@ export interface TrackedPackageInfo {
   isMaintainer: boolean;
   maintainers: NpmMaintainer[];
   countsAgainstQuota: boolean;
+  health: HealthSummary;
 }
 
 export interface UsageInfo {
@@ -30,6 +65,7 @@ export interface UsageInfo {
   quotaLimit: number;
   downloadThreshold: number;
   userEmails: string[];
+  githubInstallationCandidates: GitHubInstallationCandidate[];
 }
 
 export async function onGetUsageInfo(): Promise<UsageInfo> {
@@ -61,6 +97,10 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
           isMaintainer,
           maintainers: isMaintainer ? devMaintainers : [devMaintainers[0]],
           countsAgainstQuota,
+          health: {
+            ...getHealthSummary(getFixturePackageHealthData(name).snapshots),
+            repo: getFixturePackageHealthData(name).repo,
+          },
         };
       }
     );
@@ -70,10 +110,18 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
       quotaLimit: DEFAULT_MAX_TRACKED_PACKAGES,
       downloadThreshold: WEEKLY_DOWNLOAD_THRESHOLD,
       userEmails: ['dev@example.com'],
+      githubInstallationCandidates: [
+        {
+          owner: 'nrwl',
+          packageNames: ['nx'],
+          installPath: '/api/github/install?owner=nrwl&returnTo=%2Fusage',
+        },
+      ],
     };
   }
 
   const db = getDb(env);
+  const { request } = getContext();
   const [userEmails, quotaLimit] = await Promise.all([
     getUserEmails(userId, env),
     getUserQuota(db, userId),
@@ -89,9 +137,10 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
 
   const trackedPackages: TrackedPackageInfo[] = await Promise.all(
     trackedPkgs.map(async (row) => {
-      const [weeklyDownloads, maintainers] = await Promise.all([
+      const [weeklyDownloads, maintainers, healthData] = await Promise.all([
         getPackageWeeklyDownloads(db, row.package_name),
         getPackageMaintainers(db, row.package_name),
+        getPackageHealthData(db, row.package_name),
       ]);
       const isLargePackage = weeklyDownloads >= WEEKLY_DOWNLOAD_THRESHOLD;
       const isMaintainer = isUserMaintainer(userEmails, maintainers);
@@ -103,10 +152,55 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
         isMaintainer,
         maintainers,
         countsAgainstQuota,
+        health: {
+          ...getHealthSummary(healthData.snapshots),
+          repo: healthData.repo,
+        },
       };
     })
   );
   const quotaUsed = trackedPackages.filter((p) => p.countsAgainstQuota).length;
+
+  const allTrackedPackages = await db
+    .selectFrom('tracked_packages')
+    .select('package_name')
+    .orderBy('package_name')
+    .execute();
+
+  const installationMap = new Map<string, Set<string>>();
+  await Promise.all(
+    allTrackedPackages.map(async (row) => {
+      const maintainers = await getPackageMaintainers(db, row.package_name);
+      if (!isUserMaintainer(userEmails, maintainers)) return;
+
+      const repo = await getPackageHealthData(db, row.package_name).then((data) =>
+        data.repo ? data : null
+      );
+      if (!repo?.repo) return;
+
+      const resolved = await db
+        .selectFrom('github_repo_packages as grp')
+        .innerJoin('github_repos as gr', 'gr.id', 'grp.repo_id')
+        .select(['gr.owner', 'gr.installation_id'])
+        .where('grp.package_name', '=', row.package_name)
+        .executeTakeFirst();
+
+      if (!resolved || resolved.installation_id !== null) return;
+
+      if (!installationMap.has(resolved.owner)) {
+        installationMap.set(resolved.owner, new Set());
+      }
+      installationMap.get(resolved.owner)!.add(row.package_name);
+    })
+  );
+
+  const githubInstallationCandidates = [...installationMap.entries()]
+    .map(([owner, packages]) => ({
+      owner,
+      packageNames: [...packages].sort(),
+      installPath: buildGitHubAppInstallPath(request, owner, '/usage'),
+    }))
+    .sort((a, b) => a.owner.localeCompare(b.owner));
 
   return {
     trackedPackages,
@@ -114,5 +208,6 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
     quotaLimit,
     downloadThreshold: WEEKLY_DOWNLOAD_THRESHOLD,
     userEmails,
+    githubInstallationCandidates,
   };
 }

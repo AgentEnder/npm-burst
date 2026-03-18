@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
+  Github,
 } from 'lucide-react';
 import { Card } from './components/card';
 import { onGetUsageInfo } from '../server/functions/usage.telefunc';
@@ -132,6 +133,35 @@ function PackageRow({ pkg }: { pkg: TrackedPackageInfo }) {
       <td>
         <MaintainerEmails maintainers={pkg.maintainers} />
       </td>
+      <td>
+        {pkg.health.repo ? (
+          <div>
+            <div className={styles.healthRowPrimary}>
+              <span className={styles.badge + ' ' + styles.badgeHealth}>
+                {pkg.health.issueCloseRatio === null
+                  ? 'No volume yet'
+                  : `${pkg.health.issueCloseRatio.toFixed(2)}x close/open`}
+              </span>
+            </div>
+            <div className={styles.healthRowMeta}>
+              <span>
+                Issue response:{' '}
+                {pkg.health.medianIssueFirstResponseHours === null
+                  ? 'n/a'
+                  : `${pkg.health.medianIssueFirstResponseHours.toFixed(1)}h`}
+              </span>
+              <span>
+                PR review:{' '}
+                {pkg.health.medianPrFirstReviewHours === null
+                  ? 'n/a'
+                  : `${pkg.health.medianPrFirstReviewHours.toFixed(1)}h`}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <span className={styles.muted}>No repo linked</span>
+        )}
+      </td>
     </tr>
   );
 }
@@ -141,6 +171,14 @@ export function UsagePage() {
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const installStatus =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('github-install')
+      : null;
+  const installOwner =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('owner')
+      : null;
 
   useEffect(() => {
     if (!auth.isSignedIn) return;
@@ -198,7 +236,44 @@ export function UsagePage() {
       <h1 className={styles.pageTitle}>Usage & Tracking</h1>
 
       <Card className={styles.fullWidthCard}>
+        {installStatus === 'pending' && (
+          <div className={styles.noticeBanner}>
+            <Github size={16} />
+            <span>
+              GitHub App installation for {installOwner ?? 'your account'} was
+              started. The repository access will appear here once GitHub sends
+              the installation webhook.
+            </span>
+          </div>
+        )}
+
         <QuotaBar used={usage.quotaUsed} limit={usage.quotaLimit} />
+
+        {usage.githubInstallationCandidates.length > 0 && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>GitHub App Installation</h2>
+            <p className={styles.sectionHint}>
+              Install the GitHub App on repo owners you maintain so npm-burst
+              can snapshot issue and pull request health without manual DB
+              setup.
+            </p>
+            <div className={styles.installList}>
+              {usage.githubInstallationCandidates.map((candidate) => (
+                <div key={candidate.owner} className={styles.installCard}>
+                  <div>
+                    <div className={styles.installOwner}>{candidate.owner}</div>
+                    <div className={styles.installPackages}>
+                      {candidate.packageNames.join(', ')}
+                    </div>
+                  </div>
+                  <a href={candidate.installPath} className={styles.installButton}>
+                    Install App
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Your Emails</h2>
@@ -233,6 +308,7 @@ export function UsagePage() {
                     <th>Weekly Downloads</th>
                     <th>Status</th>
                     <th>Maintainers</th>
+                    <th>Health</th>
                   </tr>
                 </thead>
                 <tbody>

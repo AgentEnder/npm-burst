@@ -46,4 +46,7 @@ vitest.config.*.timestamp*
 .github/instructions/nx.instructions.md
 .env.local
 .dev.vars
+.github-app.local.env
+/keys/
 *.db
+.wrangler/cache
