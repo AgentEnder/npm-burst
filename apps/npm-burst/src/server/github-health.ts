@@ -1,16 +1,16 @@
 import {
-  isBotActor,
   canonicalizeFilterConfig,
   parseFilterConfig,
   parseGitHubRepositoryUrl,
-  type BotPattern,
   type FilterConfig,
   type HealthMetricSeriesPoint,
   type RawGitHubHealthData,
 } from '@npm-burst/github-data-access';
 import type { Kysely } from 'kysely';
 import type { DB } from './db-schema';
+import { logExternalFailure } from './external-data';
 import { getFixtureHealthMetrics, getFixtureHealthRepo } from './fixtures/packages';
+import { ensureTrackedPackageMetadata } from './package-metadata';
 import { cachedFetch } from './npm-fetch';
 
 export interface ResolvedRepoInfo {
@@ -41,7 +41,8 @@ export type HealthMetricKey =
   | 'medianPrFirstReviewHours'
   | 'medianPrMergeHours'
   | 'activeContributors30d'
-  | 'staleIssuesCount';
+  | 'staleIssuesCount'
+  | 'stalePrsCount';
 
 export interface MetricSourceData {
   metricKey: HealthMetricKey;
@@ -67,6 +68,7 @@ function toMetricPoint(
     median_pr_merge_hours: number | null;
     active_contributors_30d: number;
     stale_issues_count: number;
+    stale_prs_count: number;
   }
 ): HealthMetricSeriesPoint {
   return {
@@ -82,6 +84,7 @@ function toMetricPoint(
     medianPrMergeHours: row.median_pr_merge_hours,
     activeContributors30d: row.active_contributors_30d,
     staleIssuesCount: row.stale_issues_count,
+    stalePrsCount: row.stale_prs_count,
   };
 }
 
@@ -95,57 +98,12 @@ function getSourceNow(snapshotDate: string): Date {
   return new Date(`${snapshotDate}T23:59:59.000Z`);
 }
 
-function firstHumanIssueResponse(
-  issue: RawGitHubHealthData['repository']['issues'][number],
-  patterns: BotPattern[]
-): string | null {
-  return (
-    issue.comments
-      .filter((comment) => !isBotActor(comment.author, patterns))
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdAt ??
-    null
-  );
-}
-
-function firstHumanPrReview(
-  pr: RawGitHubHealthData['repository']['pullRequests'][number],
-  patterns: BotPattern[]
-): string | null {
-  return (
-    pr.reviews
-      .filter((review) => !isBotActor(review.author, patterns))
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdAt ??
-    null
-  );
-}
-
-function hoursBetween(start: string, end: string | null): number | null {
-  if (!end) return null;
-  const startMs = new Date(start).getTime();
-  const endMs = new Date(end).getTime();
-  if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs < startMs) return null;
-  return Number(((endMs - startMs) / (60 * 60 * 1000)).toFixed(2));
-}
-
-async function loadBotPatterns(db: Kysely<DB>): Promise<BotPattern[]> {
-  const rows = await db
-    .selectFrom('github_bot_patterns')
-    .select(['pattern_type', 'pattern_value'])
-    .execute();
-
-  return rows.map((row) => ({
-    pattern_type: row.pattern_type as BotPattern['pattern_type'],
-    pattern_value: row.pattern_value,
-  }));
-}
-
 function buildMetricSourceData(
   metricKey: HealthMetricKey,
   snapshotDate: string,
   repo: { owner: string; name: string },
   rawData: RawGitHubHealthData,
-  filterConfig: FilterConfig | null,
-  botPatterns: BotPattern[]
+  filterConfig: FilterConfig | null
 ): MetricSourceData {
   const now = getSourceNow(snapshotDate);
   const sinceMs = now.getTime() - 30 * DAY_IN_MS;
@@ -215,36 +173,6 @@ function buildMetricSourceData(
         ],
       };
     }
-    case 'medianIssueFirstResponseHours': {
-      const entries = issues
-        .map((issue) => {
-          const firstResponseAt = firstHumanIssueResponse(issue, botPatterns);
-          const hours = hoursBetween(issue.createdAt, firstResponseAt);
-          if (hours === null) return null;
-          return {
-            ...issue,
-            firstResponseAt,
-            hours,
-            url: `${repoUrl}/issues/${issue.number}`,
-          };
-        })
-        .filter((value): value is Record<string, unknown> => value !== null);
-      return { metricKey, snapshotDate, repo, summary: { samples: entries.length }, entries };
-    }
-    case 'medianIssueCloseHours': {
-      const entries = issues
-        .map((issue) => {
-          const hours = hoursBetween(issue.createdAt, issue.closedAt);
-          if (hours === null) return null;
-          return {
-            ...issue,
-            hours,
-            url: `${repoUrl}/issues/${issue.number}`,
-          };
-        })
-        .filter((value): value is Record<string, unknown> => value !== null);
-      return { metricKey, snapshotDate, repo, summary: { samples: entries.length }, entries };
-    }
     case 'prsOpened30d': {
       const entries = prs
         .filter((pr) => new Date(pr.createdAt).getTime() >= sinceMs)
@@ -275,92 +203,24 @@ function buildMetricSourceData(
         }));
       return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
     }
-    case 'medianPrFirstReviewHours': {
-      const entries = prs
-        .map((pr) => {
-          const firstReviewAt = firstHumanPrReview(pr, botPatterns);
-          const hours = hoursBetween(pr.createdAt, firstReviewAt);
-          if (hours === null) return null;
-          return {
-            ...pr,
-            firstReviewAt,
-            hours,
-            url: `${repoUrl}/pull/${pr.number}`,
-          };
-        })
-        .filter((value): value is Record<string, unknown> => value !== null);
-      return { metricKey, snapshotDate, repo, summary: { samples: entries.length }, entries };
-    }
-    case 'medianPrMergeHours': {
-      const entries = prs
-        .map((pr) => {
-          const hours = hoursBetween(pr.createdAt, pr.mergedAt);
-          if (hours === null) return null;
-          return {
-            ...pr,
-            hours,
-            url: `${repoUrl}/pull/${pr.number}`,
-          };
-        })
-        .filter((value): value is Record<string, unknown> => value !== null);
-      return { metricKey, snapshotDate, repo, summary: { samples: entries.length }, entries };
-    }
-    case 'activeContributors30d': {
-      const contributorMap = new Map<string, { login: string; issueNumbers: number[]; prNumbers: number[] }>();
-      for (const issue of issues) {
-        for (const comment of issue.comments) {
-          if (!isBotActor(comment.author, botPatterns) && comment.author?.login) {
-            const existing = contributorMap.get(comment.author.login) ?? {
-              login: comment.author.login,
-              issueNumbers: [],
-              prNumbers: [],
-            };
-            existing.issueNumbers.push(issue.number);
-            contributorMap.set(comment.author.login, existing);
-          }
-        }
-      }
-      for (const pr of prs) {
-        if (!isBotActor(pr.author, botPatterns) && pr.author?.login) {
-          const existing = contributorMap.get(pr.author.login) ?? {
-            login: pr.author.login,
-            issueNumbers: [],
-            prNumbers: [],
-          };
-          existing.prNumbers.push(pr.number);
-          contributorMap.set(pr.author.login, existing);
-        }
-        for (const review of pr.reviews) {
-          if (!isBotActor(review.author, botPatterns) && review.author?.login) {
-            const existing = contributorMap.get(review.author.login) ?? {
-              login: review.author.login,
-              issueNumbers: [],
-              prNumbers: [],
-            };
-            existing.prNumbers.push(pr.number);
-            contributorMap.set(review.author.login, existing);
-          }
-        }
-      }
-      return {
-        metricKey,
-        snapshotDate,
-        repo,
-        summary: { count: contributorMap.size },
-        entries: [...contributorMap.values()].sort((a, b) =>
-          a.login.localeCompare(b.login)
-        ),
-      };
-    }
     case 'staleIssuesCount': {
       const entries = issues
-        .filter(
-          (issue) =>
-            !issue.closedAt && new Date(issue.updatedAt).getTime() < staleCutoff
-        )
+        .filter((issue) => !issue.closedAt && new Date(issue.updatedAt).getTime() < staleCutoff)
         .map((issue) => ({
           ...issue,
           url: `${repoUrl}/issues/${issue.number}`,
+        }));
+      return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
+    }
+    case 'stalePrsCount': {
+      const entries = prs
+        .filter(
+          (pr) =>
+            !pr.closedAt && !pr.mergedAt && new Date(pr.updatedAt).getTime() < staleCutoff
+        )
+        .map((pr) => ({
+          ...pr,
+          url: `${repoUrl}/pull/${pr.number}`,
         }));
       return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
     }
@@ -402,25 +262,48 @@ export async function ensureGitHubRepoForPackage(
   const existing = await getExistingRepoForPackage(db, packageName);
   if (existing) return existing;
 
-  const body = await cachedFetch(
-    db,
-    `https://registry.npmjs.org/${encodeURIComponent(packageName)}`
-  );
+  const trackedRow = await db
+    .selectFrom('tracked_packages')
+    .select('id')
+    .where('package_name', '=', packageName)
+    .executeTakeFirst();
 
-  let repository: unknown = null;
-  try {
-    repository = (JSON.parse(body) as { repository?: unknown }).repository;
-  } catch {
-    return null;
+  let resolvedRepo = trackedRow
+    ? (await ensureTrackedPackageMetadata(db, packageName)).githubRepo
+    : null;
+  if (!resolvedRepo) {
+    let body: string;
+    try {
+      body = await cachedFetch(
+        db,
+        `https://registry.npmjs.org/${encodeURIComponent(packageName)}`
+      );
+    } catch (error) {
+      logExternalFailure(
+        { source: 'npm', operation: 'resolve package GitHub repository' },
+        error,
+        { packageName }
+      );
+      return null;
+    }
+
+    let repository: unknown = null;
+    try {
+      repository = (JSON.parse(body) as { repository?: unknown }).repository;
+    } catch {
+      return null;
+    }
+
+    resolvedRepo = parseGitHubRepositoryUrl(repository);
   }
 
-  const parsed = parseGitHubRepositoryUrl(repository);
-  if (!parsed) return null;
+  const parsedRepo = resolvedRepo;
+  if (!parsedRepo) return null;
 
   const installation = await db
     .selectFrom('github_installations')
     .select('id')
-    .where('owner', '=', parsed.owner)
+    .where('owner', '=', parsedRepo.owner)
     .$narrowType<{ id: number }>()
     .executeTakeFirst();
 
@@ -428,8 +311,8 @@ export async function ensureGitHubRepoForPackage(
     .insertInto('github_repos')
     .values({
       installation_id: installation?.id ?? null,
-      owner: parsed.owner,
-      name: parsed.name,
+      owner: parsedRepo.owner,
+      name: parsedRepo.name,
     })
     .onConflict((oc) => oc.columns(['owner', 'name']).doNothing())
     .execute();
@@ -437,8 +320,8 @@ export async function ensureGitHubRepoForPackage(
   const repo = await db
     .selectFrom('github_repos')
     .select(['id', 'owner', 'name'])
-    .where('owner', '=', parsed.owner)
-    .where('name', '=', parsed.name)
+    .where('owner', '=', parsedRepo.owner)
+    .where('name', '=', parsedRepo.name)
     .executeTakeFirst();
 
   if (!repo) return null;
@@ -496,6 +379,7 @@ export async function getPackageHealthData(
       'ghm.median_pr_merge_hours as median_pr_merge_hours',
       'ghm.active_contributors_30d as active_contributors_30d',
       'ghm.stale_issues_count as stale_issues_count',
+      'ghm.stale_prs_count as stale_prs_count',
     ])
     .where('ghm.repo_id', '=', repo.id)
     .orderBy('ghs.snapshot_date', 'asc')
@@ -525,23 +409,52 @@ export async function getPackageMetricSource(
 
   const latestSnapshot = await db
     .selectFrom('github_health_snapshots')
-    .select(['snapshot_date', 'raw_data'])
+    .select(['id', 'snapshot_date', 'raw_data'])
     .where('repo_id', '=', repo.id)
     .orderBy('snapshot_date', 'desc')
     .executeTakeFirst();
 
   if (!latestSnapshot) return null;
 
+  if (metricKey === 'staleIssuesCount' || metricKey === 'stalePrsCount') {
+    const wantedFilter = canonicalizeFilterConfig(repo.filterConfig);
+    const metricRows = await db
+      .selectFrom('github_health_metrics')
+      .select(['filter_config', 'stale_issues_count', 'stale_prs_count'])
+      .where('snapshot_id', '=', latestSnapshot.id)
+      .where('repo_id', '=', repo.id)
+      .execute();
+
+    const exact = metricRows.find((row) => row.filter_config === wantedFilter);
+    const fallback = metricRows.find((row) => row.filter_config === null);
+    const selected = exact ?? fallback;
+
+    return {
+      metricKey,
+      snapshotDate: latestSnapshot.snapshot_date,
+      repo: { owner: repo.owner, name: repo.name },
+      summary: {
+        count:
+          metricKey === 'staleIssuesCount'
+            ? (selected?.stale_issues_count ?? 0)
+            : (selected?.stale_prs_count ?? 0),
+        note:
+          metricKey === 'staleIssuesCount'
+            ? 'Derived from total open issues minus issues updated in the last 90 days.'
+            : 'Derived from total open pull requests minus pull requests updated in the last 90 days.',
+      },
+      entries: [],
+    };
+  }
+
   const rawData = JSON.parse(latestSnapshot.raw_data) as RawGitHubHealthData;
-  const botPatterns = await loadBotPatterns(db);
 
   return buildMetricSourceData(
     metricKey,
     latestSnapshot.snapshot_date,
     { owner: repo.owner, name: repo.name },
     rawData,
-    repo.filterConfig,
-    botPatterns
+    repo.filterConfig
   );
 }
 
@@ -570,7 +483,10 @@ export function getFixtureMetricSource(
     number: index + 1,
     title: `Synthetic fixture item ${index + 1} for ${metricKey}`,
     url:
-      metricKey.includes('pr') || metricKey === 'prsMerged30d' || metricKey === 'prsOpened30d'
+      metricKey.includes('pr') ||
+      metricKey === 'prsMerged30d' ||
+      metricKey === 'prsOpened30d' ||
+      metricKey === 'stalePrsCount'
         ? `https://github.com/${repo.owner}/${repo.name}/pull/${index + 1}`
         : `https://github.com/${repo.owner}/${repo.name}/issues/${index + 1}`,
     createdAt: `${latest.snapshotDate}T0${index + 1}:00:00.000Z`,
@@ -584,19 +500,9 @@ export function getFixtureMetricSource(
         : null,
     updatedAt: `${latest.snapshotDate}T1${index + 1}:45:00.000Z`,
     labels: ['fixture', metricKey],
-    comments: [
-      {
-        createdAt: `${latest.snapshotDate}T0${index + 2}:00:00.000Z`,
-        author: { login: 'fixture-maintainer', __typename: 'User' },
-      },
-    ],
-    reviews: [
-      {
-        createdAt: `${latest.snapshotDate}T0${index + 3}:00:00.000Z`,
-        author: { login: 'fixture-reviewer', __typename: 'User' },
-      },
-    ],
-    author: { login: 'fixture-contributor', __typename: 'User' },
+    comments: [],
+    reviews: [],
+    author: null,
   }));
 
   return {

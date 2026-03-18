@@ -5,8 +5,8 @@ import { getAllFixturePackageNames } from '../fixtures/packages';
 import { getUserEmails } from '../clerk-utils';
 import { getPackageMaintainers, isUserMaintainer } from '../npm-maintainers';
 import { getPackageWeeklyDownloads } from '../npm-downloads';
+import { ensureTrackedPackageMetadata } from '../package-metadata';
 import {
-  DEFAULT_MAX_TRACKED_PACKAGES,
   WEEKLY_DOWNLOAD_THRESHOLD,
   getUserQuota,
 } from '../constants';
@@ -30,6 +30,14 @@ export async function onTrackPackage(
 
   const db = getDb(env);
 
+  await db
+    .insertInto('tracked_packages')
+    .values({ package_name: pkg })
+    .onConflict((oc) => oc.column('package_name').doNothing())
+    .execute();
+
+  await ensureTrackedPackageMetadata(db, pkg);
+
   // --- Quota check ---
   const weeklyDownloads = await getPackageWeeklyDownloads(db, pkg);
   const isLargePackage = weeklyDownloads >= WEEKLY_DOWNLOAD_THRESHOLD;
@@ -44,7 +52,7 @@ export async function onTrackPackage(
       const trackedPkgs = await db
         .selectFrom('tracked_packages as tp')
         .innerJoin('user_tracked_packages as utp', 'tp.id', 'utp.package_id')
-        .select('tp.package_name')
+        .select(['tp.package_name', 'tp.maintainers_json'])
         .where('utp.user_id', '=', userId)
         .execute();
 
@@ -52,7 +60,11 @@ export async function onTrackPackage(
         trackedPkgs.map(async (row) => {
           const [dl, maint] = await Promise.all([
             getPackageWeeklyDownloads(db, row.package_name),
-            getPackageMaintainers(db, row.package_name),
+            row.maintainers_json
+              ? ensureTrackedPackageMetadata(db, row.package_name).then(
+                  (metadata) => metadata.maintainers
+                )
+              : getPackageMaintainers(db, row.package_name),
           ]);
           if (dl >= WEEKLY_DOWNLOAD_THRESHOLD) return false;
           if (isUserMaintainer(userEmails, maint)) return false;
@@ -76,13 +88,6 @@ export async function onTrackPackage(
       }
     }
   }
-
-  // Ensure package exists
-  await db
-    .insertInto('tracked_packages')
-    .values({ package_name: pkg })
-    .onConflict((oc) => oc.column('package_name').doNothing())
-    .execute();
 
   const pkgRow = await db
     .selectFrom('tracked_packages')

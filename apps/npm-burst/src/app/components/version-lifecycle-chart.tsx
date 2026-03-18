@@ -12,7 +12,7 @@ import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
 import {
   getVersionLifecycleData,
-  LifecycleMilestone,
+  type LifecycleMilestone,
 } from '../utils/version-lifecycle';
 import { SegmentedControl } from './segmented-control';
 import styles from './version-lifecycle-chart.module.scss';

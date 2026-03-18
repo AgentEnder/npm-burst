@@ -17,6 +17,7 @@ import type {
 } from '../server/functions/usage.telefunc';
 import { useClerk } from '@clerk/clerk-react';
 import { useSafeAuth } from './context/auth-context';
+import { useWarningToast } from './hooks/use-warning-toast';
 import styles from './usage-page.module.scss';
 
 function formatDownloads(n: number): string {
@@ -143,35 +144,6 @@ function PackageRow({ pkg }: { pkg: TrackedPackageInfo }) {
       <td>
         <MaintainerEmails maintainers={pkg.maintainers} />
       </td>
-      <td>
-        {pkg.health.repo ? (
-          <div>
-            <div className={styles.healthRowPrimary}>
-              <span className={styles.badge + ' ' + styles.badgeHealth}>
-                {pkg.health.issueCloseRatio === null
-                  ? 'No volume yet'
-                  : `${pkg.health.issueCloseRatio.toFixed(2)}x close/open`}
-              </span>
-            </div>
-            <div className={styles.healthRowMeta}>
-              <span>
-                Issue response:{' '}
-                {pkg.health.medianIssueFirstResponseHours === null
-                  ? 'n/a'
-                  : `${pkg.health.medianIssueFirstResponseHours.toFixed(1)}h`}
-              </span>
-              <span>
-                PR review:{' '}
-                {pkg.health.medianPrFirstReviewHours === null
-                  ? 'n/a'
-                  : `${pkg.health.medianPrFirstReviewHours.toFixed(1)}h`}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <span className={styles.muted}>No repo linked</span>
-        )}
-      </td>
     </tr>
   );
 }
@@ -189,6 +161,8 @@ export function UsagePage() {
     typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('owner')
       : null;
+
+  useWarningToast('usage-page', usage?.warnings ?? []);
 
   useEffect(() => {
     if (!auth.isSignedIn) return;
@@ -253,6 +227,15 @@ export function UsagePage() {
               GitHub App installation for {installOwner ?? 'your account'} was
               started. The repository access will appear here once GitHub sends
               the installation webhook.
+            </span>
+          </div>
+        )}
+        {usage.warnings.length > 0 && (
+          <div className={styles.noticeBanner}>
+            <AlertTriangle size={16} />
+            <span>
+              Some external data could not be loaded, so this page may be showing
+              partial results.
             </span>
           </div>
         )}
@@ -344,7 +327,6 @@ export function UsagePage() {
                     <th>Weekly Downloads</th>
                     <th>Status</th>
                     <th>Maintainers</th>
-                    <th>Health</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -58,7 +58,7 @@ function createContext(request: Request, env: Env): GitHubRouteContext {
         console.error('Unhandled waitUntil() error in Vite dev GitHub API middleware:', error);
       });
     },
-    passThroughOnException() {},
+    passThroughOnException() { /* noop stub for dev */ },
     next: async () => new Response('Not implemented', { status: 501 }),
   };
 }

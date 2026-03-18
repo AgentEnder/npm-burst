@@ -3,6 +3,11 @@ import {
   computeHealthMetrics,
   decryptToken,
   encryptToken,
+  fetchGitHubHealthData,
+  fetchGitHubStaleIssueCount,
+  fetchGitHubStalePullRequestCount,
+  FULL_FETCH_WINDOW_MS,
+  mergeRawHealthData,
   parseFilterConfig,
   type BotPattern,
   type RawGitHubHealthData,
@@ -12,141 +17,11 @@ import type { DB } from './db-schema';
 import type { Env } from './env';
 import { ensureGitHubRepoForPackage } from './github-health';
 
-interface GitHubGraphqlPageInfo {
-  endCursor: string | null;
-  hasNextPage: boolean;
-}
-
-interface GitHubGraphqlResponse {
-  data?: {
-    repository: {
-      issues: {
-        pageInfo: GitHubGraphqlPageInfo;
-        nodes: Array<{
-          id: string;
-          number: number;
-          title: string;
-          createdAt: string;
-          closedAt: string | null;
-          updatedAt: string;
-          labels: { nodes: Array<{ name: string }> };
-          comments: {
-            nodes: Array<{
-              createdAt: string;
-              author: { login: string | null; __typename: string | null } | null;
-            }>;
-          };
-        }>;
-      };
-      pullRequests: {
-        pageInfo: GitHubGraphqlPageInfo;
-        nodes: Array<{
-          id: string;
-          number: number;
-          title: string;
-          createdAt: string;
-          closedAt: string | null;
-          mergedAt: string | null;
-          updatedAt: string;
-          author: { login: string | null; __typename: string | null } | null;
-          labels: { nodes: Array<{ name: string }> };
-          comments: {
-            nodes: Array<{
-              createdAt: string;
-              author: { login: string | null; __typename: string | null } | null;
-            }>;
-          };
-          reviews: {
-            nodes: Array<{
-              createdAt: string;
-              author: { login: string | null; __typename: string | null } | null;
-            }>;
-          };
-        }>;
-      };
-    } | null;
-  };
-  errors?: Array<{ message: string }>;
-}
-
-type GitHubRepositoryResult = NonNullable<
-  NonNullable<GitHubGraphqlResponse['data']>['repository']
->;
-type GraphqlIssueNode = GitHubRepositoryResult['issues']['nodes'][number];
-type GraphqlPullRequestNode =
-  GitHubRepositoryResult['pullRequests']['nodes'][number];
-
 export interface GitHubHealthSnapshotRepo {
   id: number;
   owner: string;
   name: string;
 }
-
-const REPO_HEALTH_QUERY = `
-  query RepoHealth(
-    $owner: String!
-    $name: String!
-    $issuesCursor: String
-    $prsCursor: String
-  ) {
-    repository(owner: $owner, name: $name) {
-      issues(
-        first: 100
-        after: $issuesCursor
-        states: [OPEN, CLOSED]
-        orderBy: { field: UPDATED_AT, direction: DESC }
-      ) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id
-          number
-          title
-          createdAt
-          closedAt
-          updatedAt
-          labels(first: 20) { nodes { name } }
-          comments(first: 20) {
-            nodes {
-              createdAt
-              author { login __typename }
-            }
-          }
-        }
-      }
-      pullRequests(
-        first: 100
-        after: $prsCursor
-        states: [OPEN, MERGED, CLOSED]
-        orderBy: { field: UPDATED_AT, direction: DESC }
-      ) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id
-          number
-          title
-          createdAt
-          closedAt
-          mergedAt
-          updatedAt
-          author { login __typename }
-          labels(first: 20) { nodes { name } }
-          comments(first: 20) {
-            nodes {
-              createdAt
-              author { login __typename }
-            }
-          }
-          reviews(first: 20) {
-            nodes {
-              createdAt
-              author { login __typename }
-            }
-          }
-        }
-      }
-    }
-  }
-`;
 
 function pemToArrayBuffer(pem: string): ArrayBuffer {
   const base64 = pem
@@ -225,8 +100,10 @@ async function refreshInstallationToken(
   );
 
   if (!response.ok) {
+    const body = await response.text();
     console.error(
-      `Failed to refresh GitHub installation token ${installation.installation_id}: ${response.status}`
+      `Failed to refresh GitHub installation token ${installation.installation_id}: ${response.status}`,
+      { body: body.slice(0, 400) }
     );
     return null;
   }
@@ -284,105 +161,6 @@ async function getInstallationToken(
   );
 }
 
-async function githubGraphql<T>(
-  token: string,
-  query: string,
-  variables: Record<string, unknown>
-): Promise<T> {
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'npm-burst-app',
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`GitHub GraphQL request failed (${response.status})`);
-  }
-
-  return (await response.json()) as T;
-}
-
-async function fetchRawRepoHealth(
-  token: string,
-  owner: string,
-  name: string
-): Promise<RawGitHubHealthData | null> {
-  let issuesCursor: string | null = null;
-  let prsCursor: string | null = null;
-  let hasNextIssues = true;
-  let hasNextPrs = true;
-  const issues: RawGitHubHealthData['repository']['issues'] = [];
-  const pullRequests: RawGitHubHealthData['repository']['pullRequests'] = [];
-
-  while (hasNextIssues || hasNextPrs) {
-    const response = await githubGraphql<GitHubGraphqlResponse>(
-      token,
-      REPO_HEALTH_QUERY,
-      { owner, name, issuesCursor, prsCursor }
-    );
-
-    if (response.errors?.length) {
-      throw new Error(response.errors.map((error) => error.message).join('; '));
-    }
-
-    const repository = response.data?.repository as GitHubRepositoryResult | null | undefined;
-    if (!repository) return null;
-
-    issues.push(
-      ...repository.issues.nodes.map((issue: GraphqlIssueNode) => ({
-        id: issue.id,
-        number: issue.number,
-        title: issue.title,
-        createdAt: issue.createdAt,
-        closedAt: issue.closedAt,
-        updatedAt: issue.updatedAt,
-        labels: issue.labels.nodes.map((label) => label.name),
-        comments: issue.comments.nodes.map((comment) => ({
-          createdAt: comment.createdAt,
-          author: comment.author,
-        })),
-      }))
-    );
-
-    pullRequests.push(
-      ...repository.pullRequests.nodes.map((pr: GraphqlPullRequestNode) => ({
-        id: pr.id,
-        number: pr.number,
-        title: pr.title,
-        createdAt: pr.createdAt,
-        closedAt: pr.closedAt,
-        mergedAt: pr.mergedAt,
-        updatedAt: pr.updatedAt,
-        author: pr.author,
-        labels: pr.labels.nodes.map((label) => label.name),
-        comments: pr.comments.nodes.map((comment) => ({
-          createdAt: comment.createdAt,
-          author: comment.author,
-        })),
-        reviews: pr.reviews.nodes.map((review) => ({
-          createdAt: review.createdAt,
-          author: review.author,
-        })),
-      }))
-    );
-
-    hasNextIssues = repository.issues.pageInfo.hasNextPage;
-    hasNextPrs = repository.pullRequests.pageInfo.hasNextPage;
-    issuesCursor = repository.issues.pageInfo.endCursor;
-    prsCursor = repository.pullRequests.pageInfo.endCursor;
-  }
-
-  return {
-    repository: { owner, name, issues, pullRequests },
-    fetchedAt: new Date().toISOString(),
-  };
-}
-
 async function loadBotPatterns(db: Kysely<DB>): Promise<BotPattern[]> {
   const rows = await db
     .selectFrom('github_bot_patterns')
@@ -419,67 +197,105 @@ async function getRepoFilterConfigs(
   return filterConfigs;
 }
 
+const FULL_FETCH_WINDOW_MS = 91 * 24 * 60 * 60 * 1000;
+
 export async function snapshotGitHubHealthForRepo(
   db: Kysely<DB>,
   repo: GitHubHealthSnapshotRepo,
   token: string,
   snapshotDate = new Date().toISOString().slice(0, 10)
 ): Promise<boolean> {
-  const rawData = await fetchRawRepoHealth(token, repo.owner, repo.name);
-  if (!rawData) {
+  // Load the most recent snapshot to enable incremental fetch
+  const previousSnapshot = await db
+    .selectFrom('github_health_snapshots')
+    .select(['id', 'raw_data', 'snapshot_date'])
+    .where('repo_id', '=', repo.id)
+    .orderBy('snapshot_date', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+
+  const previousData = previousSnapshot?.raw_data
+    ? (JSON.parse(previousSnapshot.raw_data) as RawGitHubHealthData)
+    : null;
+
+  // Incremental: fetch only items updated since last fetch; full: 91-day window
+  const since = previousData?.fetchedAt
+    ?? new Date(Date.now() - FULL_FETCH_WINDOW_MS).toISOString();
+
+  const delta = await fetchGitHubHealthData(token, repo.owner, repo.name, {
+    since,
+  }, {
+    userAgent: 'npm-burst-app',
+  });
+  if (!delta) {
     return false;
   }
 
-  const botPatterns = await loadBotPatterns(db);
-  const existingSnapshot = await db
-    .selectFrom('github_health_snapshots')
-    .select('id')
-    .where('repo_id', '=', repo.id)
-    .where('snapshot_date', '=', snapshotDate)
-    .$narrowType<{ id: number }>()
-    .executeTakeFirst();
+  // Merge delta into previous data, or use delta as-is for first fetch
+  const rawData = previousData
+    ? mergeRawHealthData(previousData, delta.repository)
+    : delta;
 
-  const snapshotId = existingSnapshot?.id
-    ? existingSnapshot.id
-    : (
-        await db
-          .insertInto('github_health_snapshots')
-          .values({
-            repo_id: repo.id,
-            snapshot_date: snapshotDate,
-            raw_data: JSON.stringify(rawData),
-          })
-          .returning('id')
-          .$narrowType<{ id: number }>()
-          .executeTakeFirst()
-      )?.id;
+  const isToday = previousSnapshot?.snapshot_date === snapshotDate;
+  const [, filterConfigs] = await Promise.all([
+    loadBotPatterns(db),
+    getRepoFilterConfigs(db, repo.id),
+  ]);
+  const staleCutoffIso = new Date(Date.now() - FULL_FETCH_WINDOW_MS).toISOString();
+
+  let snapshotId: number | undefined;
+
+  if (isToday && previousSnapshot?.id) {
+    // Update today's existing snapshot
+    snapshotId = previousSnapshot.id;
+    await db
+      .updateTable('github_health_snapshots')
+      .set({ raw_data: JSON.stringify(rawData) })
+      .where('id', '=', snapshotId)
+      .execute();
+
+    await db
+      .deleteFrom('github_health_metrics')
+      .where('snapshot_id', '=', snapshotId)
+      .execute();
+  } else {
+    // Create new snapshot for today
+    snapshotId = (
+      await db
+        .insertInto('github_health_snapshots')
+        .values({
+          repo_id: repo.id,
+          snapshot_date: snapshotDate,
+          raw_data: JSON.stringify(rawData),
+        })
+        .returning('id')
+        .$narrowType<{ id: number }>()
+        .executeTakeFirst()
+    )?.id;
+  }
 
   if (!snapshotId) {
     return false;
   }
 
-  if (existingSnapshot?.id) {
-    await db
-      .updateTable('github_health_snapshots')
-      .set({
-        raw_data: JSON.stringify(rawData),
-      })
-      .where('id', '=', existingSnapshot.id)
-      .execute();
-
-    await db
-      .deleteFrom('github_health_metrics')
-      .where('snapshot_id', '=', existingSnapshot.id)
-      .execute();
-  }
-
-  const filterConfigs = await getRepoFilterConfigs(db, repo.id);
-
   for (const rawFilterConfig of filterConfigs) {
-    const metrics = computeHealthMetrics(
-      rawData,
-      parseFilterConfig(rawFilterConfig),
-      botPatterns
+    const filterConfig = parseFilterConfig(rawFilterConfig);
+    const metrics = computeHealthMetrics(rawData, filterConfig, []);
+    const staleIssuesCount = await fetchGitHubStaleIssueCount(
+      token,
+      repo.owner,
+      repo.name,
+      staleCutoffIso,
+      filterConfig?.labels ?? [],
+      { userAgent: 'npm-burst-app' }
+    );
+    const stalePrsCount = await fetchGitHubStalePullRequestCount(
+      token,
+      repo.owner,
+      repo.name,
+      staleCutoffIso,
+      filterConfig?.labels ?? [],
+      { userAgent: 'npm-burst-app' }
     );
 
     await db
@@ -499,7 +315,8 @@ export async function snapshotGitHubHealthForRepo(
         median_pr_first_review_hours: metrics.medianPrFirstReviewHours,
         median_pr_merge_hours: metrics.medianPrMergeHours,
         active_contributors_30d: metrics.activeContributors30d,
-        stale_issues_count: metrics.staleIssuesCount,
+        stale_issues_count: staleIssuesCount,
+        stale_prs_count: stalePrsCount,
       })
       .execute();
   }

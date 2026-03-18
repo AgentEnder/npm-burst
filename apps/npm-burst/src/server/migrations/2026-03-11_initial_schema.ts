@@ -1,5 +1,6 @@
 import { Kysely, sql } from 'kysely';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function up(db: Kysely<any>): Promise<void> {
   await sql`
     CREATE TABLE tracked_packages (
@@ -32,6 +33,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   `.execute(db);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable('snapshots').execute();
   await db.schema.dropTable('user_tracked_packages').execute();

@@ -23,9 +23,21 @@ export async function cachedFetch(
     return cached.response;
   }
 
-  // Fetch from NPM
-  const response = await fetch(url);
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch (error) {
+    console.error(`NPM API network request failed for ${url}:`, error);
+    throw error;
+  }
   const body = await response.text();
+
+  if (!response.ok) {
+    console.error(`NPM API request failed for ${url}: ${response.status}`, {
+      body: body.slice(0, 400),
+    });
+    throw new Error(`NPM API request failed (${response.status})`);
+  }
 
   // Store in cache
   try {

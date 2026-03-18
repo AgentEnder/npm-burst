@@ -2,6 +2,7 @@ import { PropsWithChildren } from 'react';
 import { config } from 'telefunc/client';
 import { AuthProvider } from '../context/auth-context';
 import { ThemeProvider } from '../context/theme-context';
+import { ToastRegion } from './toast-region';
 import { isClerkAvailable, useTelefuncAuth } from '../hooks/use-telefunc-auth';
 
 config.telefuncUrl = `${
@@ -15,7 +16,12 @@ function TelefuncAuthSetup({ children }: PropsWithChildren) {
 
 /** Shared provider wrapper used by all layouts */
 export function Providers({ children }: PropsWithChildren) {
-  const inner = <ThemeProvider>{children}</ThemeProvider>;
+  const inner = (
+    <ThemeProvider>
+      {children}
+      <ToastRegion />
+    </ThemeProvider>
+  );
 
   return (
     <AuthProvider>

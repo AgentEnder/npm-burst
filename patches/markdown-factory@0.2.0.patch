@@ -1,0 +1,17 @@
+diff --git a/src/lib/markdown.js b/src/lib/markdown.js
+index 882705810a35105a7a15912ca7e43ad6829a9297..7cd25b517792f7b8e1a4fcbf8319da89146f65bc 100644
+--- a/src/lib/markdown.js
++++ b/src/lib/markdown.js
+@@ -291,9 +291,10 @@ function stripIndents(strings, ...values) {
+         .trim();
+ }
+ function assert(check, message, allowByPass = true) {
++    const env = typeof process !== 'undefined' ? process.env : undefined;
+     const bypassChecks = allowByPass &&
+-        (process.env['MARKDOWN_FACTORY_NO_CHECKS'] === 'true' ||
+-            process.env['NODE_ENV'] === 'production');
++        ((env === null || env === void 0 ? void 0 : env['MARKDOWN_FACTORY_NO_CHECKS']) === 'true' ||
++            (env === null || env === void 0 ? void 0 : env['NODE_ENV']) === 'production');
+     if (!check && !bypassChecks) {
+         const lines = [
+             message,

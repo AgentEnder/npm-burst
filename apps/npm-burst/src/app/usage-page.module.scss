@@ -324,11 +324,6 @@
   color: #ff9800;
 }
 
-.badgeHealth {
-  background: rgba(126, 87, 194, 0.18);
-  color: #c3a4ff;
-}
-
 // Maintainer expand
 .expandButton {
   background: none;
@@ -361,17 +356,6 @@
 .maintainerEmail {
   color: var(--text-tertiary);
   font-family: var(--font-mono, monospace);
-}
-
-.healthRowPrimary {
-  margin-bottom: 4px;
-}
-
-.healthRowMeta {
-  display: grid;
-  gap: 2px;
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
 }
 
 .muted {

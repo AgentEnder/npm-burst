@@ -6,7 +6,8 @@ describe('npm-burst', () => {
   });
 
   it('should update package name when updating dropdown', () => {
-    cy.get('input[type=text]').clear().type('typescript{enter}');
+    cy.get('input[type=text]').clear();
+    cy.get('input[type=text]').type('typescript{enter}');
     cy.get('h1').contains('NPM Downloads for typescript');
   });
 

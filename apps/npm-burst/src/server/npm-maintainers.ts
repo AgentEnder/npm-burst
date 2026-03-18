@@ -1,6 +1,9 @@
 import type { Kysely } from 'kysely';
 import type { DB } from './db-schema';
-import { cachedFetch } from './npm-fetch';
+import {
+  ensureTrackedPackageMetadata,
+  fetchPackageMetadataFromRegistry,
+} from './package-metadata';
 
 export interface NpmMaintainer {
   name: string;
@@ -11,14 +14,17 @@ export async function getPackageMaintainers(
   db: Kysely<DB>,
   pkg: string
 ): Promise<NpmMaintainer[]> {
-  const url = `https://registry.npmjs.org/${encodeURIComponent(pkg)}`;
-  const body = await cachedFetch(db, url);
-  try {
-    const data = JSON.parse(body) as { maintainers?: NpmMaintainer[] };
-    return data.maintainers ?? [];
-  } catch {
-    return [];
+  const existing = await db
+    .selectFrom('tracked_packages')
+    .select('id')
+    .where('package_name', '=', pkg)
+    .executeTakeFirst();
+
+  if (existing) {
+    return ensureTrackedPackageMetadata(db, pkg).then((metadata) => metadata.maintainers);
   }
+
+  return fetchPackageMetadataFromRegistry(db, pkg).then((metadata) => metadata.maintainers);
 }
 
 export function isUserMaintainer(

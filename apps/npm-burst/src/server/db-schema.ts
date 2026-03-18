@@ -34,6 +34,7 @@ export interface GithubHealthMetrics {
   repo_id: number;
   snapshot_id: number;
   stale_issues_count: Generated<number>;
+  stale_prs_count: Generated<number>;
 }
 
 export interface GithubHealthSnapshots {
@@ -89,7 +90,11 @@ export interface Snapshots {
 
 export interface TrackedPackages {
   created_at: Generated<string>;
+  github_owner: string | null;
+  github_repo_name: string | null;
   id: Generated<number | null>;
+  maintainers_json: string | null;
+  metadata_refreshed_at: string | null;
   package_name: string;
 }
 

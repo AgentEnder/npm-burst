@@ -12,6 +12,32 @@
   margin: 0 auto;
 }
 
+.warningBanner {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  border-radius: var(--radius-lg);
+  background: rgba(245, 166, 35, 0.12);
+  color: var(--text-primary);
+}
+
+.refreshBar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: 1px solid rgba(126, 87, 194, 0.25);
+  border-radius: var(--radius-lg);
+  background: rgba(126, 87, 194, 0.06);
+  font-size: var(--font-size-sm);
+}
+
+.refreshStale {
+  color: var(--text-secondary);
+  flex: 1;
+}
+
 .frownWrap {
   display: grid;
   justify-items: center;

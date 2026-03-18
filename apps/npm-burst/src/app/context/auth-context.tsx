@@ -1,4 +1,4 @@
-import { ClerkProvider, useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
 import { PropsWithChildren } from 'react';
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -25,13 +25,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
 export function useSafeAuth(): {
   isSignedIn?: boolean;
   isLoaded?: boolean;
+  isAdmin: boolean;
 } {
   if (import.meta.env.DEV) {
-    return { isSignedIn: true, isLoaded: true } as const;
+    return { isSignedIn: true, isLoaded: true, isAdmin: true } as const;
   }
   if (!CLERK_PUBLISHABLE_KEY) {
-    return { isSignedIn: false, isLoaded: true } as const;
+    return { isSignedIn: false, isLoaded: true, isAdmin: false } as const;
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useClerkAuth();
+  const auth = useClerkAuth();
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { user } = useUser();
+  const roles = user?.publicMetadata?.role;
+  const isAdmin = Array.isArray(roles) && roles.includes('admin');
+  return { ...auth, isAdmin };
 }

@@ -1,6 +1,10 @@
 import { Abort, getContext } from 'telefunc';
 import { getDb } from '../db';
 import { isDevMode } from '../env';
+import {
+  type ExternalDataWarning,
+  withExternalFallback,
+} from '../external-data';
 import { getFixturePackage } from '../fixtures/packages';
 import { cachedFetch } from '../npm-fetch';
 import { getYesterdayDate } from '../utils';
@@ -10,9 +14,14 @@ interface NpmDownloadsByVersion {
   package: string;
 }
 
+export interface DownloadsResponse {
+  data: NpmDownloadsByVersion | null;
+  warnings: ExternalDataWarning[];
+}
+
 export async function onGetDownloads(
   pkg: string
-): Promise<NpmDownloadsByVersion> {
+): Promise<DownloadsResponse> {
   const { env, userId } = getContext();
 
   if (!userId) {
@@ -23,7 +32,7 @@ export async function onGetDownloads(
   if (isDevMode(env)) {
     const fixture = getFixturePackage(pkg);
     if (fixture) {
-      return fixture;
+      return { data: fixture, warnings: [] };
     }
   }
 
@@ -34,8 +43,21 @@ export async function onGetDownloads(
     '/',
     '%2f'
   )}/last-week`;
-  const body = await cachedFetch(db, url);
-  const data = JSON.parse(body) as NpmDownloadsByVersion;
+  const fetchResult = await withExternalFallback(
+    { source: 'npm', operation: 'load version downloads' },
+    async () => {
+      const body = await cachedFetch(db, url);
+      return JSON.parse(body) as NpmDownloadsByVersion;
+    },
+    null,
+    { packageName: pkg }
+  );
+  const data = fetchResult.value;
+  const warnings = fetchResult.warning ? [fetchResult.warning] : [];
+
+  if (!data) {
+    return { data: null, warnings };
+  }
 
   // Opportunistically save snapshot for yesterday
   const yesterday = getYesterdayDate();
@@ -71,5 +93,5 @@ export async function onGetDownloads(
     console.error('Failed to save ad-hoc snapshot:', e);
   }
 
-  return data;
+  return { data, warnings };
 }

@@ -50,6 +50,7 @@ export interface RawGitHubHealthData {
     name: string;
     issues: RawIssueNode[];
     pullRequests: RawPullRequestNode[];
+    staleIssues?: RawIssueNode[];
   };
   fetchedAt: string;
 }
@@ -71,6 +72,7 @@ export interface ComputedHealthMetrics {
   medianPrMergeHours: number | null;
   activeContributors30d: number;
   staleIssuesCount: number;
+  stalePrsCount: number;
 }
 
 export interface HealthMetricSeriesPoint extends ComputedHealthMetrics {

@@ -1,5 +1,6 @@
 import { Kysely, sql } from 'kysely';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function up(db: Kysely<any>): Promise<void> {
   await sql`
     CREATE TABLE npm_api_cache (
@@ -16,6 +17,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   `.execute(db);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable('npm_api_cache').execute();
 }

@@ -2,6 +2,7 @@
   "name": "npm-burst",
   "dependencies": {
     "@npm-burst/github-data-access": "workspace:",
-    "@npm-burst/npm-data-access": "workspace:"
+    "@npm-burst/npm-data-access": "workspace:",
+    "markdown-factory": "^0.2.0"
   }
 }

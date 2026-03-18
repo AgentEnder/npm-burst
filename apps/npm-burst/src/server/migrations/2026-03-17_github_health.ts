@@ -1,5 +1,6 @@
 import { Kysely, sql } from 'kysely';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function up(db: Kysely<any>): Promise<void> {
   await sql`
     CREATE TABLE github_installations (
@@ -105,6 +106,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   `.execute(db);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable('github_bot_patterns').execute();
   await db.schema.dropTable('github_health_metrics').execute();

@@ -26,6 +26,7 @@ export interface FixtureHealthMetricPoint {
   medianPrMergeHours: number | null;
   activeContributors30d: number;
   staleIssuesCount: number;
+  stalePrsCount: number;
 }
 
 /**
@@ -102,6 +103,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 51.8,
       activeContributors30d: 19,
       staleIssuesCount: 38,
+      stalePrsCount: 6,
     },
     {
       snapshotDate: '2026-01-26',
@@ -116,6 +118,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 48.3,
       activeContributors30d: 21,
       staleIssuesCount: 37,
+      stalePrsCount: 5,
     },
     {
       snapshotDate: '2026-02-09',
@@ -130,6 +133,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 43.7,
       activeContributors30d: 22,
       staleIssuesCount: 35,
+      stalePrsCount: 5,
     },
     {
       snapshotDate: '2026-02-23',
@@ -144,6 +148,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 41.1,
       activeContributors30d: 24,
       staleIssuesCount: 33,
+      stalePrsCount: 4,
     },
     {
       snapshotDate: '2026-03-09',
@@ -158,6 +163,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 36.9,
       activeContributors30d: 26,
       staleIssuesCount: 30,
+      stalePrsCount: 4,
     },
   ],
   react: [
@@ -174,6 +180,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 89.3,
       activeContributors30d: 14,
       staleIssuesCount: 112,
+      stalePrsCount: 12,
     },
     {
       snapshotDate: '2026-01-26',
@@ -188,6 +195,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 84.7,
       activeContributors30d: 15,
       staleIssuesCount: 110,
+      stalePrsCount: 11,
     },
     {
       snapshotDate: '2026-02-09',
@@ -202,6 +210,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 78.2,
       activeContributors30d: 17,
       staleIssuesCount: 104,
+      stalePrsCount: 11,
     },
     {
       snapshotDate: '2026-02-23',
@@ -216,6 +225,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 72.5,
       activeContributors30d: 18,
       staleIssuesCount: 101,
+      stalePrsCount: 10,
     },
     {
       snapshotDate: '2026-03-09',
@@ -230,6 +240,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 69.1,
       activeContributors30d: 20,
       staleIssuesCount: 96,
+      stalePrsCount: 10,
     },
   ],
   lodash: [
@@ -246,6 +257,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 96.8,
       activeContributors30d: 4,
       staleIssuesCount: 47,
+      stalePrsCount: 3,
     },
     {
       snapshotDate: '2026-01-26',
@@ -260,6 +272,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 90.4,
       activeContributors30d: 5,
       staleIssuesCount: 44,
+      stalePrsCount: 3,
     },
     {
       snapshotDate: '2026-02-09',
@@ -274,6 +287,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 83.6,
       activeContributors30d: 6,
       staleIssuesCount: 41,
+      stalePrsCount: 2,
     },
     {
       snapshotDate: '2026-02-23',
@@ -288,6 +302,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 76.4,
       activeContributors30d: 7,
       staleIssuesCount: 39,
+      stalePrsCount: 2,
     },
     {
       snapshotDate: '2026-03-09',
@@ -302,6 +317,7 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       medianPrMergeHours: 64.2,
       activeContributors30d: 8,
       staleIssuesCount: 35,
+      stalePrsCount: 2,
     },
   ],
 };

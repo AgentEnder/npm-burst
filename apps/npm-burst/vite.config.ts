@@ -19,8 +19,9 @@ export default defineConfig(({ mode }) => {
       react(),
       nxViteTsPaths(),
       githubApiDevContext(env),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...((globalThis as any).NX_GRAPH_CREATION ? [] : [vike()]),
-      telefuncDevContext(),
+      telefuncDevContext(env),
       telefunc(),
     ],
     build: {

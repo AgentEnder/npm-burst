@@ -6,6 +6,8 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z.string().optional(),
   GITHUB_APP_ID: z.string().optional(),
   GITHUB_APP_PRIVATE_KEY: z.string().optional(),
+  INTERNAL_API_SECRET: z.string().optional(),
+  WORKER_SELF_URL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

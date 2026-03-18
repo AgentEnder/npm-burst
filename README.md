@@ -19,22 +19,17 @@ Copy [apps/npm-burst/.env.local.example](/Users/agentender/repos/npm-burst/apps/
 - `GITHUB_APP_PRIVATE_KEY`: GitHub App private key in PEM format. In `.env.local`, keep newline escapes as `\n`.
 - `GITHUB_WEBHOOK_SECRET`: webhook signing secret used to verify `installation` and `installation_repositories` events.
 
-Generate the local GitHub-related secrets with:
+Generate the local secrets with:
 
 ```bash
-pnpm generate:github-secrets
+pnpm generate:secrets
 ```
 
-That writes a gitignored file at `.github-app.local.env` containing:
+That writes gitignored files into `./keys/`, split by destination:
 
-- `ENCRYPTION_KEY`
-- `GITHUB_WEBHOOK_SECRET`
-
-Copy those values into:
-
-- `apps/npm-burst/.env.local`
-- `apps/cronjob/.dev.vars` for `ENCRYPTION_KEY`
-- Cloudflare secrets for deployed environments
+- `keys/npm-burst.env` → copy into `apps/npm-burst/.env.local`
+- `keys/cronjob.env` → copy into `apps/cronjob/.dev.vars`
+- `keys/cloudflare.env` → set as Cloudflare secrets for deployed environments
 
 `GITHUB_APP_PRIVATE_KEY` is different: GitHub generates that in the GitHub App settings when you create a private key.
 

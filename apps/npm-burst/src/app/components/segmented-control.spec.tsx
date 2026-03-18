@@ -3,8 +3,11 @@ import { SegmentedControl } from './segmented-control';
 
 // jsdom does not provide ResizeObserver
 globalThis.ResizeObserver = class {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   observe() {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   unobserve() {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   disconnect() {}
 } as unknown as typeof ResizeObserver;
 
@@ -17,7 +20,7 @@ describe('SegmentedControl', () => {
 
   it('should render all option labels', () => {
     const { getAllByText } = render(
-      <SegmentedControl options={options} value="a" onChange={() => {}} />
+      <SegmentedControl options={options} value="a" onChange={vi.fn()} />
     );
     // Each label appears twice: once as a button (desktop) and once as an option (mobile)
     expect(getAllByText('Alpha').length).toBeGreaterThanOrEqual(1);
@@ -48,7 +51,7 @@ describe('SegmentedControl', () => {
       <SegmentedControl
         options={options}
         value="a"
-        onChange={() => {}}
+        onChange={vi.fn()}
         label="Group by"
       />
     );
@@ -58,7 +61,7 @@ describe('SegmentedControl', () => {
 
   it('should render a select dropdown for mobile', () => {
     const { container } = render(
-      <SegmentedControl options={options} value="b" onChange={() => {}} />
+      <SegmentedControl options={options} value="b" onChange={vi.fn()} />
     );
     const select = container.querySelector('select');
     expect(select).toBeTruthy();

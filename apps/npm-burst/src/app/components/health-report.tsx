@@ -4,9 +4,8 @@ import {
   ArrowUpCircle,
   ChevronDown,
   ChevronRight,
-  GitPullRequestArrow,
   Github,
-  MessageSquareReply,
+  RefreshCw,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,6 +20,7 @@ import {
 } from '../../server/functions/health-source.telefunc';
 import { appStore } from '../store';
 import { useSafeAuth } from '../context/auth-context';
+import { useWarningToast } from '../hooks/use-warning-toast';
 import { Popover } from './popover';
 import styles from './health-report.module.scss';
 
@@ -36,15 +36,11 @@ type MetricKey =
   | 'issuesOpened30d'
   | 'issuesClosed30d'
   | 'openCloseRatio'
-  | 'medianIssueFirstResponseHours'
-  | 'medianIssueCloseHours'
   | 'prsOpened30d'
   | 'prsMerged30d'
   | 'prsClosedUnmerged30d'
-  | 'medianPrFirstReviewHours'
-  | 'medianPrMergeHours'
-  | 'activeContributors30d'
-  | 'staleIssuesCount';
+  | 'staleIssuesCount'
+  | 'stalePrsCount';
 
 const METRICS: MetricDefinition[] = [
   {
@@ -72,20 +68,6 @@ const METRICS: MetricDefinition[] = [
     formatValue: (value) => (value === null ? 'n/a' : `${value.toFixed(2)}x`),
   },
   {
-    key: 'medianIssueFirstResponseHours',
-    label: 'Median Issue First Response',
-    hint: 'First non-bot touch on a new issue',
-    getValue: (point) => point.medianIssueFirstResponseHours,
-    formatValue: formatHours,
-  },
-  {
-    key: 'medianIssueCloseHours',
-    label: 'Median Issue Close Time',
-    hint: 'Time from issue open to close',
-    getValue: (point) => point.medianIssueCloseHours,
-    formatValue: formatHours,
-  },
-  {
     key: 'prsOpened30d',
     label: 'PRs Opened',
     hint: 'Opened in the trailing 30-day window',
@@ -107,31 +89,17 @@ const METRICS: MetricDefinition[] = [
     formatValue: (value) => `${value ?? 0}`,
   },
   {
-    key: 'medianPrFirstReviewHours',
-    label: 'Median PR First Review',
-    hint: 'Time to first non-bot review',
-    getValue: (point) => point.medianPrFirstReviewHours,
-    formatValue: formatHours,
-  },
-  {
-    key: 'medianPrMergeHours',
-    label: 'Median PR Merge Time',
-    hint: 'Time from PR open to merge',
-    getValue: (point) => point.medianPrMergeHours,
-    formatValue: formatHours,
-  },
-  {
-    key: 'activeContributors30d',
-    label: 'Active Contributors',
-    hint: 'Distinct humans who commented, reviewed, or authored PRs',
-    getValue: (point) => point.activeContributors30d,
-    formatValue: (value) => `${value ?? 0}`,
-  },
-  {
     key: 'staleIssuesCount',
     label: 'Stale Issues',
     hint: 'Open issues inactive for more than 90 days',
     getValue: (point) => point.staleIssuesCount,
+    formatValue: (value) => `${value ?? 0}`,
+  },
+  {
+    key: 'stalePrsCount',
+    label: 'Stale PRs',
+    hint: 'Open pull requests inactive for more than 90 days',
+    getValue: (point) => point.stalePrsCount,
     formatValue: (value) => `${value ?? 0}`,
   },
 ];
@@ -528,22 +496,53 @@ function MetricRow({
 
 export function HealthReport({ health }: { health: PackageHealthResponse | null }) {
   const hasSnapshots = (health?.snapshots.length ?? 0) > 0;
-  const { isSignedIn } = useSafeAuth();
+  const warningMessage =
+    health && health.warnings.length > 0
+      ? 'Some GitHub or npm data could not be loaded, so this report may be partial.'
+      : null;
+  const { isSignedIn, isAdmin } = useSafeAuth();
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  const summary = useMemo(() => {
-    const latest =
-      health && health.snapshots.length > 0
-        ? health.snapshots[health.snapshots.length - 1]
-        : null;
-    if (!latest) return null;
-    return {
-      issues: `${latest.issuesClosed30d}/${latest.issuesOpened30d} closed/opened`,
-      response: formatHours(latest.medianIssueFirstResponseHours),
-      review: formatHours(latest.medianPrFirstReviewHours),
-    };
-  }, [health]);
+  useWarningToast(
+    `health:${health?.packageName ?? 'unknown'}`,
+    health?.warnings ?? []
+  );
+
+  const canRefreshViaGitHub =
+    isSignedIn && health?.githubUserAuthAvailable === true;
+
+  const latestSnapshot =
+    health && health.snapshots.length > 0
+      ? health.snapshots[health.snapshots.length - 1]
+      : null;
+
+  const isStale = useMemo(() => {
+    if (!latestSnapshot) return false;
+    const snapshotTime = new Date(`${latestSnapshot.snapshotDate}T00:00:00`).getTime();
+    const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
+    return snapshotTime < twoDaysAgo;
+  }, [latestSnapshot]);
+
+  async function handleSync() {
+    if (syncing || !health) return;
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const refreshed = await onRefreshHealthMetricsWithGitHubUserAccess(
+        health.packageName
+      );
+      const store = appStore.getState();
+      store.setHealth(refreshed);
+      store.cacheCurrentPackageData();
+    } catch (error) {
+      setSyncError(
+        error instanceof Error ? error.message : 'Failed to fetch GitHub health data.'
+      );
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   if (!health?.repo) {
     return (
@@ -557,26 +556,6 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
   if (!hasSnapshots) {
     if (health && !health.installationConfigured) {
       const repoPath = `${health.repo.owner}/${health.repo.name}`;
-
-      async function handleSync() {
-        if (syncing) return;
-        setSyncing(true);
-        setSyncError(null);
-        try {
-          const refreshed = await onRefreshHealthMetricsWithGitHubUserAccess(
-            health.packageName
-          );
-          const store = appStore.getState();
-          store.setHealth(refreshed);
-          store.cacheCurrentPackageData();
-        } catch (error) {
-          setSyncError(
-            error instanceof Error ? error.message : 'Failed to fetch GitHub health data.'
-          );
-        } finally {
-          setSyncing(false);
-        }
-      }
 
       return (
         <div className={styles.emptyState}>
@@ -661,6 +640,23 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
 
   return (
     <div className={styles.report}>
+      {warningMessage ? <div className={styles.warningBanner}>{warningMessage}</div> : null}
+      {(isStale || isAdmin) && canRefreshViaGitHub ? (
+        <div className={styles.refreshBar}>
+          <span className={styles.refreshStale}>
+            Last snapshot: {latestSnapshot ? formatDate(latestSnapshot.snapshotDate) : 'n/a'}
+          </span>
+          <button
+            className={styles.oauthActionButton}
+            onClick={handleSync}
+            disabled={syncing}
+          >
+            <RefreshCw size={14} />
+            {syncing ? 'Refreshing…' : 'Refresh with GitHub'}
+          </button>
+          {syncError ? <span className={styles.oauthError}>{syncError}</span> : null}
+        </div>
+      ) : null}
       <div className={styles.summaryGrid}>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Repository</span>
@@ -712,37 +708,35 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
           )}
         </div>
         <div className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>Issue Response</span>
+          <span className={styles.summaryLabel}>Stale Issues</span>
           <span className={`${styles.summaryValue} ${styles.summaryFraction}`}>
             <Popover
-              content="Median time to first human response on a new issue."
+              content="Open issues inactive for more than 90 days."
               trigger="hover"
               position="below"
             >
               <span
                 className={styles.summaryIconStat}
-                aria-label="Median issue response time"
+                aria-label="Stale issues"
               >
-                <MessageSquareReply size={18} />
-                <span>{summary ? summary.response : 'n/a'}</span>
+                <span>{latestSnapshot ? latestSnapshot.staleIssuesCount : 'n/a'}</span>
               </span>
             </Popover>
           </span>
         </div>
         <div className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>PR Review</span>
+          <span className={styles.summaryLabel}>Stale PRs</span>
           <span className={`${styles.summaryValue} ${styles.summaryFraction}`}>
             <Popover
-              content="Median time to first human review on a pull request."
+              content="Open pull requests inactive for more than 90 days."
               trigger="hover"
               position="below"
             >
               <span
                 className={styles.summaryIconStat}
-                aria-label="Median pull request review time"
+                aria-label="Stale pull requests"
               >
-                <GitPullRequestArrow size={18} />
-                <span>{summary ? summary.review : 'n/a'}</span>
+                <span>{latestSnapshot ? latestSnapshot.stalePrsCount : 'n/a'}</span>
               </span>
             </Popover>
           </span>

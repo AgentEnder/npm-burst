@@ -6,7 +6,9 @@
     "start": "nx serve",
     "build": "nx build",
     "test": "nx test",
-    "generate:github-secrets": "tsx tools/generate-github-secrets.ts"
+    "generate:secrets": "tsx tools/generate-secrets.ts",
+    "db:query": "tsx --env-file=apps/npm-burst/.env.local tools/db-query.ts",
+    "github:fetch": "tsx --env-file=apps/npm-burst/.env.local tools/github-fetch.ts"
   },
   "private": true,
   "devDependencies": {
@@ -63,9 +65,9 @@
   "dependencies": {
     "@clerk/backend": "^3.2.0",
     "@clerk/clerk-react": "^5.61.3",
-    "@npm-burst/github-data-access": "workspace:",
     "@icons-pack/react-simple-icons": "^13.12.0",
     "@libsql/client": "^0.17.0",
+    "@npm-burst/github-data-access": "workspace:",
     "better-sqlite3": "^12.6.2",
     "d3": "^7.8.2",
     "kysely": "^0.28.11",
@@ -81,5 +83,10 @@
     "wrangler": "^4.72.0",
     "zod": "^4.3.6"
   },
-  "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531"
+  "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531",
+  "pnpm": {
+    "patchedDependencies": {
+      "markdown-factory@0.2.0": "patches/markdown-factory@0.2.0.patch"
+    }
+  }
 }

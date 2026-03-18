@@ -6,7 +6,8 @@
       "Bash(timeout 15 ./node_modules/.bin/nx serve npm-burst 2>&1 || true)",
       "WebFetch(domain:developers.cloudflare.com)",
       "WebFetch(domain:registry.npmjs.org)",
-      "WebFetch(domain:clerk.com)"
+      "WebFetch(domain:clerk.com)",
+      "Bash(find /Users/agentender/repos/npm-burst -path */node_modules -prune -o -type f \\\\\\(-name *clerk* -o -name *env* -o -name *auth* \\\\\\) -print)"
     ],
     "deny": [],
     "ask": []

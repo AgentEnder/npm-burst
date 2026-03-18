@@ -1,4 +1,4 @@
-import { parse, gt, SemVer } from 'semver';
+import { parse } from 'semver';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';

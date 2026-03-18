@@ -1,6 +1,6 @@
 import { createClerkClient } from '@clerk/backend';
 import type { Env } from './env';
-import { isDevMode } from './env';
+import { getDevGitHubPat, isDevMode } from './env';
 
 function getClerkClient(env: Env) {
   return createClerkClient({ secretKey: env.CLERK_SECRET_KEY! });
@@ -29,8 +29,9 @@ export async function getUserGitHubOauthAccess(
   env: Env
 ): Promise<GitHubOauthAccess | null> {
   if (isDevMode(env)) {
+    const pat = getDevGitHubPat(env);
     return {
-      token: 'dev-github-oauth-token',
+      token: pat ?? 'dev-github-oauth-token',
       scopes: ['public_repo'],
     };
   }

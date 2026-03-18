@@ -98,7 +98,7 @@ export function getVersionAdoptionData(
   snapshots: Snapshot[],
   liveData: NpmDownloadsByVersion | null,
   grouping: AdoptionGrouping = 'major',
-  lowPassFilter: number = 0,
+  lowPassFilter = 0,
   totalDownloads: DailyDownloadPoint[] = []
 ): VersionAdoptionSeries[] {
   // Build combined timeline: snapshots + live data

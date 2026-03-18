@@ -2,12 +2,14 @@ import {
   getDownloadsByVersion,
   getTotalDownloadsRange,
 } from '@npm-burst/npm-data-access';
-import { useEffect, useRef } from 'react';
+import type { ExternalDataWarning } from '../../server/external-data';
+import { useEffect, useRef, useState } from 'react';
 import { onGetDownloads } from '../../server/functions/downloads.telefunc';
 import { onGetHealthMetrics } from '../../server/functions/health.telefunc';
 import { onGetSnapshots } from '../../server/functions/snapshots.telefunc';
 import { onGetTotalDownloads } from '../../server/functions/total-downloads.telefunc';
 import { onGetVersionDates } from '../../server/functions/versions.telefunc';
+import { useWarningToast } from './use-warning-toast';
 import { useSafeAuth } from '../context/auth-context';
 import { appStore, useAppStore } from '../store';
 
@@ -21,6 +23,9 @@ export function usePackageData() {
   // fetchGeneration is used only in the dep array to trigger re-fetch after cache invalidation
   const fetchGeneration = useAppStore((s) => s.fetchGeneration); // eslint-disable-line @typescript-eslint/no-unused-vars
   const cancelRef = useRef<(() => void) | null>(null);
+  const [warnings, setWarnings] = useState<ExternalDataWarning[]>([]);
+
+  useWarningToast(`package:${npmPackageName}`, warnings);
 
   useEffect(() => {
     if (!npmPackageName) return;
@@ -41,15 +46,18 @@ export function usePackageData() {
     store.setLoading(true);
     store.setError(null);
     store.setHealth(null);
+    setWarnings([]);
 
     let cancelled = false;
 
     const fetchLive = isSignedIn
-      ? onGetDownloads(npmPackageName)
+      ? onGetDownloads(npmPackageName).catch(() => ({ data: null, warnings: [] }))
       : (() => {
           const { get, cancel } = getDownloadsByVersion(npmPackageName);
           cancelRef.current = cancel;
-          return get();
+          return get()
+            .then((data) => ({ data, warnings: [] }))
+            .catch(() => ({ data: null, warnings: [] }));
         })();
 
     const fetchSnapshots = onGetSnapshots(npmPackageName)
@@ -57,8 +65,7 @@ export function usePackageData() {
       .catch(() => []);
 
     const fetchVersions = onGetVersionDates(npmPackageName)
-      .then(({ versions }) => versions)
-      .catch(() => []);
+      .catch(() => ({ versions: [], warnings: [] }));
 
     // Fetch total downloads for last 18 months (npm API max range)
     const end = new Date().toISOString().slice(0, 10);
@@ -68,13 +75,12 @@ export function usePackageData() {
 
     const fetchTotalDownloads = isSignedIn
       ? onGetTotalDownloads(npmPackageName, start, end)
-          .then(({ downloads }) => downloads)
-          .catch(() => [])
+          .catch(() => ({ downloads: [], warnings: [] }))
       : (() => {
           const { get } = getTotalDownloadsRange(npmPackageName, start, end);
           return get()
-            .then((data) => data.downloads)
-            .catch(() => []);
+            .then((data) => ({ downloads: data.downloads, warnings: [] }))
+            .catch(() => ({ downloads: [], warnings: [] }));
         })();
 
     const fetchHealth = onGetHealthMetrics(npmPackageName).catch(() => null);
@@ -85,17 +91,24 @@ export function usePackageData() {
       fetchVersions,
       fetchTotalDownloads,
       fetchHealth,
-    ]).then(([liveData, snapshots, versions, totalDownloads, health]) => {
+    ]).then(([liveResult, snapshots, versionsResult, totalDownloadsResult, health]) => {
         if (cancelled) return;
         const s = appStore.getState();
-        s.setLiveData(liveData);
+        s.setLiveData(liveResult.data);
         s.setSnapshots(snapshots);
-        s.setVersionReleases(versions);
-        s.setTotalDownloads(totalDownloads);
+        s.setVersionReleases(versionsResult.versions);
+        s.setTotalDownloads(totalDownloadsResult.downloads);
         s.setHealth(health);
         s.setSnapshotIndex(null);
         s.cacheCurrentPackageData();
         s.recomputeChartData();
+        const warnings = [
+          ...liveResult.warnings,
+          ...versionsResult.warnings,
+          ...totalDownloadsResult.warnings,
+          ...(health?.warnings ?? []),
+        ];
+        setWarnings(warnings);
       }).catch((e) => {
         if (cancelled || e?.name === 'AbortError') return;
         appStore

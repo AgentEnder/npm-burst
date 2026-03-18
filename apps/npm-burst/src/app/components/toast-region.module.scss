@@ -1,0 +1,50 @@
+.region {
+  position: fixed;
+  top: 5.5rem;
+  right: 1rem;
+  z-index: 1000;
+  display: grid;
+  gap: 0.75rem;
+  width: min(24rem, calc(100vw - 2rem));
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  background: rgba(26, 28, 34, 0.95);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+  color: var(--text-primary);
+}
+
+.message {
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.issueLink {
+  color: var(--accent-main);
+  text-decoration: none;
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.dismiss {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}

@@ -79,7 +79,7 @@ export function getVersionLifecycleData(
   snapshots: Snapshot[],
   liveData: NpmDownloadsByVersion | null,
   versionReleases: VersionRelease[],
-  threshold: number = 0.5
+  threshold = 0.5
 ): LifecycleMilestone[] {
   const majorDates = getMajorReleaseDates(versionReleases);
   if (majorDates.size === 0) return [];

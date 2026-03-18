@@ -14,6 +14,7 @@ const prodSchema = z.object({
 
 const devSchema = z.object({
   DEV_MODE: z.literal('true'),
+  DEV_GITHUB_PAT: z.string().optional(),
   TURSO_DATABASE_URL: z.string().optional(),
   TURSO_AUTH_TOKEN: z.string().optional(),
   CLERK_SECRET_KEY: z.string().optional(),
@@ -34,4 +35,8 @@ export function parseEnv(raw: unknown): Env {
 
 export function isDevMode(env: Env): boolean {
   return env.DEV_MODE === 'true';
+}
+
+export function getDevGitHubPat(env: Env): string | undefined {
+  return env.DEV_MODE === 'true' ? env.DEV_GITHUB_PAT : undefined;
 }

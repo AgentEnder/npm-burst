@@ -1,11 +1,14 @@
 import type { Plugin } from 'vite';
 import type { IncomingMessage } from 'node:http';
 import { telefunc } from 'telefunc';
-import type { Env } from './env';
+import { parseEnv, type Env } from './env';
 
-const devEnv: Env = {
-  DEV_MODE: 'true' as const,
-};
+function getDevEnv(rawEnv: Record<string, string>): Env {
+  return parseEnv({
+    DEV_MODE: 'true',
+    ...rawEnv,
+  });
+}
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -22,7 +25,9 @@ function readBody(req: IncomingMessage): Promise<string> {
  * This plugin intercepts that request, provides dev context, and calls
  * telefunc directly just like the production Cloudflare handler does.
  */
-export function telefuncDevContext(): Plugin {
+export function telefuncDevContext(rawEnv: Record<string, string>): Plugin {
+  const env = getDevEnv(rawEnv);
+
   return {
     name: 'telefunc-dev-context',
     apply: 'serve',
@@ -40,7 +45,7 @@ export function telefuncDevContext(): Plugin {
             method: req.method ?? 'POST',
             body,
             context: {
-              env: devEnv,
+              env,
               userId: 'dev-user',
               request: new Request('http://localhost/_telefunc', {
                 method: req.method,
