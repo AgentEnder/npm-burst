@@ -4,6 +4,7 @@ import { createStore } from 'zustand/vanilla';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
+import type { PackageHealthResponse } from '../../server/functions/health.telefunc';
 import type { SunburstData } from '../components/sunburst';
 import {
   findNodeByVersion,
@@ -22,6 +23,7 @@ interface PackageCache {
   snapshots: Snapshot[];
   versionReleases: VersionRelease[];
   totalDownloads: DailyDownloadPoint[];
+  health: PackageHealthResponse | null;
 }
 
 export interface AppState {
@@ -37,6 +39,7 @@ export interface AppState {
   snapshots: Snapshot[];
   versionReleases: VersionRelease[];
   totalDownloads: DailyDownloadPoint[];
+  health: PackageHealthResponse | null;
 
   // Per-package cache
   packageCache: Record<string, PackageCache>;
@@ -52,7 +55,7 @@ export interface AppState {
   error: string | null;
   showDataTable: boolean;
   /** View mode for the package dashboard */
-  viewMode: 'sunburst' | 'adoption' | 'migration' | 'lifecycle';
+  viewMode: 'sunburst' | 'adoption' | 'migration' | 'lifecycle' | 'health';
   /** Incremented to force re-fetch after cache invalidation */
   fetchGeneration: number;
 
@@ -74,6 +77,7 @@ export interface AppState {
   setSnapshots: (snapshots: Snapshot[]) => void;
   setVersionReleases: (releases: VersionRelease[]) => void;
   setTotalDownloads: (downloads: DailyDownloadPoint[]) => void;
+  setHealth: (health: PackageHealthResponse | null) => void;
 
   setSnapshotIndex: (idx: number | null) => void;
   previousSnapshot: () => void;
@@ -88,7 +92,9 @@ export interface AppState {
   setLoading: (v: boolean) => void;
   setError: (v: string | null) => void;
   setShowDataTable: (v: boolean) => void;
-  setViewMode: (v: 'sunburst' | 'adoption' | 'migration' | 'lifecycle') => void;
+  setViewMode: (
+    v: 'sunburst' | 'adoption' | 'migration' | 'lifecycle' | 'health'
+  ) => void;
   setTimeWindow: (v: '30d' | '90d' | '6mo' | '1y' | 'all') => void;
   setMigrationTimeWindow: (v: '90d' | '180d' | '1y' | 'all') => void;
   setReleaseTickFilter: (v: 'major' | 'minor' | 'patch') => void;
@@ -132,6 +138,7 @@ export const appStore = createStore<AppState>((set, get) => ({
   snapshots: [],
   versionReleases: [],
   totalDownloads: [],
+  health: null,
   packageCache: {},
 
   // Navigation
@@ -173,6 +180,7 @@ export const appStore = createStore<AppState>((set, get) => ({
   setSnapshots: (snapshots) => set({ snapshots }),
   setVersionReleases: (releases) => set({ versionReleases: releases }),
   setTotalDownloads: (downloads) => set({ totalDownloads: downloads }),
+  setHealth: (health) => set({ health }),
 
   setSnapshotIndex: (idx) => {
     set({ snapshotIndex: idx });
@@ -304,13 +312,20 @@ export const appStore = createStore<AppState>((set, get) => ({
       snapshots,
       versionReleases,
       totalDownloads,
+      health,
       packageCache,
     } = get();
     if (!liveData) return;
     set({
       packageCache: {
         ...packageCache,
-        [npmPackageName]: { liveData, snapshots, versionReleases, totalDownloads },
+        [npmPackageName]: {
+          liveData,
+          snapshots,
+          versionReleases,
+          totalDownloads,
+          health,
+        },
       },
     });
   },
@@ -324,6 +339,7 @@ export const appStore = createStore<AppState>((set, get) => ({
       snapshots: cached.snapshots,
       versionReleases: cached.versionReleases,
       totalDownloads: cached.totalDownloads,
+      health: cached.health,
       snapshotIndex: null,
     });
     return true;
@@ -337,6 +353,7 @@ export const appStore = createStore<AppState>((set, get) => ({
     set({
       packageCache: next,
       liveData: null,
+      health: null,
       error: null,
       fetchGeneration: get().fetchGeneration + 1,
     });

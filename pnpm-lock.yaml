@@ -20,6 +20,9 @@ importers:
       '@libsql/client':
         specifier: ^0.17.0
         version: 0.17.0(encoding@0.1.13)
+      '@npm-burst/github-data-access':
+        specifier: 'workspace:'
+        version: link:libs/github-data-access
       better-sqlite3:
         specifier: ^12.6.2
         version: 12.6.2
@@ -213,9 +216,14 @@ importers:
 
   apps/npm-burst:
     dependencies:
+      '@npm-burst/github-data-access':
+        specifier: 'workspace:'
+        version: link:../../libs/github-data-access
       '@npm-burst/npm-data-access':
         specifier: 'workspace:'
         version: link:../../libs/npm-data-access
+
+  libs/github-data-access: {}
 
   libs/npm-data-access: {}
 

@@ -1,0 +1,8 @@
+{
+  "name": "github-data-access",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/github-data-access/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {}
+}

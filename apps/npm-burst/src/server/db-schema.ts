@@ -9,6 +9,70 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export interface GithubBotPatterns {
+  created_at: Generated<string>;
+  created_by: string;
+  id: Generated<number | null>;
+  pattern_type: string;
+  pattern_value: string;
+}
+
+export interface GithubHealthMetrics {
+  active_contributors_30d: Generated<number>;
+  created_at: Generated<string>;
+  filter_config: string | null;
+  id: Generated<number | null>;
+  issues_closed_30d: Generated<number>;
+  issues_opened_30d: Generated<number>;
+  median_issue_close_hours: number | null;
+  median_issue_first_response_hours: number | null;
+  median_pr_first_review_hours: number | null;
+  median_pr_merge_hours: number | null;
+  prs_closed_unmerged_30d: Generated<number>;
+  prs_merged_30d: Generated<number>;
+  prs_opened_30d: Generated<number>;
+  repo_id: number;
+  snapshot_id: number;
+  stale_issues_count: Generated<number>;
+}
+
+export interface GithubHealthSnapshots {
+  created_at: Generated<string>;
+  id: Generated<number | null>;
+  raw_data: string;
+  repo_id: number;
+  snapshot_date: string;
+}
+
+export interface GithubInstallations {
+  created_at: Generated<string>;
+  encrypted_access_token: Uint8Array | null;
+  id: Generated<number | null>;
+  installation_id: number;
+  owner: string;
+  owner_type: string;
+  token_expires_at: string | null;
+  updated_at: Generated<string>;
+}
+
+export interface GithubRepoPackages {
+  created_at: Generated<string>;
+  filter_config: string | null;
+  is_maintainer_override: Generated<number>;
+  package_name: string;
+  repo_id: number;
+  updated_at: Generated<string>;
+}
+
+export interface GithubRepos {
+  created_at: Generated<string>;
+  id: Generated<number | null>;
+  installation_id: number | null;
+  name: string;
+  owner: string;
+  updated_at: Generated<string>;
+}
+
 export interface NpmApiCache {
   cache_date: string;
   id: Generated<number | null>;
@@ -40,6 +104,12 @@ export interface UserTrackedPackages {
 }
 
 export interface DB {
+  github_bot_patterns: GithubBotPatterns;
+  github_health_metrics: GithubHealthMetrics;
+  github_health_snapshots: GithubHealthSnapshots;
+  github_installations: GithubInstallations;
+  github_repo_packages: GithubRepoPackages;
+  github_repos: GithubRepos;
   npm_api_cache: NpmApiCache;
   snapshots: Snapshots;
   tracked_packages: TrackedPackages;

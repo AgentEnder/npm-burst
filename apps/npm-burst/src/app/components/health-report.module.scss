@@ -1,0 +1,470 @@
+.emptyState {
+  padding: var(--spacing-2xl);
+  text-align: center;
+  color: var(--text-secondary);
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.report {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.frownWrap {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacing-md);
+}
+
+.frownFace {
+  width: 120px;
+  height: 120px;
+}
+
+.frownStroke {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-linecap: round;
+  stroke-width: 6;
+}
+
+.repoLink {
+  color: var(--accent-main);
+  text-decoration: none;
+}
+
+.accordion {
+  display: grid;
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+.row {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.01)
+  );
+  overflow: hidden;
+}
+
+.rowButton {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(180px, 1.8fr) minmax(120px, 0.7fr) minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-align: left;
+}
+
+.rowButton:hover {
+  background: var(--hover-overlay);
+}
+
+.metricLabel {
+  display: grid;
+  gap: 2px;
+}
+
+.metricName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.metricHint {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.metricValue {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.sparkline {
+  height: 38px;
+  width: 100%;
+}
+
+.expandIcon {
+  color: var(--text-secondary);
+}
+
+.expanded {
+  border-top: 1px solid var(--border-color);
+  padding: var(--spacing-lg);
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-sm);
+}
+
+.sourceButton {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.8rem;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.sourceButton:hover {
+  background: var(--hover-overlay);
+}
+
+.sourceBlock {
+  margin-top: 0;
+}
+
+.sourceToolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.sourceToolbarButton {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.8rem;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.sourceToolbarButton:hover {
+  background: var(--hover-overlay);
+}
+
+.sourceJson {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  padding: var(--spacing-md);
+  overflow: auto;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+}
+
+.jsonLine {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.jsonKey {
+  color: #d1b3ff;
+}
+
+.jsonString {
+  color: #cfd8dc;
+}
+
+.jsonNumber {
+  color: #80cbc4;
+}
+
+.jsonBoolean {
+  color: #ffcc80;
+}
+
+.jsonNull {
+  color: var(--text-tertiary);
+}
+
+.jsonLink {
+  color: var(--accent-main);
+  text-decoration: none;
+}
+
+.jsonLink:hover {
+  color: var(--accent-light);
+  text-decoration: underline;
+}
+
+.chartMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.chart {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.chart svg {
+  width: 100%;
+  min-height: 260px;
+  display: block;
+}
+
+.axisLabel {
+  fill: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.line {
+  fill: none;
+  stroke: var(--accent-main);
+  stroke-width: 2.5px;
+}
+
+.area {
+  fill: rgba(126, 87, 194, 0.16);
+}
+
+.gridLine {
+  stroke: var(--divider);
+  stroke-width: 1;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  gap: var(--spacing-md);
+  width: 100%;
+  margin-bottom: var(--spacing-md);
+}
+
+.summaryCard {
+  min-width: 0;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035),
+    rgba(255, 255, 255, 0.012)
+  );
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  align-items: start;
+}
+
+.summaryLabel {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  align-self: start;
+}
+
+.summaryValue {
+  display: block;
+  color: var(--text-primary);
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.summaryValueCompact {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+}
+
+.summaryMeta {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.35;
+}
+
+.summaryFraction {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  align-self: center;
+}
+
+.summaryDivider {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.summaryIconStat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.summaryIconStat svg {
+  color: var(--accent-light);
+  flex: 0 0 auto;
+  position: relative;
+  top: 1px;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.64);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: var(--spacing-lg);
+  z-index: 1200;
+}
+
+.modal {
+  width: min(960px, 100%);
+  max-height: min(80vh, 900px);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  color: var(--text-primary);
+}
+
+.modalMeta {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.modalClose {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.75rem;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.modalClose:hover {
+  background: var(--hover-overlay);
+}
+
+.modalBody {
+  overflow: auto;
+  padding: var(--spacing-lg);
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.sourcePre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.sourceSummary {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  padding: var(--spacing-md);
+}
+
+.sourceEntries {
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.sourceEntry {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  padding: var(--spacing-md);
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.sourceEntryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--spacing-md);
+}
+
+.sourceEntryTitle {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+}
+
+.sourceEntryMeta {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.sourceLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent-main);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.sourceLink:hover {
+  color: var(--accent-light);
+}
+
+@media (max-width: 720px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rowButton {
+    grid-template-columns: 1fr;
+  }
+
+  .metricValue {
+    font-size: var(--font-size-base);
+  }
+}
+
+@media (max-width: 520px) {
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}

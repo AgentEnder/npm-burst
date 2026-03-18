@@ -23,7 +23,6 @@ function FeatureCard({
 export function LandingPage() {
   const handleSelectPackage = (pkg: string) => {
     // Navigate to the package dashboard page.
-    // BASE_URL is /npm-burst (from vite.config.ts base).
     const base = import.meta.env.BASE_URL || '/';
     // Ensure trailing slash before 'package'
     const baseNormalized = base.endsWith('/') ? base : base + '/';

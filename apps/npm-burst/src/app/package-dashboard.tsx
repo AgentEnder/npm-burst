@@ -5,6 +5,7 @@ import styles from './components/dashboard-header.module.scss';
 import { ErrorMessage } from './components/error-message';
 import { LoadingSkeleton } from './components/loading-skeleton';
 import { SnapshotControls } from './components/snapshot-controls';
+import { HealthReport } from './components/health-report';
 import {
   Sunburst,
   SunburstData,
@@ -60,6 +61,7 @@ export function PackageDashboard() {
   const viewMode = useAppStore((s) => s.viewMode);
   const liveData = useAppStore((s) => s.liveData);
   const totalDownloads = useAppStore((s) => s.totalDownloads);
+  const health = useAppStore((s) => s.health);
   const lowPassFilter = useAppStore((s) => s.lowPassFilter);
   const timeWindow = useAppStore((s) => s.timeWindow);
   const setTimeWindow = useAppStore((s) => s.setTimeWindow);
@@ -169,6 +171,8 @@ export function PackageDashboard() {
               minPeak={lifecycleMinPeak}
               onMinPeakChange={setLifecycleMinPeak}
             />
+          ) : viewMode === 'health' ? (
+            <HealthReport health={health} />
           ) : null}
         </div>
       )}
