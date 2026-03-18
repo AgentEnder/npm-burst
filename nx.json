@@ -6,9 +6,16 @@
       "inputs": [
         "production",
         "^production",
-        {
-          "env": "VITE_CLERK_PUBLISHABLE_KEY"
-        }
+        { "env": "VITE_CLERK_PUBLISHABLE_KEY" },
+        { "env": "TURSO_DATABASE_URL" },
+        { "env": "TURSO_AUTH_TOKEN" },
+        { "env": "CLERK_SECRET_KEY" },
+        { "env": "CLERK_PUBLISHABLE_KEY" },
+        { "env": "ENCRYPTION_KEY" },
+        { "env": "GITHUB_APP_ID" },
+        { "env": "GITHUB_APP_SLUG" },
+        { "env": "GITHUB_APP_PRIVATE_KEY" },
+        { "env": "GITHUB_WEBHOOK_SECRET" }
       ],
       "cache": true
     },

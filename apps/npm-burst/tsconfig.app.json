@@ -24,6 +24,9 @@
   "references": [
     {
       "path": "../../libs/npm-data-access/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/github-data-access/tsconfig.lib.json"
     }
   ]
 }
