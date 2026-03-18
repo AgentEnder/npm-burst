@@ -111,6 +111,28 @@
   gap: var(--spacing-sm);
 }
 
+.githubAuthCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(126, 87, 194, 0.06);
+}
+
+.githubAuthTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.githubAuthMeta {
+  margin-top: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
 .installCard {
   display: flex;
   justify-content: space-between;
@@ -186,6 +208,25 @@
   &:hover {
     color: var(--accent-main);
     border-color: var(--accent-main);
+  }
+}
+
+.connectGitHubButton {
+  background: transparent;
+  border: 1px solid var(--accent-main);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--accent-main);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  white-space: nowrap;
+  transition: border-color var(--transition-fast), opacity var(--transition-fast);
+
+  &:hover {
+    opacity: 0.9;
   }
 }
 
@@ -355,5 +396,18 @@
   p {
     margin: 0;
     color: var(--text-secondary);
+  }
+}
+
+@media (max-width: 700px) {
+  .githubAuthCard,
+  .installCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .connectGitHubButton,
+  .installButton {
+    width: 100%;
   }
 }

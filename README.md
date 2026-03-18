@@ -38,6 +38,17 @@ Copy those values into:
 
 `GITHUB_APP_PRIVATE_KEY` is different: GitHub generates that in the GitHub App settings when you create a private key.
 
+### Clerk GitHub OAuth setup
+
+The package Health view can now fall back to the signed-in user&apos;s GitHub account for one-off snapshots when a repo owner has not installed the GitHub App yet.
+
+1. In the Clerk dashboard, enable GitHub as a social connection for your application.
+2. Make sure the Clerk instance used by npm-burst has GitHub enabled for both sign-in and connected accounts in the user profile.
+3. Use the same Clerk publishable and secret keys in npm-burst that point at that configured instance.
+4. After signing in, open `/usage` and use the `Connect GitHub` button if your Clerk account was created without GitHub initially.
+
+Once connected, npm-burst can request the user&apos;s GitHub OAuth access token from Clerk server-side and use it to fetch a one-off health snapshot for the repo currently being viewed.
+
 ### Cron worker env
 
 Copy [apps/cronjob/.dev.vars.example](/Users/agentender/repos/npm-burst/apps/cronjob/.dev.vars.example) to `apps/cronjob/.dev.vars` for local Wrangler runs. The cron worker needs:
@@ -148,3 +159,4 @@ wrangler dev
 - If a package has no GitHub repository in npm metadata, the Health view stays empty.
 - The cron snapshotter skips repos that do not yet have an installation synced from GitHub webhooks.
 - If an app is installed on only selected repositories, repo access is updated from the installation repository sync rather than assumed for the whole owner.
+- Signed-in users with a connected GitHub account can still fetch a one-off snapshot from the package Health view even if the GitHub App is not installed for that owner.

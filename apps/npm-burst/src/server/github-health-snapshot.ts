@@ -76,6 +76,12 @@ type GraphqlIssueNode = GitHubRepositoryResult['issues']['nodes'][number];
 type GraphqlPullRequestNode =
   GitHubRepositoryResult['pullRequests']['nodes'][number];
 
+export interface GitHubHealthSnapshotRepo {
+  id: number;
+  owner: string;
+  name: string;
+}
+
 const REPO_HEALTH_QUERY = `
   query RepoHealth(
     $owner: String!
@@ -389,6 +395,118 @@ async function loadBotPatterns(db: Kysely<DB>): Promise<BotPattern[]> {
   }));
 }
 
+async function getRepoFilterConfigs(
+  db: Kysely<DB>,
+  repoId: number
+): Promise<Array<string | null>> {
+  const filterRows = await db
+    .selectFrom('github_repo_packages')
+    .select('filter_config')
+    .where('repo_id', '=', repoId)
+    .execute();
+
+  const seen = new Set<string | null>([null]);
+  const filterConfigs = [null as string | null];
+
+  for (const row of filterRows) {
+    const normalized = canonicalizeFilterConfig(parseFilterConfig(row.filter_config));
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      filterConfigs.push(normalized);
+    }
+  }
+
+  return filterConfigs;
+}
+
+export async function snapshotGitHubHealthForRepo(
+  db: Kysely<DB>,
+  repo: GitHubHealthSnapshotRepo,
+  token: string,
+  snapshotDate = new Date().toISOString().slice(0, 10)
+): Promise<boolean> {
+  const rawData = await fetchRawRepoHealth(token, repo.owner, repo.name);
+  if (!rawData) {
+    return false;
+  }
+
+  const botPatterns = await loadBotPatterns(db);
+  const existingSnapshot = await db
+    .selectFrom('github_health_snapshots')
+    .select('id')
+    .where('repo_id', '=', repo.id)
+    .where('snapshot_date', '=', snapshotDate)
+    .$narrowType<{ id: number }>()
+    .executeTakeFirst();
+
+  const snapshotId = existingSnapshot?.id
+    ? existingSnapshot.id
+    : (
+        await db
+          .insertInto('github_health_snapshots')
+          .values({
+            repo_id: repo.id,
+            snapshot_date: snapshotDate,
+            raw_data: JSON.stringify(rawData),
+          })
+          .returning('id')
+          .$narrowType<{ id: number }>()
+          .executeTakeFirst()
+      )?.id;
+
+  if (!snapshotId) {
+    return false;
+  }
+
+  if (existingSnapshot?.id) {
+    await db
+      .updateTable('github_health_snapshots')
+      .set({
+        raw_data: JSON.stringify(rawData),
+      })
+      .where('id', '=', existingSnapshot.id)
+      .execute();
+
+    await db
+      .deleteFrom('github_health_metrics')
+      .where('snapshot_id', '=', existingSnapshot.id)
+      .execute();
+  }
+
+  const filterConfigs = await getRepoFilterConfigs(db, repo.id);
+
+  for (const rawFilterConfig of filterConfigs) {
+    const metrics = computeHealthMetrics(
+      rawData,
+      parseFilterConfig(rawFilterConfig),
+      botPatterns
+    );
+
+    await db
+      .insertInto('github_health_metrics')
+      .values({
+        snapshot_id: snapshotId,
+        repo_id: repo.id,
+        filter_config: rawFilterConfig,
+        issues_opened_30d: metrics.issuesOpened30d,
+        issues_closed_30d: metrics.issuesClosed30d,
+        prs_opened_30d: metrics.prsOpened30d,
+        prs_merged_30d: metrics.prsMerged30d,
+        prs_closed_unmerged_30d: metrics.prsClosedUnmerged30d,
+        median_issue_first_response_hours:
+          metrics.medianIssueFirstResponseHours,
+        median_issue_close_hours: metrics.medianIssueCloseHours,
+        median_pr_first_review_hours: metrics.medianPrFirstReviewHours,
+        median_pr_merge_hours: metrics.medianPrMergeHours,
+        active_contributors_30d: metrics.activeContributors30d,
+        stale_issues_count: metrics.staleIssuesCount,
+      })
+      .execute();
+  }
+
+  return true;
+}
+
 export async function snapshotGitHubHealthForOwner(
   db: Kysely<DB>,
   env: Env,
@@ -425,8 +543,6 @@ export async function snapshotGitHubHealthForOwner(
     return;
   }
 
-  const botPatterns = await loadBotPatterns(db);
-
   for (const repo of repos) {
     const existing = await db
       .selectFrom('github_health_snapshots')
@@ -445,70 +561,7 @@ export async function snapshotGitHubHealthForOwner(
         continue;
       }
 
-      const rawData = await fetchRawRepoHealth(token, repo.owner, repo.name);
-      if (!rawData) {
-        continue;
-      }
-
-      const snapshot = await db
-        .insertInto('github_health_snapshots')
-        .values({
-          repo_id: repo.id,
-          snapshot_date: today,
-          raw_data: JSON.stringify(rawData),
-        })
-        .returning('id')
-        .$narrowType<{ id: number }>()
-        .executeTakeFirst();
-
-      if (!snapshot?.id) {
-        continue;
-      }
-
-      const filterRows = await db
-        .selectFrom('github_repo_packages')
-        .select('filter_config')
-        .where('repo_id', '=', repo.id)
-        .execute();
-
-      const seen = new Set<string | null>([null]);
-      const filterConfigs = [null as string | null];
-      for (const row of filterRows) {
-        const normalized = canonicalizeFilterConfig(parseFilterConfig(row.filter_config));
-        if (!seen.has(normalized)) {
-          seen.add(normalized);
-          filterConfigs.push(normalized);
-        }
-      }
-
-      for (const rawFilterConfig of filterConfigs) {
-        const metrics = computeHealthMetrics(
-          rawData,
-          parseFilterConfig(rawFilterConfig),
-          botPatterns
-        );
-
-        await db
-          .insertInto('github_health_metrics')
-          .values({
-            snapshot_id: snapshot.id,
-            repo_id: repo.id,
-            filter_config: rawFilterConfig,
-            issues_opened_30d: metrics.issuesOpened30d,
-            issues_closed_30d: metrics.issuesClosed30d,
-            prs_opened_30d: metrics.prsOpened30d,
-            prs_merged_30d: metrics.prsMerged30d,
-            prs_closed_unmerged_30d: metrics.prsClosedUnmerged30d,
-            median_issue_first_response_hours:
-              metrics.medianIssueFirstResponseHours,
-            median_issue_close_hours: metrics.medianIssueCloseHours,
-            median_pr_first_review_hours: metrics.medianPrFirstReviewHours,
-            median_pr_merge_hours: metrics.medianPrMergeHours,
-            active_contributors_30d: metrics.activeContributors30d,
-            stale_issues_count: metrics.staleIssuesCount,
-          })
-          .execute();
-      }
+      await snapshotGitHubHealthForRepo(db, repo, token, today);
     } catch (error) {
       console.error(
         `Failed to snapshot initial GitHub health for ${repo.owner}/${repo.name}:`,

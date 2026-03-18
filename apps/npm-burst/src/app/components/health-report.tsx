@@ -5,16 +5,22 @@ import {
   ChevronDown,
   ChevronRight,
   GitPullRequestArrow,
+  Github,
   MessageSquareReply,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
-import type { PackageHealthResponse } from '../../server/functions/health.telefunc';
+import {
+  onRefreshHealthMetricsWithGitHubUserAccess,
+  type PackageHealthResponse,
+} from '../../server/functions/health.telefunc';
 import {
   onGetHealthMetricSource,
   type MetricSourceData,
 } from '../../server/functions/health-source.telefunc';
+import { appStore } from '../store';
+import { useSafeAuth } from '../context/auth-context';
 import { Popover } from './popover';
 import styles from './health-report.module.scss';
 
@@ -522,6 +528,9 @@ function MetricRow({
 
 export function HealthReport({ health }: { health: PackageHealthResponse | null }) {
   const hasSnapshots = (health?.snapshots.length ?? 0) > 0;
+  const { isSignedIn } = useSafeAuth();
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const summary = useMemo(() => {
     const latest =
@@ -547,6 +556,28 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
 
   if (!hasSnapshots) {
     if (health && !health.installationConfigured) {
+      const repoPath = `${health.repo.owner}/${health.repo.name}`;
+
+      async function handleSync() {
+        if (syncing) return;
+        setSyncing(true);
+        setSyncError(null);
+        try {
+          const refreshed = await onRefreshHealthMetricsWithGitHubUserAccess(
+            health.packageName
+          );
+          const store = appStore.getState();
+          store.setHealth(refreshed);
+          store.cacheCurrentPackageData();
+        } catch (error) {
+          setSyncError(
+            error instanceof Error ? error.message : 'Failed to fetch GitHub health data.'
+          );
+        } finally {
+          setSyncing(false);
+        }
+      }
+
       return (
         <div className={styles.emptyState}>
           <div className={styles.frownWrap}>
@@ -566,18 +597,44 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
             </svg>
             <h2>GitHub App authorization required</h2>
             <p>
-              A maintainer must authorize the GitHub App before npm-burst can
-              view issue and pull request health for{' '}
+              Automatic tracking still requires a maintainer to install the GitHub App
+              for{' '}
               <a
                 className={styles.repoLink}
                 href={`https://github.com/${health.repo.owner}/${health.repo.name}`}
                 target="_blank"
                 rel="noreferrer"
               >
-                {health.repo.owner}/{health.repo.name}
+                {repoPath}
               </a>
               .
             </p>
+            {isSignedIn ? (
+              health.githubUserAuthAvailable ? (
+                <>
+                  <p>
+                    You can still run a one-off snapshot for this repo using your own
+                    connected GitHub account.
+                  </p>
+                  <button
+                    className={styles.oauthActionButton}
+                    onClick={handleSync}
+                    disabled={syncing}
+                  >
+                    <Github size={16} />
+                    {syncing ? 'Fetching health data…' : 'Fetch with my GitHub access'}
+                  </button>
+                </>
+              ) : (
+                <p>
+                  Connect GitHub from <a className={styles.repoLink} href="/usage">Usage &amp; Tracking</a>{' '}
+                  to run a one-off snapshot as yourself.
+                </p>
+              )
+            ) : (
+              <p>Sign in and connect GitHub to run a one-off snapshot as yourself.</p>
+            )}
+            {syncError ? <p className={styles.oauthError}>{syncError}</p> : null}
           </div>
         </div>
       );

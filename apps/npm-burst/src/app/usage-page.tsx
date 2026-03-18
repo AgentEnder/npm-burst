@@ -35,6 +35,16 @@ function AddEmailButton() {
   );
 }
 
+function ConnectGitHubButton() {
+  const { openUserProfile } = useClerk();
+  return (
+    <button className={styles.connectGitHubButton} onClick={() => openUserProfile()}>
+      <Github size={14} />
+      Connect GitHub
+    </button>
+  );
+}
+
 function QuotaBar({ used, limit }: { used: number; limit: number }) {
   const pct = Math.min((used / limit) * 100, 100);
   const isFull = used >= limit;
@@ -248,6 +258,32 @@ export function UsagePage() {
         )}
 
         <QuotaBar used={usage.quotaUsed} limit={usage.quotaLimit} />
+
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>GitHub Account</h2>
+          <p className={styles.sectionHint}>
+            Connect your GitHub account in Clerk to run one-off health snapshots for
+            packages you view, even when the repo owner hasn&apos;t installed the
+            GitHub App.
+          </p>
+          <div className={styles.githubAuthCard}>
+            <div>
+              <div className={styles.githubAuthTitle}>
+                {usage.githubOauthConnected
+                  ? 'GitHub account connected'
+                  : 'GitHub account not connected'}
+              </div>
+              <div className={styles.githubAuthMeta}>
+                {usage.githubOauthConnected
+                  ? usage.githubOauthScopes.length > 0
+                    ? `Granted scopes: ${usage.githubOauthScopes.join(', ')}`
+                    : 'GitHub OAuth token available for repo health lookups.'
+                  : 'Open your account profile to add GitHub as a connected account.'}
+              </div>
+            </div>
+            {!usage.githubOauthConnected ? <ConnectGitHubButton /> : null}
+          </div>
+        </div>
 
         {usage.githubInstallationCandidates.length > 0 && (
           <div className={styles.section}>

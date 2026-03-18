@@ -3,7 +3,7 @@ import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
 import { buildGitHubAppInstallPath } from '../github-app';
 import { getDb } from '../db';
 import { isDevMode } from '../env';
-import { getUserEmails } from '../clerk-utils';
+import { getUserEmails, getUserGitHubOauthAccess } from '../clerk-utils';
 import { getPackageMaintainers, isUserMaintainer } from '../npm-maintainers';
 import type { NpmMaintainer } from '../npm-maintainers';
 import { getPackageWeeklyDownloads } from '../npm-downloads';
@@ -65,6 +65,8 @@ export interface UsageInfo {
   quotaLimit: number;
   downloadThreshold: number;
   userEmails: string[];
+  githubOauthConnected: boolean;
+  githubOauthScopes: string[];
   githubInstallationCandidates: GitHubInstallationCandidate[];
 }
 
@@ -110,6 +112,8 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
       quotaLimit: DEFAULT_MAX_TRACKED_PACKAGES,
       downloadThreshold: WEEKLY_DOWNLOAD_THRESHOLD,
       userEmails: ['dev@example.com'],
+      githubOauthConnected: true,
+      githubOauthScopes: ['public_repo'],
       githubInstallationCandidates: [
         {
           owner: 'nrwl',
@@ -122,9 +126,10 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
 
   const db = getDb(env);
   const { request } = getContext();
-  const [userEmails, quotaLimit] = await Promise.all([
+  const [userEmails, quotaLimit, githubOauth] = await Promise.all([
     getUserEmails(userId, env),
     getUserQuota(db, userId),
+    getUserGitHubOauthAccess(userId, env),
   ]);
 
   const trackedPkgs = await db
@@ -208,6 +213,8 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
     quotaLimit,
     downloadThreshold: WEEKLY_DOWNLOAD_THRESHOLD,
     userEmails,
+    githubOauthConnected: githubOauth !== null,
+    githubOauthScopes: githubOauth?.scopes ?? [],
     githubInstallationCandidates,
   };
 }
