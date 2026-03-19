@@ -36,6 +36,28 @@
   }
 }
 
+.releaseTickControl {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.tickCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+
+  input[type='checkbox'] {
+    accent-color: var(--primary-main);
+  }
+}
+
 .chart {
   width: 100%;
 

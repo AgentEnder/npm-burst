@@ -62,7 +62,6 @@ export interface AppState {
   // Chart controls
   timeWindow: '30d' | '90d' | '6mo' | '1y' | 'all';
   migrationTimeWindow: '90d' | '180d' | '1y' | 'all';
-  releaseTickFilter: 'major' | 'minor' | 'patch';
   lifecycleShowOnlySnapshotted: boolean;
   lifecycleMinPeak: number;
 
@@ -97,7 +96,6 @@ export interface AppState {
   ) => void;
   setTimeWindow: (v: '30d' | '90d' | '6mo' | '1y' | 'all') => void;
   setMigrationTimeWindow: (v: '90d' | '180d' | '1y' | 'all') => void;
-  setReleaseTickFilter: (v: 'major' | 'minor' | 'patch') => void;
   setLifecycleShowOnlySnapshotted: (v: boolean) => void;
   setLifecycleMinPeak: (v: number) => void;
 
@@ -155,7 +153,6 @@ export const appStore = createStore<AppState>((set, get) => ({
   viewMode: 'sunburst',
   timeWindow: 'all',
   migrationTimeWindow: 'all',
-  releaseTickFilter: 'major',
   lifecycleShowOnlySnapshotted: false,
   lifecycleMinPeak: 0,
 
@@ -277,7 +274,6 @@ export const appStore = createStore<AppState>((set, get) => ({
   },
   setTimeWindow: (v) => set({ timeWindow: v }),
   setMigrationTimeWindow: (v) => set({ migrationTimeWindow: v }),
-  setReleaseTickFilter: (v) => set({ releaseTickFilter: v }),
   setLifecycleShowOnlySnapshotted: (v) => set({ lifecycleShowOnlySnapshotted: v }),
   setLifecycleMinPeak: (v) => set({ lifecycleMinPeak: v }),
 

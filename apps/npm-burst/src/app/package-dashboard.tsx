@@ -65,8 +65,6 @@ export function PackageDashboard() {
   const lowPassFilter = useAppStore((s) => s.lowPassFilter);
   const timeWindow = useAppStore((s) => s.timeWindow);
   const setTimeWindow = useAppStore((s) => s.setTimeWindow);
-  const releaseTickFilter = useAppStore((s) => s.releaseTickFilter);
-  const setReleaseTickFilter = useAppStore((s) => s.setReleaseTickFilter);
   const migrationTimeWindow = useAppStore((s) => s.migrationTimeWindow);
   const setMigrationTimeWindow = useAppStore((s) => s.setMigrationTimeWindow);
   const lifecycleShowOnlySnapshotted = useAppStore((s) => s.lifecycleShowOnlySnapshotted);
@@ -148,8 +146,6 @@ export function PackageDashboard() {
               totalDownloads={totalDownloads}
               timeWindow={timeWindow}
               onTimeWindowChange={setTimeWindow}
-              releaseTickFilter={releaseTickFilter}
-              onReleaseTickFilterChange={setReleaseTickFilter}
             />
           ) : viewMode === 'migration' ? (
             <MigrationVelocityChart

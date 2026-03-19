@@ -63,8 +63,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   totalDownloads,
   timeWindow,
   onTimeWindowChange,
-  releaseTickFilter,
-  onReleaseTickFilterChange,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
@@ -73,8 +71,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   totalDownloads: DailyDownloadPoint[];
   timeWindow: TimeWindow;
   onTimeWindowChange: (v: TimeWindow) => void;
-  releaseTickFilter: ReleaseTickLevel;
-  onReleaseTickFilterChange: (v: ReleaseTickLevel) => void;
 }) {
   const { theme } = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -83,13 +79,34 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
   const [yAxisMode, setYAxisMode] = useState<YAxisMode>('percent');
   const [chartMode, setChartMode] = useState<ChartMode>('stacked');
+  const [showReleaseTicks, setShowReleaseTicks] = useState(true);
+  const [releaseTickLevel, setReleaseTickLevel] = useState<ReleaseTickLevel | null>(null);
+
+  const effectiveTickLevel: ReleaseTickLevel = releaseTickLevel ?? grouping;
+
+  const timeWindowCutoff = useMemo(() => getTimeWindowCutoff(timeWindow), [timeWindow]);
 
   const filteredSnapshots = useMemo(() => {
-    const cutoff = getTimeWindowCutoff(timeWindow);
-    if (!cutoff) return snapshots;
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-    return snapshots.filter((s) => s.date >= cutoffStr);
-  }, [snapshots, timeWindow]);
+    if (!timeWindowCutoff) return snapshots;
+    const cutoffStr = timeWindowCutoff.toISOString().slice(0, 10);
+    const inWindow = snapshots.filter((s) => s.date >= cutoffStr);
+    // When the cutoff falls between snapshots, create a synthetic snapshot
+    // at the cutoff date using the last pre-cutoff snapshot's data. This
+    // anchors the chart at real version percentages instead of 100% unknown,
+    // without extending the X-axis beyond the window.
+    const preCutoff = snapshots.filter((s) => s.date < cutoffStr);
+    if (preCutoff.length > 0 && (inWindow.length === 0 || inWindow[0].date > cutoffStr)) {
+      const anchor = preCutoff[preCutoff.length - 1];
+      return [{ ...anchor, date: cutoffStr }, ...inWindow];
+    }
+    return inWindow;
+  }, [snapshots, timeWindowCutoff]);
+
+  const filteredTotalDownloads = useMemo(() => {
+    if (!timeWindowCutoff) return totalDownloads;
+    const cutoffStr = timeWindowCutoff.toISOString().slice(0, 10);
+    return totalDownloads.filter((d) => d.day >= cutoffStr);
+  }, [totalDownloads, timeWindowCutoff]);
 
   const series = useMemo(
     () =>
@@ -98,9 +115,9 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         liveData,
         grouping,
         lowPassFilter,
-        totalDownloads
+        filteredTotalDownloads
       ),
-    [filteredSnapshots, liveData, grouping, lowPassFilter, totalDownloads]
+    [filteredSnapshots, liveData, grouping, lowPassFilter, filteredTotalDownloads]
   );
 
   // Reset hidden series when grouping changes
@@ -128,9 +145,15 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     );
   }, [series]);
 
+  // Exclude series that are always zero (no meaningful data points)
+  const nonZeroSeries = useMemo(
+    () => series.filter((s) => s.points.some((p) => p.percent > 0 || p.count > 0)),
+    [series]
+  );
+
   const visibleSeries = useMemo(
-    () => series.filter((s) => !hiddenSeries.has(s.label)),
-    [series, hiddenSeries]
+    () => nonZeroSeries.filter((s) => !hiddenSeries.has(s.label)),
+    [nonZeroSeries, hiddenSeries]
   );
 
   const chartColors = getThemeChartColors(theme);
@@ -289,7 +312,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     }
 
     // Version release markers (vertical ticks)
-    if (allDates.length >= 2) {
+    if (showReleaseTicks && allDates.length >= 2) {
       const firstDate = new Date(allDates[0] + 'T00:00:00');
       const lastDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
       const timeScale = d3
@@ -297,7 +320,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         .domain([firstDate, lastDate])
         .range([xScale(allDates[0]) ?? 0, xScale(allDates[allDates.length - 1]) ?? innerWidth]);
 
-      const filtered = filterReleasesByLevel(versionReleases, releaseTickFilter);
+      const filtered = filterReleasesByLevel(versionReleases, effectiveTickLevel);
       renderReleaseTicks(
         g as unknown as d3.Selection<SVGGElement, unknown, null, undefined>,
         filtered,
@@ -348,20 +371,32 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         }
 
         const lines = [`<strong>${closestDate}</strong>`];
-        // Sort tooltip entries by percent descending for this date
+        // Sort tooltip entries by the active metric descending for this date
         const entries = visibleSeries
           .map((s) => ({
             label: s.label,
             point: s.points.find((p) => p.date === closestDate),
             color: colorMap.get(s.label) ?? '#888',
           }))
-          .filter((e) => e.point)
-          .sort((a, b) => (b.point?.percent ?? 0) - (a.point?.percent ?? 0));
-
-        for (const e of entries) {
-          lines.push(
-            `<span style="color:${e.color}">${e.label}</span>: ${e.point!.percent.toFixed(1)}%`
+          .filter((e) => e.point && (e.point.percent > 0 || e.point.count > 0))
+          .sort((a, b) =>
+            yAxisMode === 'percent'
+              ? (b.point?.percent ?? 0) - (a.point?.percent ?? 0)
+              : (b.point?.count ?? 0) - (a.point?.count ?? 0)
           );
+
+        let total = 0;
+        for (const e of entries) {
+          const value = yAxisMode === 'percent'
+            ? `${e.point!.percent.toFixed(1)}%`
+            : formatDownloadCount(e.point!.count);
+          total += e.point!.count;
+          lines.push(
+            `<span style="color:${e.color}">${e.label}</span>: ${value}`
+          );
+        }
+        if (yAxisMode === 'count') {
+          lines.push(`<strong>Total</strong>: ${formatDownloadCount(total)}`);
         }
 
         const containerRect = containerRef.current!.getBoundingClientRect();
@@ -394,10 +429,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, versionReleases, releaseTickFilter, yAxisMode, chartMode, theme, colorMap, chartColors]);
+  }, [series, visibleSeries, versionReleases, effectiveTickLevel, showReleaseTicks, yAxisMode, chartMode, theme, colorMap, chartColors]);
 
   const hasHidden = hiddenSeries.size > 0;
-  const hasBelowThreshold = series.some((s) => s.belowThreshold);
+  const hasBelowThreshold = nonZeroSeries.some((s) => s.belowThreshold);
 
   return (
     <div
@@ -429,12 +464,23 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           onChange={onTimeWindowChange}
           label="Window"
         />
-        <SegmentedControl
-          options={RELEASE_TICK_OPTIONS}
-          value={releaseTickFilter}
-          onChange={onReleaseTickFilterChange}
-          label="Releases"
-        />
+        <div className={styles.releaseTickControl}>
+          <label className={styles.tickCheckbox}>
+            <input
+              type="checkbox"
+              checked={showReleaseTicks}
+              onChange={(e) => setShowReleaseTicks(e.target.checked)}
+            />
+            Releases
+          </label>
+          {showReleaseTicks && (
+            <SegmentedControl
+              options={RELEASE_TICK_OPTIONS}
+              value={effectiveTickLevel}
+              onChange={(v) => setReleaseTickLevel(v as ReleaseTickLevel)}
+            />
+          )}
+        </div>
         <div className={styles.visibilityControls}>
           {hasHidden && (
             <button className={styles.visibilityButton} onClick={showAll}>
@@ -465,7 +511,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
 
           {/* Legend with click-to-toggle */}
           <div className={styles.legend}>
-            {series.map((s) => {
+            {nonZeroSeries.map((s) => {
               const color = colorMap.get(s.label) ?? '#888';
               const isHidden = hiddenSeries.has(s.label);
               const isBelowLPF = s.belowThreshold;
