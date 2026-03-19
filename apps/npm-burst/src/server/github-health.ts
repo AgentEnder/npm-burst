@@ -418,6 +418,7 @@ export async function getPackageMetricSource(
 
   if (metricKey === 'staleIssuesCount' || metricKey === 'stalePrsCount') {
     const wantedFilter = canonicalizeFilterConfig(repo.filterConfig);
+    const parsedFilter = parseFilterConfig(wantedFilter);
     const metricRows = await db
       .selectFrom('github_health_metrics')
       .select(['filter_config', 'stale_issues_count', 'stale_prs_count'])
@@ -429,19 +430,31 @@ export async function getPackageMetricSource(
     const fallback = metricRows.find((row) => row.filter_config === null);
     const selected = exact ?? fallback;
 
+    const isIssues = metricKey === 'staleIssuesCount';
+    const count = isIssues
+      ? (selected?.stale_issues_count ?? 0)
+      : (selected?.stale_prs_count ?? 0);
+    const kind = isIssues ? 'issue' : 'pr';
+
+    const staleCutoff = new Date(
+      new Date(latestSnapshot.snapshot_date + 'T00:00:00Z').getTime() - 90 * 24 * 60 * 60 * 1000
+    ).toISOString().slice(0, 10);
+
+    const labelQualifiers = (parsedFilter?.labels ?? [])
+      .map((label) => `label:"${label}"`)
+      .join('+');
+    const searchQuery = `is:${kind}+is:open+-updated:>=${staleCutoff}${labelQualifiers ? `+${labelQualifiers}` : ''}`;
+    const searchUrl = `https://github.com/${repo.owner}/${repo.name}/issues?q=${encodeURIComponent(searchQuery)}`;
+
     return {
       metricKey,
       snapshotDate: latestSnapshot.snapshot_date,
       repo: { owner: repo.owner, name: repo.name },
       summary: {
-        count:
-          metricKey === 'staleIssuesCount'
-            ? (selected?.stale_issues_count ?? 0)
-            : (selected?.stale_prs_count ?? 0),
-        note:
-          metricKey === 'staleIssuesCount'
-            ? 'Derived from total open issues minus issues updated in the last 90 days.'
-            : 'Derived from total open pull requests minus pull requests updated in the last 90 days.',
+        count,
+        staleCutoffDate: staleCutoff,
+        description: `Open ${isIssues ? 'issues' : 'pull requests'} not updated since ${staleCutoff}.`,
+        searchUrl,
       },
       entries: [],
     };
