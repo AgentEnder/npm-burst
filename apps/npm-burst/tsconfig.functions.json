@@ -10,5 +10,13 @@
     "outDir": "../../dist/npm-burst/functions/out-tsc",
     "composite": true
   },
-  "include": ["functions/**/*.ts", "src/server/**/*.ts"]
+  "include": ["functions/**/*.ts", "src/server/**/*.ts"],
+  "references": [
+    {
+      "path": "../../libs/github-data-access/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/shared/tsconfig.lib.json"
+    }
+  ]
 }

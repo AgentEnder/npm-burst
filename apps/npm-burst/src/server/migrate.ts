@@ -1,5 +1,5 @@
-import { FileMigrationProvider, Kysely, Migrator } from 'kysely';
-import { LibsqlDialect } from 'kysely-libsql';
+import { FileMigrationProvider, Kysely, Migrator, SqliteDialect } from 'kysely';
+import * as Database from 'better-sqlite3';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,15 +8,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 interface MigrateOptions {
-  url: string;
-  authToken?: string;
+  /** Path to a local SQLite file (e.g. "file:local.db" or "local.db") */
+  dbPath: string;
 }
 
 export async function runMigrations(options: MigrateOptions) {
+  const filePath = options.dbPath.replace(/^file:/, '');
+
   const db = new Kysely({
-    dialect: new LibsqlDialect({
-      url: options.url,
-      authToken: options.authToken,
+    dialect: new SqliteDialect({
+      database: new Database(filePath),
     }),
   });
 
@@ -49,16 +50,10 @@ export async function runMigrations(options: MigrateOptions) {
 }
 
 // CLI entry point
-const url = process.env.TURSO_DATABASE_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
+const dbPath = process.env.D1_LOCAL_DB ?? 'file:local.db';
 
-if (!url) {
-  console.error('TURSO_DATABASE_URL is required');
-  process.exit(1);
-}
-
-console.log('Running migrations...');
-runMigrations({ url, authToken })
+console.log(`Running migrations against ${dbPath}...`);
+runMigrations({ dbPath })
   .then(() => {
     console.log('Migrations complete.');
   })

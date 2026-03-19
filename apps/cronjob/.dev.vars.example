@@ -1,5 +1,4 @@
-TURSO_DATABASE_URL=libsql://...
-TURSO_AUTH_TOKEN=...
+# D1 database is configured via wrangler.toml [[d1_databases]] binding
 
 # Required for GitHub health snapshots.
 GITHUB_APP_ID=1234567

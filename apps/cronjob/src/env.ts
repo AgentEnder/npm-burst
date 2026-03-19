@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-const envSchema = z.object({
-  TURSO_DATABASE_URL: z.string(),
-  TURSO_AUTH_TOKEN: z.string(),
+const envStringSchema = z.object({
   ENCRYPTION_KEY: z.string().optional(),
   GITHUB_APP_ID: z.string().optional(),
   GITHUB_APP_PRIVATE_KEY: z.string().optional(),
@@ -10,8 +8,15 @@ const envSchema = z.object({
   WORKER_SELF_URL: z.string().optional(),
 });
 
-export type Env = z.infer<typeof envSchema>;
+type EnvStrings = z.infer<typeof envStringSchema>;
+
+export type Env = EnvStrings & { DB: D1Database };
 
 export function parseEnv(raw: unknown): Env {
-  return envSchema.parse(raw);
+  const env = raw as Record<string, unknown>;
+  const strings = envStringSchema.parse(env);
+  if (!env['DB']) {
+    throw new Error('DB binding is required');
+  }
+  return { ...strings, DB: env['DB'] as D1Database };
 }

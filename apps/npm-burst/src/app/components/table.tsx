@@ -14,7 +14,7 @@ export const Table = memo(function Table({
 }: {
   data: DataNode;
   onVersionClick?: (version: string, isAggregated?: boolean) => void;
-}): JSX.Element | null {
+}): React.JSX.Element | null {
   const total = useMemo<number>(() => getCount(data), [data]);
 
   useEffect(() => {

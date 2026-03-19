@@ -11,8 +11,6 @@ Copy [apps/npm-burst/.env.local.example](/Users/agentender/repos/npm-burst/apps/
 - `VITE_CLERK_PUBLISHABLE_KEY`: Clerk frontend key used by Vite in the browser.
 - `CLERK_PUBLISHABLE_KEY`: server-side publishable key if needed by server code or middleware.
 - `CLERK_SECRET_KEY`: Clerk backend secret for authenticated telefunc requests.
-- `TURSO_DATABASE_URL`: LibSQL/Turso database URL.
-- `TURSO_AUTH_TOKEN`: Turso auth token.
 - `ENCRYPTION_KEY`: 64 hex chars, used to encrypt GitHub installation access tokens before storing them in the DB.
 - `GITHUB_APP_ID`: numeric GitHub App ID.
 - `GITHUB_APP_SLUG`: app slug used to build the GitHub installation URL.
@@ -48,8 +46,6 @@ Once connected, npm-burst can request the user&apos;s GitHub OAuth access token 
 
 Copy [apps/cronjob/.dev.vars.example](/Users/agentender/repos/npm-burst/apps/cronjob/.dev.vars.example) to `apps/cronjob/.dev.vars` for local Wrangler runs. The cron worker needs:
 
-- `TURSO_DATABASE_URL`
-- `TURSO_AUTH_TOKEN`
 - `GITHUB_APP_ID`
 - `GITHUB_APP_PRIVATE_KEY`
 - `ENCRYPTION_KEY`
@@ -58,11 +54,15 @@ Copy [apps/cronjob/.dev.vars.example](/Users/agentender/repos/npm-burst/apps/cro
 
 ## Database setup
 
-Run migrations against your Turso database:
+The app uses Cloudflare D1. Create a D1 database and fill in the `database_id` in both `apps/npm-burst/wrangler.toml` and `apps/cronjob/wrangler.toml`.
+
+Run migrations locally to set up the schema:
 
 ```bash
 pnpm exec tsx apps/npm-burst/src/server/migrate.ts
 ```
+
+To apply migrations to the remote D1 database, use `wrangler d1 execute` with the generated SQL.
 
 The GitHub health feature adds these tables:
 
@@ -110,8 +110,6 @@ Set secrets for the Pages app:
 
 ```bash
 cd apps/npm-burst
-wrangler pages secret put TURSO_DATABASE_URL
-wrangler pages secret put TURSO_AUTH_TOKEN
 wrangler pages secret put CLERK_SECRET_KEY
 wrangler pages secret put ENCRYPTION_KEY
 wrangler pages secret put GITHUB_APP_ID
@@ -120,12 +118,12 @@ wrangler pages secret put GITHUB_APP_PRIVATE_KEY
 wrangler pages secret put GITHUB_WEBHOOK_SECRET
 ```
 
+The D1 database binding is configured in `wrangler.toml`, not as a secret.
+
 Set secrets for the cron worker:
 
 ```bash
 cd apps/cronjob
-wrangler secret put TURSO_DATABASE_URL
-wrangler secret put TURSO_AUTH_TOKEN
 wrangler secret put ENCRYPTION_KEY
 wrangler secret put GITHUB_APP_ID
 wrangler secret put GITHUB_APP_PRIVATE_KEY

@@ -7,9 +7,13 @@ import {
   type RawGitHubHealthData,
 } from '@npm-burst/github-data-access';
 import type { Kysely } from 'kysely';
+import { decompressJson } from '@npm-burst/shared';
 import type { DB } from './db-schema';
 import { logExternalFailure } from './external-data';
-import { getFixtureHealthMetrics, getFixtureHealthRepo } from './fixtures/packages';
+import {
+  getFixtureHealthMetrics,
+  getFixtureHealthRepo,
+} from './fixtures/packages';
 import { ensureTrackedPackageMetadata } from './package-metadata';
 import { cachedFetch } from './npm-fetch';
 
@@ -54,23 +58,21 @@ export interface MetricSourceData {
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-function toMetricPoint(
-  row: {
-    snapshot_date: string;
-    issues_opened_30d: number;
-    issues_closed_30d: number;
-    prs_opened_30d: number;
-    prs_merged_30d: number;
-    prs_closed_unmerged_30d: number;
-    median_issue_first_response_hours: number | null;
-    median_issue_close_hours: number | null;
-    median_pr_first_review_hours: number | null;
-    median_pr_merge_hours: number | null;
-    active_contributors_30d: number;
-    stale_issues_count: number;
-    stale_prs_count: number;
-  }
-): HealthMetricSeriesPoint {
+function toMetricPoint(row: {
+  snapshot_date: string;
+  issues_opened_30d: number;
+  issues_closed_30d: number;
+  prs_opened_30d: number;
+  prs_merged_30d: number;
+  prs_closed_unmerged_30d: number;
+  median_issue_first_response_hours: number | null;
+  median_issue_close_hours: number | null;
+  median_pr_first_review_hours: number | null;
+  median_pr_merge_hours: number | null;
+  active_contributors_30d: number;
+  stale_issues_count: number;
+  stale_prs_count: number;
+}): HealthMetricSeriesPoint {
   return {
     snapshotDate: row.snapshot_date,
     issuesOpened30d: row.issues_opened_30d,
@@ -88,7 +90,10 @@ function toMetricPoint(
   };
 }
 
-function matchesFilter(labels: string[], filterConfig: FilterConfig | null): boolean {
+function matchesFilter(
+  labels: string[],
+  filterConfig: FilterConfig | null
+): boolean {
   const wantedLabels = filterConfig?.labels;
   if (!wantedLabels || wantedLabels.length === 0) return true;
   return wantedLabels.every((label) => labels.includes(label));
@@ -135,20 +140,28 @@ function buildMetricSourceData(
     case 'issuesClosed30d': {
       const entries = issues
         .filter(
-          (issue) => issue.closedAt && new Date(issue.closedAt).getTime() >= sinceMs
+          (issue) =>
+            issue.closedAt && new Date(issue.closedAt).getTime() >= sinceMs
         )
         .map((issue) => ({
           ...issue,
           url: `${repoUrl}/issues/${issue.number}`,
         }));
-      return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: { count: entries.length },
+        entries,
+      };
     }
     case 'openCloseRatio': {
       const opened = issues.filter(
         (issue) => new Date(issue.createdAt).getTime() >= sinceMs
       );
       const closed = issues.filter(
-        (issue) => issue.closedAt && new Date(issue.closedAt).getTime() >= sinceMs
+        (issue) =>
+          issue.closedAt && new Date(issue.closedAt).getTime() >= sinceMs
       );
       return {
         metricKey,
@@ -157,7 +170,10 @@ function buildMetricSourceData(
         summary: {
           issuesOpened30d: opened.length,
           issuesClosed30d: closed.length,
-          ratio: opened.length > 0 ? Number((closed.length / opened.length).toFixed(2)) : null,
+          ratio:
+            opened.length > 0
+              ? Number((closed.length / opened.length).toFixed(2))
+              : null,
         },
         entries: [
           ...opened.map((issue) => ({
@@ -180,50 +196,97 @@ function buildMetricSourceData(
           ...pr,
           url: `${repoUrl}/pull/${pr.number}`,
         }));
-      return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: { count: entries.length },
+        entries,
+      };
     }
     case 'prsMerged30d': {
       const entries = prs
-        .filter((pr) => pr.mergedAt && new Date(pr.mergedAt).getTime() >= sinceMs)
+        .filter(
+          (pr) => pr.mergedAt && new Date(pr.mergedAt).getTime() >= sinceMs
+        )
         .map((pr) => ({
           ...pr,
           url: `${repoUrl}/pull/${pr.number}`,
         }));
-      return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: { count: entries.length },
+        entries,
+      };
     }
     case 'prsClosedUnmerged30d': {
       const entries = prs
         .filter(
           (pr) =>
-            pr.closedAt && !pr.mergedAt && new Date(pr.closedAt).getTime() >= sinceMs
+            pr.closedAt &&
+            !pr.mergedAt &&
+            new Date(pr.closedAt).getTime() >= sinceMs
         )
         .map((pr) => ({
           ...pr,
           url: `${repoUrl}/pull/${pr.number}`,
         }));
-      return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: { count: entries.length },
+        entries,
+      };
     }
     case 'staleIssuesCount': {
       const entries = issues
-        .filter((issue) => !issue.closedAt && new Date(issue.updatedAt).getTime() < staleCutoff)
+        .filter(
+          (issue) =>
+            !issue.closedAt && new Date(issue.updatedAt).getTime() < staleCutoff
+        )
         .map((issue) => ({
           ...issue,
           url: `${repoUrl}/issues/${issue.number}`,
         }));
-      return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: { count: entries.length },
+        entries,
+      };
     }
     case 'stalePrsCount': {
       const entries = prs
         .filter(
           (pr) =>
-            !pr.closedAt && !pr.mergedAt && new Date(pr.updatedAt).getTime() < staleCutoff
+            !pr.closedAt &&
+            !pr.mergedAt &&
+            new Date(pr.updatedAt).getTime() < staleCutoff
         )
         .map((pr) => ({
           ...pr,
           url: `${repoUrl}/pull/${pr.number}`,
         }));
-      return { metricKey, snapshotDate, repo, summary: { count: entries.length }, entries };
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: { count: entries.length },
+        entries,
+      };
     }
+    default:
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: {},
+        entries: [],
+      };
   }
 }
 
@@ -243,6 +306,7 @@ async function getExistingRepoForPackage(
     ])
     .where('grp.package_name', '=', packageName)
     .orderBy('grp.is_maintainer_override', 'desc')
+    .$narrowType<{ id: number }>()
     .executeTakeFirst();
 
   if (!row) return null;
@@ -319,9 +383,10 @@ export async function ensureGitHubRepoForPackage(
 
   const repo = await db
     .selectFrom('github_repos')
-    .select(['id', 'owner', 'name'])
+    .select(['id', 'installation_id', 'owner', 'name'])
     .where('owner', '=', parsedRepo.owner)
     .where('name', '=', parsedRepo.name)
+    .$narrowType<{ id: number }>()
     .executeTakeFirst();
 
   if (!repo) return null;
@@ -432,19 +497,26 @@ export async function getPackageMetricSource(
 
     const isIssues = metricKey === 'staleIssuesCount';
     const count = isIssues
-      ? (selected?.stale_issues_count ?? 0)
-      : (selected?.stale_prs_count ?? 0);
+      ? selected?.stale_issues_count ?? 0
+      : selected?.stale_prs_count ?? 0;
     const kind = isIssues ? 'issue' : 'pr';
 
     const staleCutoff = new Date(
-      new Date(latestSnapshot.snapshot_date + 'T00:00:00Z').getTime() - 90 * 24 * 60 * 60 * 1000
-    ).toISOString().slice(0, 10);
+      new Date(latestSnapshot.snapshot_date + 'T00:00:00Z').getTime() -
+        90 * 24 * 60 * 60 * 1000
+    )
+      .toISOString()
+      .slice(0, 10);
 
     const labelQualifiers = (parsedFilter?.labels ?? [])
       .map((label) => `label:"${label}"`)
       .join('+');
-    const searchQuery = `is:${kind}+is:open+-updated:>=${staleCutoff}${labelQualifiers ? `+${labelQualifiers}` : ''}`;
-    const searchUrl = `https://github.com/${repo.owner}/${repo.name}/issues?q=${encodeURIComponent(searchQuery)}`;
+    const searchQuery = `is:${kind}+is:open+-updated:>=${staleCutoff}${
+      labelQualifiers ? `+${labelQualifiers}` : ''
+    }`;
+    const searchUrl = `https://github.com/${repo.owner}/${
+      repo.name
+    }/issues?q=${encodeURIComponent(searchQuery)}`;
 
     return {
       metricKey,
@@ -453,14 +525,18 @@ export async function getPackageMetricSource(
       summary: {
         count,
         staleCutoffDate: staleCutoff,
-        description: `Open ${isIssues ? 'issues' : 'pull requests'} not updated since ${staleCutoff}.`,
+        description: `Open ${
+          isIssues ? 'issues' : 'pull requests'
+        } not updated since ${staleCutoff}.`,
         searchUrl,
       },
       entries: [],
     };
   }
 
-  const rawData = JSON.parse(latestSnapshot.raw_data) as RawGitHubHealthData;
+  const rawData = (await decompressJson<RawGitHubHealthData>(
+    latestSnapshot.raw_data
+  ))!;
 
   return buildMetricSourceData(
     metricKey,
@@ -471,7 +547,9 @@ export async function getPackageMetricSource(
   );
 }
 
-export function getFixturePackageHealthData(packageName: string): PackageHealthData {
+export function getFixturePackageHealthData(
+  packageName: string
+): PackageHealthData {
   return {
     packageName,
     installationConfigured: true,

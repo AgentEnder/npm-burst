@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "declaration": true,
+    "types": ["node"],
+    "composite": true,
+    "lib": ["esnext"],
+    "target": "esnext"
+  },
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "vitest.config.ts"
+  ],
+  "include": ["**/*.ts"]
+}

@@ -262,7 +262,7 @@ function renderJsonNode(
     value.forEach((item, index) => {
       const nested = renderJsonNode(item, indent + 1, undefined, `${path}[${index}]`);
       if (nested.length > 0) {
-        const last = nested[nested.length - 1] as React.ReactElement;
+        const last = nested[nested.length - 1] as React.ReactElement<{ children: React.ReactNode }>;
         nested[nested.length - 1] = (
           <div className={styles.jsonLine} key={`${path}[${index}]-tail`}>
             {last.props.children}
@@ -310,7 +310,7 @@ function renderJsonNode(
         `${path}.${entryKey}`
       );
       if (nested.length > 0) {
-        const last = nested[nested.length - 1] as React.ReactElement;
+        const last = nested[nested.length - 1] as React.ReactElement<{ children: React.ReactNode }>;
         nested[nested.length - 1] = (
           <div className={styles.jsonLine} key={`${path}.${entryKey}-tail`}>
             {last.props.children}

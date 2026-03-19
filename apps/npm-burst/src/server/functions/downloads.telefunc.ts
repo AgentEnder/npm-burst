@@ -1,4 +1,5 @@
 import { Abort, getContext } from 'telefunc';
+import { compressJson } from '@npm-burst/shared';
 import { getDb } from '../db';
 import { isDevMode } from '../env';
 import {
@@ -19,9 +20,7 @@ export interface DownloadsResponse {
   warnings: ExternalDataWarning[];
 }
 
-export async function onGetDownloads(
-  pkg: string
-): Promise<DownloadsResponse> {
+export async function onGetDownloads(pkg: string): Promise<DownloadsResponse> {
   const { env, userId } = getContext();
 
   if (!userId) {
@@ -82,7 +81,7 @@ export async function onGetDownloads(
         .values({
           package_id: pkgRow.id,
           snapshot_date: yesterday,
-          downloads: JSON.stringify(data.downloads),
+          downloads: await compressJson(data.downloads),
         })
         .onConflict((oc) =>
           oc.columns(['package_id', 'snapshot_date']).doNothing()

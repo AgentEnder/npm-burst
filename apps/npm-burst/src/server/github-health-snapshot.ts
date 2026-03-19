@@ -13,6 +13,7 @@ import {
   type RawGitHubHealthData,
 } from '@npm-burst/github-data-access';
 import type { Kysely } from 'kysely';
+import { compressJson, decompressJson } from '@npm-burst/shared';
 import type { DB } from './db-schema';
 import type { Env } from './env';
 import { ensureGitHubRepoForPackage } from './github-health';
@@ -53,10 +54,16 @@ function toBase64Url(input: string | Uint8Array): string {
   for (const value of bytes) {
     binary += String.fromCharCode(value);
   }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
 }
 
-async function createAppJwt(appId: string, privateKey: string): Promise<string> {
+async function createAppJwt(
+  appId: string,
+  privateKey: string
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = { iat: now - 60, exp: now + 9 * 60, iss: appId };
@@ -68,10 +75,14 @@ async function createAppJwt(appId: string, privateKey: string): Promise<string> 
     key,
     new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
   );
-  return `${encodedHeader}.${encodedPayload}.${toBase64Url(new Uint8Array(signature))}`;
+  return `${encodedHeader}.${encodedPayload}.${toBase64Url(
+    new Uint8Array(signature)
+  )}`;
 }
 
-function normalizeBlob(value: Uint8Array | ArrayBuffer | null): Uint8Array | null {
+function normalizeBlob(
+  value: Uint8Array | ArrayBuffer | null
+): Uint8Array | null {
   if (!value) return null;
   if (value instanceof Uint8Array) return value;
   return new Uint8Array(value);
@@ -82,7 +93,11 @@ async function refreshInstallationToken(
   installation: { id: number; installation_id: number },
   env: Env
 ): Promise<string | null> {
-  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY || !env.ENCRYPTION_KEY) {
+  if (
+    !env.GITHUB_APP_ID ||
+    !env.GITHUB_APP_PRIVATE_KEY ||
+    !env.ENCRYPTION_KEY
+  ) {
     return null;
   }
 
@@ -187,7 +202,9 @@ async function getRepoFilterConfigs(
   const filterConfigs = [null as string | null];
 
   for (const row of filterRows) {
-    const normalized = canonicalizeFilterConfig(parseFilterConfig(row.filter_config));
+    const normalized = canonicalizeFilterConfig(
+      parseFilterConfig(row.filter_config)
+    );
     if (!seen.has(normalized)) {
       seen.add(normalized);
       filterConfigs.push(normalized);
@@ -196,8 +213,6 @@ async function getRepoFilterConfigs(
 
   return filterConfigs;
 }
-
-const FULL_FETCH_WINDOW_MS = 91 * 24 * 60 * 60 * 1000;
 
 export async function snapshotGitHubHealthForRepo(
   db: Kysely<DB>,
@@ -215,18 +230,25 @@ export async function snapshotGitHubHealthForRepo(
     .executeTakeFirst();
 
   const previousData = previousSnapshot?.raw_data
-    ? (JSON.parse(previousSnapshot.raw_data) as RawGitHubHealthData)
+    ? await decompressJson<RawGitHubHealthData>(previousSnapshot.raw_data)
     : null;
 
   // Incremental: fetch only items updated since last fetch; full: 91-day window
-  const since = previousData?.fetchedAt
-    ?? new Date(Date.now() - FULL_FETCH_WINDOW_MS).toISOString();
+  const since =
+    previousData?.fetchedAt ??
+    new Date(Date.now() - FULL_FETCH_WINDOW_MS).toISOString();
 
-  const delta = await fetchGitHubHealthData(token, repo.owner, repo.name, {
-    since,
-  }, {
-    userAgent: 'npm-burst-app',
-  });
+  const delta = await fetchGitHubHealthData(
+    token,
+    repo.owner,
+    repo.name,
+    {
+      since,
+    },
+    {
+      userAgent: 'npm-burst-app',
+    }
+  );
   if (!delta) {
     return false;
   }
@@ -241,7 +263,9 @@ export async function snapshotGitHubHealthForRepo(
     loadBotPatterns(db),
     getRepoFilterConfigs(db, repo.id),
   ]);
-  const staleCutoffIso = new Date(Date.now() - FULL_FETCH_WINDOW_MS).toISOString();
+  const staleCutoffIso = new Date(
+    Date.now() - FULL_FETCH_WINDOW_MS
+  ).toISOString();
 
   let snapshotId: number | undefined;
 
@@ -250,7 +274,7 @@ export async function snapshotGitHubHealthForRepo(
     snapshotId = previousSnapshot.id;
     await db
       .updateTable('github_health_snapshots')
-      .set({ raw_data: JSON.stringify(rawData) })
+      .set({ raw_data: await compressJson(rawData) })
       .where('id', '=', snapshotId)
       .execute();
 
@@ -266,7 +290,7 @@ export async function snapshotGitHubHealthForRepo(
         .values({
           repo_id: repo.id,
           snapshot_date: snapshotDate,
-          raw_data: JSON.stringify(rawData),
+          raw_data: await compressJson(rawData),
         })
         .returning('id')
         .$narrowType<{ id: number }>()
@@ -352,7 +376,12 @@ export async function snapshotGitHubHealthForOwner(
     .innerJoin('user_tracked_packages as utp', 'utp.package_id', 'tp.id')
     .select(['gr.id', 'gr.owner', 'gr.name', 'gr.installation_id'])
     .where('gr.owner', '=', owner)
-    .$narrowType<{ id: number; owner: string; name: string; installation_id: number | null }>()
+    .$narrowType<{
+      id: number;
+      owner: string;
+      name: string;
+      installation_id: number | null;
+    }>()
     .distinct()
     .execute();
 

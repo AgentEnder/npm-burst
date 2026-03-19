@@ -6,3 +6,8 @@ compatibility_date = "2024-01-01"
 
 [triggers]
 crons = ["0 6 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "npm-burst-db"
+database_id = "273b28f0-f0e3-43e6-b7aa-1fd083c1ae6f"

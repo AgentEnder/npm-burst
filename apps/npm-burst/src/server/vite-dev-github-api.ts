@@ -41,9 +41,9 @@ async function toRequest(req: IncomingMessage): Promise<Request> {
   return new Request(url, {
     method,
     headers: req.headers as Record<string, string>,
-    body,
-    duplex: body ? 'half' : undefined,
-  });
+    body: body ? body.toString() : undefined,
+    ...(body ? { duplex: 'half' } : {}),
+  } as RequestInit);
 }
 
 function createContext(request: Request, env: Env): GitHubRouteContext {

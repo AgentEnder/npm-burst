@@ -2,8 +2,6 @@ import { z } from 'zod';
 
 const prodSchema = z.object({
   DEV_MODE: z.undefined().optional(),
-  TURSO_DATABASE_URL: z.string(),
-  TURSO_AUTH_TOKEN: z.string(),
   CLERK_SECRET_KEY: z.string(),
   ENCRYPTION_KEY: z.string(),
   GITHUB_APP_ID: z.string(),
@@ -15,8 +13,6 @@ const prodSchema = z.object({
 const devSchema = z.object({
   DEV_MODE: z.literal('true'),
   DEV_GITHUB_PAT: z.string().optional(),
-  TURSO_DATABASE_URL: z.string().optional(),
-  TURSO_AUTH_TOKEN: z.string().optional(),
   CLERK_SECRET_KEY: z.string().optional(),
   ENCRYPTION_KEY: z.string().optional(),
   GITHUB_APP_ID: z.string().optional(),
@@ -25,12 +21,17 @@ const devSchema = z.object({
   GITHUB_WEBHOOK_SECRET: z.string().optional(),
 });
 
-export const envSchema = z.union([devSchema, prodSchema]);
+const envStringSchema = z.union([devSchema, prodSchema]);
 
-export type Env = z.infer<typeof envSchema>;
+type EnvStrings = z.infer<typeof envStringSchema>;
+
+export type Env = EnvStrings & { DB?: D1Database };
 
 export function parseEnv(raw: unknown): Env {
-  return envSchema.parse(raw);
+  const env = raw as Record<string, unknown>;
+  const strings = envStringSchema.parse(env);
+  const db = env['DB'] as D1Database | undefined;
+  return { ...strings, DB: db };
 }
 
 export function isDevMode(env: Env): boolean {

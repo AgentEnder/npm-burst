@@ -3,5 +3,9 @@
   "compilerOptions": {},
   "files": [],
   "include": [],
-  "references": []
+  "references": [
+    {
+      "path": "./e2e"
+    }
+  ]
 }

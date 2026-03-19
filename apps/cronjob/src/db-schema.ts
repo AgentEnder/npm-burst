@@ -40,7 +40,7 @@ export interface GithubHealthMetrics {
 export interface GithubHealthSnapshots {
   created_at: Generated<string>;
   id: Generated<number | null>;
-  raw_data: string;
+  raw_data: Uint8Array | string;
   repo_id: number;
   snapshot_date: string;
 }
@@ -82,7 +82,7 @@ export interface NpmApiCache {
 }
 
 export interface Snapshots {
-  downloads: string;
+  downloads: Uint8Array | string;
   id: Generated<number | null>;
   package_id: number;
   snapshot_date: string;

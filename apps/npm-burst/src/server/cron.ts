@@ -1,3 +1,4 @@
+import { compressJson } from '@npm-burst/shared';
 import { getDb } from './db';
 import type { Env } from './env';
 import { cachedFetch } from './npm-fetch';
@@ -47,7 +48,7 @@ export async function handleCron(env: Env): Promise<void> {
         .values({
           package_id: packageId,
           snapshot_date: yesterday,
-          downloads: JSON.stringify(data.downloads),
+          downloads: await compressJson(data.downloads),
         })
         .onConflict((oc) =>
           oc.columns(['package_id', 'snapshot_date']).doNothing()

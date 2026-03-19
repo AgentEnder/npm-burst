@@ -49,4 +49,6 @@ vitest.config.*.timestamp*
 .github-app.local.env
 /keys/
 *.db
+*.sql
+sample.txt
 .wrangler

@@ -2,13 +2,24 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
-    "types": ["vitest/globals", "node"],
+    "types": ["vitest/globals", "node", "vite/client"],
     "composite": true,
     "declaration": true
   },
-  "include": ["vite.config.ts", "src/**/*.ts"],
+  "include": ["vite.config.ts", "src/**/*.ts", "src/**/*.tsx"],
   "files": [
     "../../node_modules/@nx/react/typings/cssmodule.d.ts",
     "../../node_modules/@nx/react/typings/image.d.ts"
+  ],
+  "references": [
+    {
+      "path": "../../libs/npm-data-access/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/github-data-access/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/shared/tsconfig.lib.json"
+    }
   ]
 }

@@ -14,6 +14,7 @@ import {
   type RawGitHubHealthData,
 } from '@npm-burst/github-data-access';
 import type { Kysely } from 'kysely';
+import { compressJson, decompressJson } from '@npm-burst/shared';
 import type { DB } from './db-schema';
 import { cachedFetch } from './npm-fetch';
 
@@ -50,10 +51,16 @@ function toBase64Url(input: string | Uint8Array): string {
   for (const value of bytes) {
     binary += String.fromCharCode(value);
   }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
 }
 
-async function createAppJwt(appId: string, privateKey: string): Promise<string> {
+async function createAppJwt(
+  appId: string,
+  privateKey: string
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = {
@@ -69,10 +76,14 @@ async function createAppJwt(appId: string, privateKey: string): Promise<string> 
     key,
     new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
   );
-  return `${encodedHeader}.${encodedPayload}.${toBase64Url(new Uint8Array(signature))}`;
+  return `${encodedHeader}.${encodedPayload}.${toBase64Url(
+    new Uint8Array(signature)
+  )}`;
 }
 
-function normalizeBlob(value: Uint8Array | ArrayBuffer | null): Uint8Array | null {
+function normalizeBlob(
+  value: Uint8Array | ArrayBuffer | null
+): Uint8Array | null {
   if (!value) return null;
   if (value instanceof Uint8Array) return value;
   return new Uint8Array(value);
@@ -90,7 +101,11 @@ async function refreshInstallationToken(
     ENCRYPTION_KEY?: string;
   }
 ): Promise<string | null> {
-  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY || !env.ENCRYPTION_KEY) {
+  if (
+    !env.GITHUB_APP_ID ||
+    !env.GITHUB_APP_PRIVATE_KEY ||
+    !env.ENCRYPTION_KEY
+  ) {
     return null;
   }
 
@@ -316,12 +331,19 @@ export async function snapshotGitHubHealth(
 
     for (const repo of repos) {
       try {
-        const token = await getInstallationTokenForRepo(db, repo.installation_id, env);
+        const token = await getInstallationTokenForRepo(
+          db,
+          repo.installation_id,
+          env
+        );
         if (!token) continue;
 
         await snapshotSingleRepo(db, repo, token, today, botPatterns);
       } catch (error) {
-        console.error(`Failed to snapshot GitHub health for ${repo.owner}/${repo.name}:`, error);
+        console.error(
+          `Failed to snapshot GitHub health for ${repo.owner}/${repo.name}:`,
+          error
+        );
       }
     }
   }
@@ -344,17 +366,24 @@ export async function snapshotSingleRepo(
     .executeTakeFirst();
 
   const previousData = previousSnapshot?.raw_data
-    ? (JSON.parse(previousSnapshot.raw_data) as RawGitHubHealthData)
+    ? await decompressJson<RawGitHubHealthData>(previousSnapshot.raw_data)
     : null;
 
-  const since = previousData?.fetchedAt
-    ?? new Date(Date.now() - FULL_FETCH_WINDOW_MS).toISOString();
+  const since =
+    previousData?.fetchedAt ??
+    new Date(Date.now() - FULL_FETCH_WINDOW_MS).toISOString();
 
-  const delta = await fetchGitHubHealthData(token, repo.owner, repo.name, {
-    since,
-  }, {
-    userAgent: 'npm-burst-cron',
-  });
+  const delta = await fetchGitHubHealthData(
+    token,
+    repo.owner,
+    repo.name,
+    {
+      since,
+    },
+    {
+      userAgent: 'npm-burst-cron',
+    }
+  );
   if (!delta) return false;
 
   const rawData = previousData
@@ -362,14 +391,16 @@ export async function snapshotSingleRepo(
     : delta;
 
   const isToday = previousSnapshot?.snapshot_date === snapshotDate;
-  const staleCutoffIso = new Date(Date.now() - FULL_FETCH_WINDOW_MS).toISOString();
+  const staleCutoffIso = new Date(
+    Date.now() - FULL_FETCH_WINDOW_MS
+  ).toISOString();
   let snapshotId: number | undefined;
 
   if (isToday && previousSnapshot?.id) {
     snapshotId = previousSnapshot.id;
     await db
       .updateTable('github_health_snapshots')
-      .set({ raw_data: JSON.stringify(rawData) })
+      .set({ raw_data: await compressJson(rawData) })
       .where('id', '=', snapshotId)
       .execute();
 
@@ -384,7 +415,7 @@ export async function snapshotSingleRepo(
         .values({
           repo_id: repo.id,
           snapshot_date: snapshotDate,
-          raw_data: JSON.stringify(rawData),
+          raw_data: await compressJson(rawData),
         })
         .returning('id')
         .$narrowType<{ id: number }>()
@@ -403,7 +434,9 @@ export async function snapshotSingleRepo(
   const seen = new Set<string | null>([null]);
   const filterConfigs = [null as string | null];
   for (const row of filterRows) {
-    const normalized = canonicalizeFilterConfig(parseFilterConfig(row.filter_config));
+    const normalized = canonicalizeFilterConfig(
+      parseFilterConfig(row.filter_config)
+    );
     if (!seen.has(normalized)) {
       seen.add(normalized);
       filterConfigs.push(normalized);

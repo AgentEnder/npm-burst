@@ -1,4 +1,5 @@
 import { getContext } from 'telefunc';
+import { decompressJson } from '@npm-burst/shared';
 import { getDb } from '../db';
 import { isDevMode } from '../env';
 import { getFixtureSnapshots } from '../fixtures/packages';
@@ -38,9 +39,13 @@ export async function onGetSnapshots(
     .execute();
 
   return {
-    snapshots: result.map((r) => ({
-      date: r.snapshot_date,
-      downloads: JSON.parse(r.downloads),
-    })),
+    snapshots: await Promise.all(
+      result.map(async (r) => ({
+        date: r.snapshot_date,
+        downloads: (await decompressJson<Record<string, number>>(
+          r.downloads
+        )) as Record<string, number>,
+      }))
+    ),
   };
 }
