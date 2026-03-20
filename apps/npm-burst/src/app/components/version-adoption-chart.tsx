@@ -173,16 +173,21 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     const innerWidth = width - MARGIN.left - MARGIN.right;
     const innerHeight = height - MARGIN.top - MARGIN.bottom;
 
-    // Collect all dates
+    // Collect all dates and build a time scale
     const allDates = Array.from(
       new Set(series.flatMap((s) => s.points.map((p) => p.date)))
     ).sort();
 
+    const parseDate = (d: string) => new Date(d + 'T00:00:00');
+    const dateParsed = allDates.map(parseDate);
+    const dateMap = new Map(allDates.map((d, i) => [d, dateParsed[i]]));
+
     const xScale = d3
-      .scalePoint<string>()
-      .domain(allDates)
-      .range([0, innerWidth])
-      .padding(0.1);
+      .scaleTime()
+      .domain(d3.extent(dateParsed) as [Date, Date])
+      .range([0, innerWidth]);
+
+    const xDate = (d: string) => xScale(dateMap.get(d)!);
 
     const valueKey = yAxisMode === 'percent' ? 'percent' : 'count';
     const maxCount = yAxisMode === 'count'
@@ -217,19 +222,14 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       );
 
     // X axis
-    const tickInterval = Math.max(1, Math.floor(allDates.length / 8));
-    const tickValues = allDates.filter((_, i) => i % tickInterval === 0);
     g.append('g')
       .attr('class', 'axis')
       .attr('transform', `translate(0,${innerHeight})`)
       .call(
         d3
           .axisBottom(xScale)
-          .tickValues(tickValues)
-          .tickFormat((d) => {
-            const date = new Date(d + 'T00:00:00');
-            return d3.timeFormat('%b %d, %Y')(date);
-          })
+          .ticks(8)
+          .tickFormat((d) => d3.timeFormat('%b %d, %Y')(d as Date))
       )
       .selectAll('text')
       .attr('transform', 'rotate(-25)')
@@ -266,7 +266,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
 
       const areaGen = d3
         .area<d3.SeriesPoint<Record<string, unknown>>>()
-        .x((d) => xScale((d.data as Record<string, string>).date) ?? 0)
+        .x((d) => xDate((d.data as Record<string, string>).date))
         .y0((d) => yScale(d[0]))
         .y1((d) => yScale(d[1]))
         .curve(d3.curveMonotoneX);
@@ -285,7 +285,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       // Line chart mode
       const lineGen = d3
         .line<{ date: string; percent: number; count: number }>()
-        .x((d) => xScale(d.date) ?? 0)
+        .x((d) => xDate(d.date))
         .y((d) => yScale(d[valueKey]))
         .curve(d3.curveMonotoneX);
 
@@ -302,7 +302,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         g.selectAll(null)
           .data(s.points)
           .join('circle')
-          .attr('cx', (d) => xScale(d.date) ?? 0)
+          .attr('cx', (d) => xDate(d.date))
           .attr('cy', (d) => yScale(d[valueKey]))
           .attr('r', 3)
           .attr('fill', color)
@@ -313,21 +313,15 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
 
     // Version release markers (vertical ticks)
     if (showReleaseTicks && allDates.length >= 2) {
-      const firstDate = new Date(allDates[0] + 'T00:00:00');
-      const lastDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
-      const timeScale = d3
-        .scaleTime()
-        .domain([firstDate, lastDate])
-        .range([xScale(allDates[0]) ?? 0, xScale(allDates[allDates.length - 1]) ?? innerWidth]);
-
+      const [domainStart, domainEnd] = xScale.domain();
       const filtered = filterReleasesByLevel(versionReleases, effectiveTickLevel);
       renderReleaseTicks(
         g as unknown as d3.Selection<SVGGElement, unknown, null, undefined>,
         filtered,
         (date) => {
-          const vrDate = new Date(date + 'T00:00:00');
-          if (vrDate < firstDate || vrDate > lastDate) return null;
-          return timeScale(vrDate);
+          const vrDate = parseDate(date);
+          if (vrDate < domainStart || vrDate > domainEnd) return null;
+          return xScale(vrDate);
         },
         innerHeight,
         theme
@@ -363,7 +357,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         let closestDate = allDates[0];
         let closestDist = Infinity;
         for (const date of allDates) {
-          const dx = Math.abs((xScale(date) ?? 0) - mx);
+          const dx = Math.abs(xDate(date) - mx);
           if (dx < closestDist) {
             closestDist = dx;
             closestDate = date;
@@ -402,7 +396,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         const containerRect = containerRef.current!.getBoundingClientRect();
         const svgRect = svgRef.current!.getBoundingClientRect();
         const tooltipX =
-          (xScale(closestDate) ?? 0) +
+          xDate(closestDate) +
           MARGIN.left +
           (svgRect.left - containerRect.left) +
           15;
@@ -417,8 +411,8 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         g.selectAll('.hover-line').remove();
         g.append('line')
           .attr('class', 'hover-line')
-          .attr('x1', xScale(closestDate) ?? 0)
-          .attr('x2', xScale(closestDate) ?? 0)
+          .attr('x1', xDate(closestDate))
+          .attr('x2', xDate(closestDate))
           .attr('y1', 0)
           .attr('y2', innerHeight)
           .attr('stroke', chartColors.tooltipBorder)
