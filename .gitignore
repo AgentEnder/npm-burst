@@ -54,3 +54,4 @@ sample.txt
 .wrangler
 
 .claude/worktrees
+.claude/settings.local.json
