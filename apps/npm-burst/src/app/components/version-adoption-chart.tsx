@@ -540,22 +540,20 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         </div>
       </div>
 
-      <ChartDescription>
-        {chartMode === 'stacked'
-          ? `Stacked area chart showing each ${grouping} version's share of downloads over time.`
-          : `Line chart showing each ${grouping} version's download trend over time.`}
-        {' '}
-        {yAxisMode === 'percent'
-          ? 'The Y-axis shows percentage share of total downloads.'
-          : 'The Y-axis shows absolute download counts.'}
-        {' '}
-        {`Versions grouped by ${grouping} version number${
+      <ChartDescription
+        parts={[
+          chartMode === 'stacked'
+            ? `Stacked area — ${grouping} version share over time`
+            : `Line chart — ${grouping} version trends over time`,
+          yAxisMode === 'percent'
+            ? 'Y-axis: % share'
+            : 'Y-axis: download count',
           lowPassFilter > 0
-            ? ` — versions below ${(lowPassFilter * 100).toFixed(1)}% are dimmed in the legend and can be bulk-hidden`
-            : ''
-        }.`}
-        {' Click legend items to show/hide individual series.'}
-      </ChartDescription>
+            ? `Below ${(lowPassFilter * 100).toFixed(1)}% dimmed`
+            : '',
+          'Click legend to toggle series',
+        ]}
+      />
 
       {series.length === 0 ? (
         <div className={styles.noData}>

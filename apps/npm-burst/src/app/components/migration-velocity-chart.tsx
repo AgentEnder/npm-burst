@@ -9,7 +9,10 @@ import {
   getThemeChartColors,
 } from '../utils/theme-colors';
 import { getMigrationVelocityData } from '../utils/migration-velocity';
-import { getMigrationMaxDays, MIGRATION_WINDOW_OPTIONS } from '../utils/time-window';
+import {
+  getMigrationMaxDays,
+  MIGRATION_WINDOW_OPTIONS,
+} from '../utils/time-window';
 import type { MigrationTimeWindow } from '../utils/time-window';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
@@ -84,13 +87,15 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
       ) ?? 30;
 
     const windowMaxDays = getMigrationMaxDays(migrationTimeWindow);
-    const effectiveMaxDays = windowMaxDays !== null ? Math.min(maxDays, windowMaxDays) : maxDays;
+    const effectiveMaxDays =
+      windowMaxDays !== null ? Math.min(maxDays, windowMaxDays) : maxDays;
 
     const cappedSeries = visibleSeries.map((s) => ({
       ...s,
-      points: windowMaxDays !== null
-        ? s.points.filter((p) => p.daysSinceRelease <= windowMaxDays)
-        : s.points,
+      points:
+        windowMaxDays !== null
+          ? s.points.filter((p) => p.daysSinceRelease <= windowMaxDays)
+          : s.points,
     }));
 
     const xScale = d3
@@ -135,7 +140,10 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
       .attr('x', innerWidth / 2)
       .attr('y', innerHeight + 35)
       .attr('text-anchor', 'middle')
-      .attr('fill', theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)')
+      .attr(
+        'fill',
+        theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
+      )
       .attr('font-size', '11px')
       .text('Days since release');
 
@@ -232,7 +240,9 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
 
         for (const e of entries) {
           lines.push(
-            `<span style="color:${e.color}">${e.label}</span>: ${e.percent.toFixed(1)}%`
+            `<span style="color:${e.color}">${
+              e.label
+            }</span>: ${e.percent.toFixed(1)}%`
           );
         }
 
@@ -266,7 +276,14 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, theme, colorMap, chartColors, migrationTimeWindow]);
+  }, [
+    series,
+    visibleSeries,
+    theme,
+    colorMap,
+    chartColors,
+    migrationTimeWindow,
+  ]);
 
   return (
     <div
@@ -282,15 +299,16 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
           label="Window"
         />
       </div>
-      <ChartDescription>
-        Compares how quickly users adopt each major version after its release.
-        The X-axis shows days since a version's release and the Y-axis shows its
-        adoption percentage — steeper curves mean faster uptake.
-        {migrationTimeWindow !== 'all'
-          ? ` Showing the first ${migrationTimeWindow} after each release.`
-          : ' Showing the full adoption history.'}
-        {' Click legend items to show/hide versions.'}
-      </ChartDescription>
+      <ChartDescription
+        parts={[
+          'Adoption speed per major version — steeper = faster uptake',
+          'X: days since release, Y: adoption %',
+          migrationTimeWindow !== 'all'
+            ? `First ${migrationTimeWindow} after each release`
+            : 'Full history',
+          'Click legend to toggle versions',
+        ]}
+      />
       {series.length === 0 ? (
         <div className={styles.noData}>
           No historical snapshot data or version release information available.
@@ -310,9 +328,13 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
               return (
                 <div
                   key={s.label}
-                  className={`${styles.legendItem} ${isHidden ? styles.legendItemDimmed : ''}`}
+                  className={`${styles.legendItem} ${
+                    isHidden ? styles.legendItemDimmed : ''
+                  }`}
                   onClick={() => toggleSeries(s.label)}
-                  title={`Released ${s.releaseDate} · Click to ${isHidden ? 'show' : 'hide'}`}
+                  title={`Released ${s.releaseDate} · Click to ${
+                    isHidden ? 'show' : 'hide'
+                  }`}
                 >
                   <span
                     className={styles.legendSwatch}

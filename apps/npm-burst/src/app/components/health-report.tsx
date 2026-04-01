@@ -129,14 +129,20 @@ function Sparkline({
 }) {
   const values = points.map((point) => metric.getValue(point) ?? 0);
   const max = Math.max(...values, 1);
-  const x = scalePoint<number>().domain(values.map((_, index) => index)).range([0, 150]);
+  const x = scalePoint<number>()
+    .domain(values.map((_, index) => index))
+    .range([0, 150]);
   const y = scaleLinear().domain([0, max]).range([32, 4]);
   const path = line<number>()
     .x((_, index) => x(index) ?? 0)
     .y((value) => y(value))(values);
 
   return (
-    <svg className={styles.sparkline} viewBox="0 0 150 36" preserveAspectRatio="none">
+    <svg
+      className={styles.sparkline}
+      viewBox="0 0 150 36"
+      preserveAspectRatio="none"
+    >
       <path d={path ?? ''} fill="none" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
@@ -175,11 +181,21 @@ function FullChart({
 
   return (
     <div className={styles.chart}>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={metric.label}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={metric.label}
+      >
         <g transform={`translate(${margin.left}, ${margin.top})`}>
           {ticks.map((tick) => (
             <g key={tick} transform={`translate(0, ${y(tick)})`}>
-              <line className={styles.gridLine} x1={0} x2={chartWidth} y1={0} y2={0} />
+              <line
+                className={styles.gridLine}
+                x1={0}
+                x2={chartWidth}
+                y1={0}
+                y2={0}
+              />
               <text className={styles.axisLabel} x={-8} y={4} textAnchor="end">
                 {tick}
               </text>
@@ -188,9 +204,20 @@ function FullChart({
           <path className={styles.area} d={areaPath ?? ''} />
           <path className={styles.line} d={linePath ?? ''} />
           {points.map((point) => (
-            <g key={point.snapshotDate} transform={`translate(${x(point.snapshotDate) ?? 0}, 0)`}>
-              <circle cy={y(metric.getValue(point) ?? 0)} r={3.5} fill="var(--accent-main)" />
-              <text className={styles.axisLabel} y={chartHeight + 18} textAnchor="middle">
+            <g
+              key={point.snapshotDate}
+              transform={`translate(${x(point.snapshotDate) ?? 0}, 0)`}
+            >
+              <circle
+                cy={y(metric.getValue(point) ?? 0)}
+                r={3.5}
+                fill="var(--accent-main)"
+              />
+              <text
+                className={styles.axisLabel}
+                y={chartHeight + 18}
+                textAnchor="middle"
+              >
                 {formatDate(point.snapshotDate)}
               </text>
             </g>
@@ -213,7 +240,12 @@ function renderJsonValue(value: unknown): React.ReactNode {
   if (typeof value === 'string') {
     if (isUrl(value)) {
       return (
-        <a className={styles.jsonLink} href={value} target="_blank" rel="noreferrer">
+        <a
+          className={styles.jsonLink}
+          href={value}
+          target="_blank"
+          rel="noreferrer"
+        >
           "{value}"
         </a>
       );
@@ -261,9 +293,16 @@ function renderJsonNode(
     ];
 
     value.forEach((item, index) => {
-      const nested = renderJsonNode(item, indent + 1, undefined, `${path}[${index}]`);
+      const nested = renderJsonNode(
+        item,
+        indent + 1,
+        undefined,
+        `${path}[${index}]`
+      );
       if (nested.length > 0) {
-        const last = nested[nested.length - 1] as React.ReactElement<{ children: React.ReactNode }>;
+        const last = nested[nested.length - 1] as React.ReactElement<{
+          children: React.ReactNode;
+        }>;
         nested[nested.length - 1] = (
           <div className={styles.jsonLine} key={`${path}[${index}]-tail`}>
             {last.props.children}
@@ -311,7 +350,9 @@ function renderJsonNode(
         `${path}.${entryKey}`
       );
       if (nested.length > 0) {
-        const last = nested[nested.length - 1] as React.ReactElement<{ children: React.ReactNode }>;
+        const last = nested[nested.length - 1] as React.ReactElement<{
+          children: React.ReactNode;
+        }>;
         nested[nested.length - 1] = (
           <div className={styles.jsonLine} key={`${path}.${entryKey}-tail`}>
             {last.props.children}
@@ -324,7 +365,8 @@ function renderJsonNode(
 
     lines.push(
       <div className={styles.jsonLine} key={`${path}-close-object`}>
-        {pad}{'}'}
+        {pad}
+        {'}'}
       </div>
     );
     return lines;
@@ -340,7 +382,11 @@ function renderJsonNode(
   ];
 }
 
-function SourceDataContent({ sourceData }: { sourceData: MetricSourceData | null }) {
+function SourceDataContent({
+  sourceData,
+}: {
+  sourceData: MetricSourceData | null;
+}) {
   if (!sourceData) {
     return <pre className={styles.sourcePre}>No source data available.</pre>;
   }
@@ -401,7 +447,9 @@ function MetricRow({
 
   const handleDownloadSource = () => {
     if (!sourceData) return;
-    const blob = new Blob([formatJson(sourceData)], { type: 'application/json' });
+    const blob = new Blob([formatJson(sourceData)], {
+      type: 'application/json',
+    });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -412,7 +460,10 @@ function MetricRow({
 
   return (
     <div className={styles.row}>
-      <button className={styles.rowButton} onClick={() => setExpanded((current) => !current)}>
+      <button
+        className={styles.rowButton}
+        onClick={() => setExpanded((current) => !current)}
+      >
         <div className={styles.metricLabel}>
           <span className={styles.metricName}>{metric.label}</span>
           <span className={styles.metricHint}>{metric.hint}</span>
@@ -426,12 +477,18 @@ function MetricRow({
       {expanded ? (
         <div className={styles.expanded}>
           <div className={styles.chartMeta}>
-            <span>Latest snapshot: {latest ? formatDate(latest.snapshotDate) : 'n/a'}</span>
+            <span>
+              Latest snapshot:{' '}
+              {latest ? formatDate(latest.snapshotDate) : 'n/a'}
+            </span>
             <span>{metric.hint}</span>
           </div>
           <FullChart points={points} metric={metric} />
           <div className={styles.actions}>
-            <button className={styles.sourceButton} onClick={handleSourceToggle}>
+            <button
+              className={styles.sourceButton}
+              onClick={handleSourceToggle}
+            >
               View source data
             </button>
           </div>
@@ -449,9 +506,12 @@ function MetricRow({
               >
                 <div className={styles.modalHeader}>
                   <div>
-                    <h3 className={styles.modalTitle}>{metric.label} source data</h3>
+                    <h3 className={styles.modalTitle}>
+                      {metric.label} source data
+                    </h3>
                     <p className={styles.modalMeta}>
-                      Latest snapshot: {latest ? formatDate(latest.snapshotDate) : 'n/a'}
+                      Latest snapshot:{' '}
+                      {latest ? formatDate(latest.snapshotDate) : 'n/a'}
                     </p>
                   </div>
                   <button
@@ -479,7 +539,9 @@ function MetricRow({
                     </div>
                   ) : null}
                   {sourceLoading ? (
-                    <pre className={styles.sourcePre}>Loading source data...</pre>
+                    <pre className={styles.sourcePre}>
+                      Loading source data...
+                    </pre>
                   ) : sourceError ? (
                     <pre className={styles.sourcePre}>{sourceError}</pre>
                   ) : (
@@ -495,7 +557,11 @@ function MetricRow({
   );
 }
 
-export function HealthReport({ health }: { health: PackageHealthResponse | null }) {
+export function HealthReport({
+  health,
+}: {
+  health: PackageHealthResponse | null;
+}) {
   const hasSnapshots = (health?.snapshots.length ?? 0) > 0;
   const warningMessage =
     health && health.warnings.length > 0
@@ -520,7 +586,9 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
 
   const isStale = useMemo(() => {
     if (!latestSnapshot) return false;
-    const snapshotTime = new Date(`${latestSnapshot.snapshotDate}T00:00:00`).getTime();
+    const snapshotTime = new Date(
+      `${latestSnapshot.snapshotDate}T00:00:00`
+    ).getTime();
     const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
     return snapshotTime < twoDaysAgo;
   }, [latestSnapshot]);
@@ -538,7 +606,9 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
       store.cacheCurrentPackageData();
     } catch (error) {
       setSyncError(
-        error instanceof Error ? error.message : 'Failed to fetch GitHub health data.'
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch GitHub health data.'
       );
     } finally {
       setSyncing(false);
@@ -549,7 +619,10 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
     return (
       <div className={styles.emptyState}>
         <h2>No linked repository found</h2>
-        <p>This package does not expose a GitHub repository in its npm metadata yet.</p>
+        <p>
+          This package does not expose a GitHub repository in its npm metadata
+          yet.
+        </p>
       </div>
     );
   }
@@ -577,8 +650,8 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
             </svg>
             <h2>GitHub App authorization required</h2>
             <p>
-              Automatic tracking still requires a maintainer to install the GitHub App
-              for{' '}
+              Automatic tracking still requires a maintainer to install the
+              GitHub App for{' '}
               <a
                 className={styles.repoLink}
                 href={`https://github.com/${health.repo.owner}/${health.repo.name}`}
@@ -593,8 +666,8 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
               health.githubUserAuthAvailable ? (
                 <>
                   <p>
-                    You can still run a one-off snapshot for this repo using your own
-                    connected GitHub account.
+                    You can still run a one-off snapshot for this repo using
+                    your own connected GitHub account.
                   </p>
                   <button
                     className={styles.oauthActionButton}
@@ -602,19 +675,29 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
                     disabled={syncing}
                   >
                     <Github size={16} />
-                    {syncing ? 'Fetching health data…' : 'Fetch with my GitHub access'}
+                    {syncing
+                      ? 'Fetching health data…'
+                      : 'Fetch with my GitHub access'}
                   </button>
                 </>
               ) : (
                 <p>
-                  Connect GitHub from <a className={styles.repoLink} href="/usage">Usage &amp; Tracking</a>{' '}
+                  Connect GitHub from{' '}
+                  <a className={styles.repoLink} href="/usage">
+                    Usage &amp; Tracking
+                  </a>{' '}
                   to run a one-off snapshot as yourself.
                 </p>
               )
             ) : (
-              <p>Sign in and connect GitHub to run a one-off snapshot as yourself.</p>
+              <p>
+                Sign in and connect GitHub to run a one-off snapshot as
+                yourself.
+              </p>
             )}
-            {syncError ? <p className={styles.oauthError}>{syncError}</p> : null}
+            {syncError ? (
+              <p className={styles.oauthError}>{syncError}</p>
+            ) : null}
           </div>
         </div>
       );
@@ -633,7 +716,8 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
           >
             {health.repo.owner}/{health.repo.name}
           </a>
-          . Once the daily snapshot job captures data, this report will populate.
+          . Once the daily snapshot job captures data, this report will
+          populate.
         </p>
       </div>
     );
@@ -641,16 +725,20 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
 
   return (
     <div className={styles.report}>
-      <ChartDescription>
-        GitHub repository health metrics tracked over time. Each row shows a
-        metric with a sparkline of recent values — click to expand for the full
-        history chart and source data.
-      </ChartDescription>
-      {warningMessage ? <div className={styles.warningBanner}>{warningMessage}</div> : null}
+      <ChartDescription
+        parts={[
+          'GitHub repo health over time',
+          'Click a row to expand the full chart and source data',
+        ]}
+      />
+      {warningMessage ? (
+        <div className={styles.warningBanner}>{warningMessage}</div>
+      ) : null}
       {(isStale || isAdmin) && canRefreshViaGitHub ? (
         <div className={styles.refreshBar}>
           <span className={styles.refreshStale}>
-            Last snapshot: {latestSnapshot ? formatDate(latestSnapshot.snapshotDate) : 'n/a'}
+            Last snapshot:{' '}
+            {latestSnapshot ? formatDate(latestSnapshot.snapshotDate) : 'n/a'}
           </span>
           <button
             className={styles.oauthActionButton}
@@ -660,13 +748,17 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
             <RefreshCw size={14} />
             {syncing ? 'Refreshing…' : 'Refresh with GitHub'}
           </button>
-          {syncError ? <span className={styles.oauthError}>{syncError}</span> : null}
+          {syncError ? (
+            <span className={styles.oauthError}>{syncError}</span>
+          ) : null}
         </div>
       ) : null}
       <div className={styles.summaryGrid}>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Repository</span>
-          <span className={`${styles.summaryValue} ${styles.summaryValueCompact}`}>
+          <span
+            className={`${styles.summaryValue} ${styles.summaryValueCompact}`}
+          >
             <a
               className={styles.repoLink}
               href={`https://github.com/${health.repo.owner}/${health.repo.name}`}
@@ -680,7 +772,9 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Issue Throughput</span>
           {health.snapshots.length > 0 ? (
-            <span className={`${styles.summaryValue} ${styles.summaryFraction}`}>
+            <span
+              className={`${styles.summaryValue} ${styles.summaryFraction}`}
+            >
               <Popover
                 content="Issues closed in the trailing 30 days."
                 trigger="hover"
@@ -691,7 +785,12 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
                   aria-label="Issues closed in the trailing 30 days"
                 >
                   <ArrowDownCircle size={18} />
-                  <span>{health.snapshots[health.snapshots.length - 1].issuesClosed30d}</span>
+                  <span>
+                    {
+                      health.snapshots[health.snapshots.length - 1]
+                        .issuesClosed30d
+                    }
+                  </span>
                 </span>
               </Popover>
               <span className={styles.summaryDivider}>/</span>
@@ -705,7 +804,12 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
                   aria-label="Issues opened in the trailing 30 days"
                 >
                   <ArrowUpCircle size={18} />
-                  <span>{health.snapshots[health.snapshots.length - 1].issuesOpened30d}</span>
+                  <span>
+                    {
+                      health.snapshots[health.snapshots.length - 1]
+                        .issuesOpened30d
+                    }
+                  </span>
                 </span>
               </Popover>
             </span>
@@ -725,7 +829,9 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
                 className={styles.summaryIconStat}
                 aria-label="Stale issues"
               >
-                <span>{latestSnapshot ? latestSnapshot.staleIssuesCount : 'n/a'}</span>
+                <span>
+                  {latestSnapshot ? latestSnapshot.staleIssuesCount : 'n/a'}
+                </span>
               </span>
             </Popover>
           </span>
@@ -742,7 +848,9 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
                 className={styles.summaryIconStat}
                 aria-label="Stale pull requests"
               >
-                <span>{latestSnapshot ? latestSnapshot.stalePrsCount : 'n/a'}</span>
+                <span>
+                  {latestSnapshot ? latestSnapshot.stalePrsCount : 'n/a'}
+                </span>
               </span>
             </Popover>
           </span>
