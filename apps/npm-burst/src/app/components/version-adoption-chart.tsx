@@ -14,7 +14,11 @@ import {
   getVersionAdoptionData,
 } from '../utils/version-adoption';
 import { formatDownloadCount } from '../utils/download-volume';
-import { filterReleasesByLevel, renderReleaseTicks, RELEASE_TICK_OPTIONS } from '../utils/release-ticks';
+import {
+  filterReleasesByLevel,
+  renderReleaseTicks,
+  RELEASE_TICK_OPTIONS,
+} from '../utils/release-ticks';
 import type { ReleaseTickLevel } from '../utils/release-ticks';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
@@ -80,11 +84,15 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const [yAxisMode, setYAxisMode] = useState<YAxisMode>('percent');
   const [chartMode, setChartMode] = useState<ChartMode>('stacked');
   const [showReleaseTicks, setShowReleaseTicks] = useState(true);
-  const [releaseTickLevel, setReleaseTickLevel] = useState<ReleaseTickLevel | null>(null);
+  const [releaseTickLevel, setReleaseTickLevel] =
+    useState<ReleaseTickLevel | null>(null);
 
   const effectiveTickLevel: ReleaseTickLevel = releaseTickLevel ?? grouping;
 
-  const timeWindowCutoff = useMemo(() => getTimeWindowCutoff(timeWindow), [timeWindow]);
+  const timeWindowCutoff = useMemo(
+    () => getTimeWindowCutoff(timeWindow),
+    [timeWindow]
+  );
 
   const filteredSnapshots = useMemo(() => {
     if (!timeWindowCutoff) return snapshots;
@@ -95,7 +103,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     // anchors the chart at real version percentages instead of 100% unknown,
     // without extending the X-axis beyond the window.
     const preCutoff = snapshots.filter((s) => s.date < cutoffStr);
-    if (preCutoff.length > 0 && (inWindow.length === 0 || inWindow[0].date > cutoffStr)) {
+    if (
+      preCutoff.length > 0 &&
+      (inWindow.length === 0 || inWindow[0].date > cutoffStr)
+    ) {
       const anchor = preCutoff[preCutoff.length - 1];
       return [{ ...anchor, date: cutoffStr }, ...inWindow];
     }
@@ -117,7 +128,13 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         lowPassFilter,
         filteredTotalDownloads
       ),
-    [filteredSnapshots, liveData, grouping, lowPassFilter, filteredTotalDownloads]
+    [
+      filteredSnapshots,
+      liveData,
+      grouping,
+      lowPassFilter,
+      filteredTotalDownloads,
+    ]
   );
 
   // Reset hidden series when grouping changes
@@ -147,7 +164,8 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
 
   // Exclude series that are always zero (no meaningful data points)
   const nonZeroSeries = useMemo(
-    () => series.filter((s) => s.points.some((p) => p.percent > 0 || p.count > 0)),
+    () =>
+      series.filter((s) => s.points.some((p) => p.percent > 0 || p.count > 0)),
     [series]
   );
 
@@ -159,7 +177,11 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const chartColors = getThemeChartColors(theme);
   const palette = generateThemeColorPalette(series.length + 1, theme);
   const colorMap = useMemo(
-    () => buildColorMap(series.map((s) => s.label), palette),
+    () =>
+      buildColorMap(
+        series.map((s) => s.label),
+        palette
+      ),
     [series, palette]
   );
 
@@ -190,17 +212,21 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     const xDate = (d: string) => xScale(dateMap.get(d)!);
 
     const valueKey = yAxisMode === 'percent' ? 'percent' : 'count';
-    const maxCount = yAxisMode === 'count'
-      ? d3.max(allDates, (date) => {
-          let sum = 0;
-          for (const s of visibleSeries) {
-            const pt = s.points.find((p) => p.date === date);
-            sum += pt?.count ?? 0;
-          }
-          return sum;
-        }) ?? 0
-      : 100;
-    const yScale = d3.scaleLinear().domain([0, maxCount * (yAxisMode === 'count' ? 1.1 : 1)]).range([innerHeight, 0]);
+    const maxCount =
+      yAxisMode === 'count'
+        ? d3.max(allDates, (date) => {
+            let sum = 0;
+            for (const s of visibleSeries) {
+              const pt = s.points.find((p) => p.date === date);
+              sum += pt?.count ?? 0;
+            }
+            return sum;
+          }) ?? 0
+        : 100;
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, maxCount * (yAxisMode === 'count' ? 1.1 : 1)])
+      .range([innerHeight, 0]);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
@@ -261,8 +287,14 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       });
 
       const keys = stackSeries.map((s) => s.label);
-      const stack = d3.stack<Record<string, unknown>>().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetNone);
-      const stacked = stack(tableData as unknown as Array<Record<string, unknown>>);
+      const stack = d3
+        .stack<Record<string, unknown>>()
+        .keys(keys)
+        .order(d3.stackOrderNone)
+        .offset(d3.stackOffsetNone);
+      const stacked = stack(
+        tableData as unknown as Array<Record<string, unknown>>
+      );
 
       const areaGen = d3
         .area<d3.SeriesPoint<Record<string, unknown>>>()
@@ -314,7 +346,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     // Version release markers (vertical ticks)
     if (showReleaseTicks && allDates.length >= 2) {
       const [domainStart, domainEnd] = xScale.domain();
-      const filtered = filterReleasesByLevel(versionReleases, effectiveTickLevel);
+      const filtered = filterReleasesByLevel(
+        versionReleases,
+        effectiveTickLevel
+      );
       renderReleaseTicks(
         g as unknown as d3.Selection<SVGGElement, unknown, null, undefined>,
         filtered,
@@ -381,9 +416,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
 
         let total = 0;
         for (const e of entries) {
-          const value = yAxisMode === 'percent'
-            ? `${e.point!.percent.toFixed(1)}%`
-            : formatDownloadCount(e.point!.count);
+          const value =
+            yAxisMode === 'percent'
+              ? `${e.point!.percent.toFixed(1)}%`
+              : formatDownloadCount(e.point!.count);
           total += e.point!.count;
           lines.push(
             `<span style="color:${e.color}">${e.label}</span>: ${value}`
@@ -423,7 +459,18 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [series, visibleSeries, versionReleases, effectiveTickLevel, showReleaseTicks, yAxisMode, chartMode, theme, colorMap, chartColors]);
+  }, [
+    series,
+    visibleSeries,
+    versionReleases,
+    effectiveTickLevel,
+    showReleaseTicks,
+    yAxisMode,
+    chartMode,
+    theme,
+    colorMap,
+    chartColors,
+  ]);
 
   const hasHidden = hiddenSeries.size > 0;
   const hasBelowThreshold = nonZeroSeries.some((s) => s.belowThreshold);
@@ -512,11 +559,17 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
               return (
                 <div
                   key={s.label}
-                  className={`${styles.legendItem} ${isHidden ? styles.legendItemDimmed : ''} ${isBelowLPF && !isHidden ? styles.legendItemBelowLPF : ''}`}
+                  className={`${styles.legendItem} ${
+                    isHidden ? styles.legendItemDimmed : ''
+                  } ${
+                    isBelowLPF && !isHidden ? styles.legendItemBelowLPF : ''
+                  }`}
                   onClick={() => toggleSeries(s.label)}
                   title={
                     isBelowLPF
-                      ? `Below LPF threshold (${(lowPassFilter * 100).toFixed(1)}%)`
+                      ? `Below LPF threshold (${(lowPassFilter * 100).toFixed(
+                          1
+                        )}%)`
                       : `Click to ${isHidden ? 'show' : 'hide'}`
                   }
                 >
