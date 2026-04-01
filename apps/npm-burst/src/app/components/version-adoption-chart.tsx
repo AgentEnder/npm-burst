@@ -18,6 +18,7 @@ import { filterReleasesByLevel, renderReleaseTicks, RELEASE_TICK_OPTIONS } from 
 import type { ReleaseTickLevel } from '../utils/release-ticks';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
+import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
 import styles from './version-adoption-chart.module.scss';
 
@@ -491,6 +492,23 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           )}
         </div>
       </div>
+
+      <ChartDescription>
+        {chartMode === 'stacked'
+          ? `Stacked area chart showing each ${grouping} version's share of downloads over time.`
+          : `Line chart showing each ${grouping} version's download trend over time.`}
+        {' '}
+        {yAxisMode === 'percent'
+          ? 'The Y-axis shows percentage share of total downloads.'
+          : 'The Y-axis shows absolute download counts.'}
+        {' '}
+        {`Versions grouped by ${grouping} version number${
+          lowPassFilter > 0
+            ? ` — versions below ${(lowPassFilter * 100).toFixed(1)}% are dimmed in the legend and can be bulk-hidden`
+            : ''
+        }.`}
+        {' Click legend items to show/hide individual series.'}
+      </ChartDescription>
 
       {series.length === 0 ? (
         <div className={styles.noData}>

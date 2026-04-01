@@ -12,6 +12,7 @@ import {
   getDownloadVolumeData,
   formatDownloadCount,
 } from '../utils/download-volume';
+import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
 import styles from './download-volume-chart.module.scss';
 
@@ -275,6 +276,10 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
           label="Releases"
         />
       </div>
+      <ChartDescription>
+        Total daily download volume shown as a 7-day rolling sum. Vertical lines
+        mark {releaseTickFilter}-level version releases. Hover for exact counts.
+      </ChartDescription>
       {filteredVolumeData.length === 0 ? (
         <div className={styles.noData}>
           No download volume data available for this package.

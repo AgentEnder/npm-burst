@@ -14,6 +14,7 @@ import {
   getVersionLifecycleData,
   type LifecycleMilestone,
 } from '../utils/version-lifecycle';
+import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
 import styles from './version-lifecycle-chart.module.scss';
 
@@ -397,6 +398,14 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
           Only tracked versions
         </label>
       </div>
+
+      <ChartDescription>
+        Timeline showing the lifecycle of each major version — from release through
+        peak adoption to decline. Each bar spans from release date to when the
+        version dropped below the {threshold}% adoption threshold
+        {showOnlySnapshotted ? ' (limited to versions released after tracking began)' : ''}.
+        {minPeak > 0 ? ` Hiding versions that never reached ${minPeak}% peak adoption.` : ''}
+      </ChartDescription>
 
       {filteredMilestones.length === 0 ? (
         <div className={styles.noData}>
