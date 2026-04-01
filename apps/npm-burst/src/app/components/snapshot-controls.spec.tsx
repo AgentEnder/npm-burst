@@ -30,10 +30,12 @@ describe('SnapshotControls', () => {
   });
 
   it('should show "Live" when currentDate is null', () => {
-    const { getByText } = render(
+    const { getByRole } = render(
       <SnapshotControls {...defaultProps} currentDate={null} />
     );
-    expect(getByText('Live', { exact: false })).toBeTruthy();
+    const dateButton = getByRole('button', { name: 'Live' });
+    expect(dateButton).toBeTruthy();
+    expect(dateButton.className).toContain('dateButton');
   });
 
   it('should disable previous button when currentIndex is 0', () => {
@@ -59,9 +61,10 @@ describe('SnapshotControls', () => {
   });
 
   it('should hide live link when in live mode', () => {
-    const { queryByText } = render(
+    const { getByText } = render(
       <SnapshotControls {...defaultProps} currentDate={null} />
     );
-    expect(queryByText('View live data')).toBeNull();
+    const liveLink = getByText('View live data');
+    expect(liveLink.style.visibility).toBe('hidden');
   });
 });
