@@ -725,12 +725,12 @@ export function HealthReport({
 
   return (
     <div className={styles.report}>
-      <ChartDescription
-        parts={[
-          'GitHub repo health over time',
-          'Click a row to expand the full chart and source data',
-        ]}
-      />
+      <ChartDescription>
+        <p>GitHub repo health over time.</p>
+        <ul>
+          <li>Click a row to expand the full chart and source data</li>
+        </ul>
+      </ChartDescription>
       {warningMessage ? (
         <div className={styles.warningBanner}>{warningMessage}</div>
       ) : null}

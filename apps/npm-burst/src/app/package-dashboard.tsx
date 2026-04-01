@@ -118,19 +118,24 @@ export function PackageDashboard() {
 
           {viewMode === 'sunburst' ? (
             <>
-              <ChartDescription
-                parts={[
-                  'Hierarchical breakdown of downloads by version',
-                  'Each ring = major → minor → patch',
-                  'Click to zoom in, center to zoom out',
-                  lowPassFilter > 0
-                    ? `Below ${(lowPassFilter * 100).toFixed(
-                        1
-                      )}% grouped as "Other"`
-                    : '',
-                  sortByVersion ? 'Sorted by version' : 'Sorted by downloads',
-                ]}
-              />
+              <ChartDescription>
+                <p>Hierarchical breakdown of downloads by version.</p>
+                <ul>
+                  <li>Each ring = major → minor → patch</li>
+                  <li>Click to zoom in, center to zoom out</li>
+                  {lowPassFilter > 0 && (
+                    <li>
+                      Below {(lowPassFilter * 100).toFixed(1)}% grouped as
+                      &ldquo;Other&rdquo;
+                    </li>
+                  )}
+                  <li>
+                    {sortByVersion
+                      ? 'Sorted by version'
+                      : 'Sorted by downloads'}
+                  </li>
+                </ul>
+              </ChartDescription>
               {sunburstChartData ? (
                 <Sunburst
                   data={sunburstChartData}

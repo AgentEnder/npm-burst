@@ -418,14 +418,14 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         </label>
       </div>
 
-      <ChartDescription
-        parts={[
-          'Major version lifecycle — release through peak to decline',
-          `Threshold: ${threshold}%`,
-          showOnlySnapshotted ? 'Tracked versions only' : '',
-          minPeak > 0 ? `Hiding below ${minPeak}% peak` : '',
-        ]}
-      />
+      <ChartDescription>
+        <p>Major version lifecycle — release through peak to decline.</p>
+        <ul>
+          <li>Adoption threshold: {threshold}%</li>
+          {showOnlySnapshotted && <li>Tracked versions only</li>}
+          {minPeak > 0 && <li>Hiding below {minPeak}% peak</li>}
+        </ul>
+      </ChartDescription>
 
       {filteredMilestones.length === 0 ? (
         <div className={styles.noData}>

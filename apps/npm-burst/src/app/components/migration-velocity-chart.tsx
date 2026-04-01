@@ -299,16 +299,18 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
           label="Window"
         />
       </div>
-      <ChartDescription
-        parts={[
-          'Adoption speed per major version — steeper = faster uptake',
-          'X: days since release, Y: adoption %',
-          migrationTimeWindow !== 'all'
-            ? `First ${migrationTimeWindow} after each release`
-            : 'Full history',
-          'Click legend to toggle versions',
-        ]}
-      />
+      <ChartDescription>
+        <p>Adoption speed per major version — steeper = faster uptake.</p>
+        <ul>
+          <li>X: days since release, Y: adoption %</li>
+          <li>
+            {migrationTimeWindow !== 'all'
+              ? `Showing first ${migrationTimeWindow} after each release`
+              : 'Showing full history'}
+          </li>
+          <li>Click legend to toggle versions</li>
+        </ul>
+      </ChartDescription>
       {series.length === 0 ? (
         <div className={styles.noData}>
           No historical snapshot data or version release information available.
