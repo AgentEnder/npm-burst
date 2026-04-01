@@ -1,26 +1,24 @@
-.wrapper {
-  display: flex;
-  align-items: baseline;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-sm);
+.description {
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
   line-height: 1.6;
-  flex-wrap: wrap;
-}
+  margin-bottom: var(--spacing-sm);
 
-.summary {
-  display: inline;
-}
+  p {
+    margin: 0;
+  }
 
-.detail {
-  display: inline;
-  opacity: 0.75;
-}
+  ul {
+    margin: 2px 0 0;
+    padding-left: 1.25em;
+    list-style: disc;
+  }
 
-.separator {
-  &::before {
-    content: '·';
-    margin: 0 2px;
+  li {
+    padding: 0;
+  }
+
+  li + li {
+    margin-top: 1px;
   }
 }
