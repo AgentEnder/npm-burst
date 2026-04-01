@@ -1,8 +1,26 @@
-.description {
+.wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
-  line-height: 1.5;
-  margin-bottom: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-left: 2px solid var(--border-color);
+  line-height: 1.6;
+  flex-wrap: wrap;
+}
+
+.summary {
+  display: inline;
+}
+
+.detail {
+  display: inline;
+  opacity: 0.75;
+}
+
+.separator {
+  &::before {
+    content: '·';
+    margin: 0 2px;
+  }
 }

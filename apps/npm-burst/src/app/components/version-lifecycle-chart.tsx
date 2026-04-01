@@ -67,7 +67,11 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     if (cutoff) {
       const cutoffStr = cutoff.toISOString().slice(0, 10);
       result = result.filter((m) => {
-        return m.releaseDate >= cutoffStr || m.stillAboveThreshold || (m.droppedBelowDate && m.droppedBelowDate >= cutoffStr);
+        return (
+          m.releaseDate >= cutoffStr ||
+          m.stillAboveThreshold ||
+          (m.droppedBelowDate && m.droppedBelowDate >= cutoffStr)
+        );
       });
     }
 
@@ -86,15 +90,23 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
   }, [milestones, timeWindow, showOnlySnapshotted, snapshots, minPeak]);
 
   const chartColors = getThemeChartColors(theme);
-  const palette = generateThemeColorPalette(filteredMilestones.length + 1, theme);
+  const palette = generateThemeColorPalette(
+    filteredMilestones.length + 1,
+    theme
+  );
 
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current || filteredMilestones.length === 0)
+    if (
+      !svgRef.current ||
+      !containerRef.current ||
+      filteredMilestones.length === 0
+    )
       return;
 
     const containerWidth = containerRef.current.clientWidth;
     const width = containerWidth;
-    const height = MARGIN.top + filteredMilestones.length * ROW_HEIGHT + MARGIN.bottom;
+    const height =
+      MARGIN.top + filteredMilestones.length * ROW_HEIGHT + MARGIN.bottom;
     const innerWidth = width - MARGIN.left - MARGIN.right;
 
     // Find the range of dates
@@ -195,9 +207,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
             .attr('font-size', '10px')
             .attr(
               'fill',
-              theme === 'dark'
-                ? 'rgba(255,255,255,0.7)'
-                : 'rgba(0,0,0,0.6)'
+              theme === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
             )
             .text(`${m.daysToReachThreshold}d ↑`);
         }
@@ -206,8 +216,8 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         const endX = m.droppedBelowDate
           ? xScale(parseDate(m.droppedBelowDate))
           : m.stillAboveThreshold
-            ? xScale(todayDate)
-            : thresholdX;
+          ? xScale(todayDate)
+          : thresholdX;
 
         if (endX > thresholdX) {
           g.append('rect')
@@ -238,7 +248,10 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
             .attr('x2', nextX)
             .attr('y1', y - BAR_HEIGHT / 2 - 4)
             .attr('y2', y + BAR_HEIGHT / 2 + 4)
-            .attr('stroke', theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)')
+            .attr(
+              'stroke',
+              theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
+            )
             .attr('stroke-width', 1.5)
             .attr('stroke-dasharray', '2,2');
 
@@ -250,9 +263,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
               .attr('font-size', '9px')
               .attr(
                 'fill',
-                theme === 'dark'
-                  ? 'rgba(255,255,255,0.5)'
-                  : 'rgba(0,0,0,0.4)'
+                theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
               )
               .text(`+${m.daysPersistingAfterNext}d`);
           }
@@ -260,9 +271,10 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
       } else {
         // Never reached threshold — cap at next major release if concluded,
         // otherwise extend to today (still pending)
-        const endDate = m.neverReached && m.nextMajorReleaseDate
-          ? parseDate(m.nextMajorReleaseDate)
-          : todayDate;
+        const endDate =
+          m.neverReached && m.nextMajorReleaseDate
+            ? parseDate(m.nextMajorReleaseDate)
+            : todayDate;
         g.append('rect')
           .attr('x', releaseX)
           .attr('y', y - BAR_HEIGHT / 2)
@@ -282,9 +294,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
             .attr('font-size', '9px')
             .attr(
               'fill',
-              theme === 'dark'
-                ? 'rgba(255,255,255,0.4)'
-                : 'rgba(0,0,0,0.3)'
+              theme === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)'
             )
             .text(`peak ${m.peakPercent.toFixed(0)}%`);
         }
@@ -305,13 +315,19 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         .attr('x', annotationX)
         .attr('y', y - 4)
         .attr('font-size', '10px')
-        .attr('fill', theme === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)')
+        .attr(
+          'fill',
+          theme === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
+        )
         .text(`Peak: ${m.peakPercent.toFixed(0)}%`);
       g.append('text')
         .attr('x', annotationX)
         .attr('y', y + 10)
         .attr('font-size', '10px')
-        .attr('fill', theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)')
+        .attr(
+          'fill',
+          theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
+        )
         .text(`Now: ${m.currentPercent.toFixed(0)}%`);
     }
 
@@ -335,7 +351,10 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         .attr('x', legendX + 16)
         .attr('y', legendY + 8)
         .attr('font-size', '10px')
-        .attr('fill', theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)')
+        .attr(
+          'fill',
+          theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
+        )
         .text(item.label);
       legendX += item.label.length * 6 + 30;
     }
@@ -399,13 +418,14 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         </label>
       </div>
 
-      <ChartDescription>
-        Timeline showing the lifecycle of each major version — from release through
-        peak adoption to decline. Each bar spans from release date to when the
-        version dropped below the {threshold}% adoption threshold
-        {showOnlySnapshotted ? ' (limited to versions released after tracking began)' : ''}.
-        {minPeak > 0 ? ` Hiding versions that never reached ${minPeak}% peak adoption.` : ''}
-      </ChartDescription>
+      <ChartDescription
+        parts={[
+          'Major version lifecycle — release through peak to decline',
+          `Threshold: ${threshold}%`,
+          showOnlySnapshotted ? 'Tracked versions only' : '',
+          minPeak > 0 ? `Hiding below ${minPeak}% peak` : '',
+        ]}
+      />
 
       {filteredMilestones.length === 0 ? (
         <div className={styles.noData}>

@@ -68,8 +68,12 @@ export function PackageDashboard() {
   const setTimeWindow = useAppStore((s) => s.setTimeWindow);
   const migrationTimeWindow = useAppStore((s) => s.migrationTimeWindow);
   const setMigrationTimeWindow = useAppStore((s) => s.setMigrationTimeWindow);
-  const lifecycleShowOnlySnapshotted = useAppStore((s) => s.lifecycleShowOnlySnapshotted);
-  const setLifecycleShowOnlySnapshotted = useAppStore((s) => s.setLifecycleShowOnlySnapshotted);
+  const lifecycleShowOnlySnapshotted = useAppStore(
+    (s) => s.lifecycleShowOnlySnapshotted
+  );
+  const setLifecycleShowOnlySnapshotted = useAppStore(
+    (s) => s.setLifecycleShowOnlySnapshotted
+  );
   const lifecycleMinPeak = useAppStore((s) => s.lifecycleMinPeak);
   const setLifecycleMinPeak = useAppStore((s) => s.setLifecycleMinPeak);
 
@@ -114,17 +118,19 @@ export function PackageDashboard() {
 
           {viewMode === 'sunburst' ? (
             <>
-              <ChartDescription>
-                Hierarchical breakdown of downloads by version. Each ring level
-                represents a version segment (major → minor → patch). Click a
-                segment to zoom in, click the center to zoom back out.
-                {lowPassFilter > 0
-                  ? ` Versions below ${(lowPassFilter * 100).toFixed(1)}% of downloads are grouped into "Other".`
-                  : ''}
-                {sortByVersion
-                  ? ' Sorted by version number.'
-                  : ' Sorted by download count.'}
-              </ChartDescription>
+              <ChartDescription
+                parts={[
+                  'Hierarchical breakdown of downloads by version',
+                  'Each ring = major → minor → patch',
+                  'Click to zoom in, center to zoom out',
+                  lowPassFilter > 0
+                    ? `Below ${(lowPassFilter * 100).toFixed(
+                        1
+                      )}% grouped as "Other"`
+                    : '',
+                  sortByVersion ? 'Sorted by version' : 'Sorted by downloads',
+                ]}
+              />
               {sunburstChartData ? (
                 <Sunburst
                   data={sunburstChartData}
@@ -135,10 +141,7 @@ export function PackageDashboard() {
               ) : null}
 
               {(selectedVersion !== null || expandedNodes.length > 0) && (
-                <button
-                  className={styles.clearButton}
-                  onClick={resetSelection}
-                >
+                <button className={styles.clearButton} onClick={resetSelection}>
                   ↺ Reset Selection
                 </button>
               )}

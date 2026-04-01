@@ -3,7 +3,11 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import { useTheme } from '../context/theme-context';
-import { filterReleasesByLevel, renderReleaseTicks, RELEASE_TICK_OPTIONS } from '../utils/release-ticks';
+import {
+  filterReleasesByLevel,
+  renderReleaseTicks,
+  RELEASE_TICK_OPTIONS,
+} from '../utils/release-ticks';
 import type { ReleaseTickLevel } from '../utils/release-ticks';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
@@ -53,7 +57,11 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
   const chartColors = getThemeChartColors(theme);
 
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current || filteredVolumeData.length === 0)
+    if (
+      !svgRef.current ||
+      !containerRef.current ||
+      filteredVolumeData.length === 0
+    )
       return;
 
     const containerWidth = containerRef.current.clientWidth;
@@ -64,7 +72,8 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
 
     const parseDate = (d: string) => new Date(d + 'T00:00:00');
     const dates = filteredVolumeData.map((d) => parseDate(d.date));
-    const maxDownloads = d3.max(filteredVolumeData, (d) => d.totalDownloads) ?? 0;
+    const maxDownloads =
+      d3.max(filteredVolumeData, (d) => d.totalDownloads) ?? 0;
 
     const xScale = d3
       .scaleTime()
@@ -152,7 +161,10 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
 
     // Version release markers (vertical ticks)
     const [domainStart, domainEnd] = xScale.domain();
-    const filteredReleases = filterReleasesByLevel(versionReleases, releaseTickFilter);
+    const filteredReleases = filterReleasesByLevel(
+      versionReleases,
+      releaseTickFilter
+    );
     renderReleaseTicks(
       g as unknown as d3.Selection<SVGGElement, unknown, null, undefined>,
       filteredReleases,
@@ -198,7 +210,8 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
         let closestDist = Infinity;
         for (let i = 0; i < filteredVolumeData.length; i++) {
           const dist = Math.abs(
-            parseDate(filteredVolumeData[i].date).getTime() - hoveredDate.getTime()
+            parseDate(filteredVolumeData[i].date).getTime() -
+              hoveredDate.getTime()
           );
           if (dist < closestDist) {
             closestDist = dist;
@@ -254,7 +267,13 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
         tooltip.style('opacity', 0);
         g.selectAll('.hover-line').remove();
       });
-  }, [filteredVolumeData, versionReleases, releaseTickFilter, theme, chartColors]);
+  }, [
+    filteredVolumeData,
+    versionReleases,
+    releaseTickFilter,
+    theme,
+    chartColors,
+  ]);
 
   return (
     <div
@@ -276,10 +295,13 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
           label="Releases"
         />
       </div>
-      <ChartDescription>
-        Total daily download volume shown as a 7-day rolling sum. Vertical lines
-        mark {releaseTickFilter}-level version releases. Hover for exact counts.
-      </ChartDescription>
+      <ChartDescription
+        parts={[
+          'Total downloads — 7-day rolling sum',
+          `Release markers: ${releaseTickFilter}`,
+          'Hover for exact counts',
+        ]}
+      />
       {filteredVolumeData.length === 0 ? (
         <div className={styles.noData}>
           No download volume data available for this package.
