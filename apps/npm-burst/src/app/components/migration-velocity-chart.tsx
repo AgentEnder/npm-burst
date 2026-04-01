@@ -11,6 +11,7 @@ import {
 import { getMigrationVelocityData } from '../utils/migration-velocity';
 import { getMigrationMaxDays, MIGRATION_WINDOW_OPTIONS } from '../utils/time-window';
 import type { MigrationTimeWindow } from '../utils/time-window';
+import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
 import styles from './migration-velocity-chart.module.scss';
 
@@ -281,6 +282,15 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
           label="Window"
         />
       </div>
+      <ChartDescription>
+        Compares how quickly users adopt each major version after its release.
+        The X-axis shows days since a version's release and the Y-axis shows its
+        adoption percentage — steeper curves mean faster uptake.
+        {migrationTimeWindow !== 'all'
+          ? ` Showing the first ${migrationTimeWindow} after each release.`
+          : ' Showing the full adoption history.'}
+        {' Click legend items to show/hide versions.'}
+      </ChartDescription>
       {series.length === 0 ? (
         <div className={styles.noData}>
           No historical snapshot data or version release information available.

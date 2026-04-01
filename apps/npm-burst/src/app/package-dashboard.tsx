@@ -11,6 +11,7 @@ import {
   SunburstData,
   SunburstLeafNode,
 } from './components/sunburst';
+import { ChartDescription } from './components/chart-description';
 import { Table } from './components/table';
 import { MigrationVelocityChart } from './components/migration-velocity-chart';
 import { VersionAdoptionChart } from './components/version-adoption-chart';
@@ -113,6 +114,17 @@ export function PackageDashboard() {
 
           {viewMode === 'sunburst' ? (
             <>
+              <ChartDescription>
+                Hierarchical breakdown of downloads by version. Each ring level
+                represents a version segment (major → minor → patch). Click a
+                segment to zoom in, click the center to zoom back out.
+                {lowPassFilter > 0
+                  ? ` Versions below ${(lowPassFilter * 100).toFixed(1)}% of downloads are grouped into "Other".`
+                  : ''}
+                {sortByVersion
+                  ? ' Sorted by version number.'
+                  : ' Sorted by download count.'}
+              </ChartDescription>
               {sunburstChartData ? (
                 <Sunburst
                   data={sunburstChartData}

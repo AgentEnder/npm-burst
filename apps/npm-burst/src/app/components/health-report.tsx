@@ -21,6 +21,7 @@ import {
 import { appStore } from '../store';
 import { useSafeAuth } from '../context/auth-context';
 import { useWarningToast } from '../hooks/use-warning-toast';
+import { ChartDescription } from './chart-description';
 import { Popover } from './popover';
 import styles from './health-report.module.scss';
 
@@ -640,6 +641,11 @@ export function HealthReport({ health }: { health: PackageHealthResponse | null 
 
   return (
     <div className={styles.report}>
+      <ChartDescription>
+        GitHub repository health metrics tracked over time. Each row shows a
+        metric with a sparkline of recent values — click to expand for the full
+        history chart and source data.
+      </ChartDescription>
       {warningMessage ? <div className={styles.warningBanner}>{warningMessage}</div> : null}
       {(isStale || isAdmin) && canRefreshViaGitHub ? (
         <div className={styles.refreshBar}>
