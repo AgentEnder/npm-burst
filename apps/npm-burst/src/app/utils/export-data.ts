@@ -9,6 +9,7 @@ import {
   table,
 } from 'markdown-factory';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
+import type { PackageHealthResponse } from '../../server/functions/health.telefunc';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
@@ -19,6 +20,7 @@ export interface ExportData {
   snapshots: Snapshot[];
   versionReleases: VersionRelease[];
   totalDownloads: DailyDownloadPoint[];
+  health: PackageHealthResponse | null;
   snapshotIndex: number | null;
 }
 
@@ -58,6 +60,7 @@ function generateMarkdown(data: ExportData): string {
     snapshots,
     versionReleases,
     totalDownloads,
+    health,
     snapshotIndex,
   } = data;
 
@@ -191,6 +194,34 @@ function generateMarkdown(data: ExportData): string {
     );
   }
 
+  let healthSection = '';
+  if (health?.repo && health.snapshots.length > 0) {
+    const latest = health.snapshots[health.snapshots.length - 1];
+    healthSection = h2(
+      'Repository Health',
+      lines(
+        `${bold('Repository:')} ${link(`https://github.com/${health.repo.owner}/${health.repo.name}`, `${health.repo.owner}/${health.repo.name}`)}`,
+        `${bold('Health snapshots:')} ${health.snapshots.length}`,
+        '',
+        h3(
+          'Latest Metrics',
+          table(
+            [
+              { metric: 'Issues opened (30d)', value: formatNumber(latest.issuesOpened30d) },
+              { metric: 'Issues closed (30d)', value: formatNumber(latest.issuesClosed30d) },
+              { metric: 'PRs opened (30d)', value: formatNumber(latest.prsOpened30d) },
+              { metric: 'PRs merged (30d)', value: formatNumber(latest.prsMerged30d) },
+              { metric: 'Active contributors (30d)', value: formatNumber(latest.activeContributors30d) },
+              { metric: 'Stale issues', value: formatNumber(latest.staleIssuesCount) },
+              { metric: 'Stale PRs', value: formatNumber(latest.stalePrsCount) },
+            ],
+            ['metric', 'value']
+          )
+        )
+      )
+    );
+  }
+
   const footer = lines(
     '---',
     `_Exported from ${link('https://npm-burst.com', 'npm-burst')} on ${formatDate(exportDate)}_`
@@ -205,6 +236,7 @@ function generateMarkdown(data: ExportData): string {
       snapshotsSummary,
       releasesSection,
       volumeSection,
+      healthSection,
       footer
     )
   );
@@ -215,7 +247,7 @@ function generateMarkdown(data: ExportData): string {
  * Each file can be downloaded individually or bundled into a ZIP.
  */
 export function getExportFiles(data: ExportData): ExportFile[] {
-  const { packageName, liveData, snapshots, versionReleases, totalDownloads } =
+  const { packageName, liveData, snapshots, versionReleases, totalDownloads, health } =
     data;
 
   const files: ExportFile[] = [];
@@ -274,6 +306,16 @@ export function getExportFiles(data: ExportData): ExportFile[] {
       label: 'Download Volume',
       description: `Daily aggregate download counts (${totalDownloads.length} days)`,
       getContent: () => JSON.stringify(totalDownloads, null, 2),
+    });
+  }
+
+  // health.json
+  if (health?.snapshots && health.snapshots.length > 0) {
+    files.push({
+      name: 'health.json',
+      label: 'Repository Health',
+      description: `GitHub health metrics over ${health.snapshots.length} snapshots${health.repo ? ` for ${health.repo.owner}/${health.repo.name}` : ''}`,
+      getContent: () => JSON.stringify(health, null, 2),
     });
   }
 

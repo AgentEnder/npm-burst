@@ -58,6 +58,7 @@ export function ExportPage() {
   const snapshots = useAppStore((s) => s.snapshots);
   const versionReleases = useAppStore((s) => s.versionReleases);
   const totalDownloads = useAppStore((s) => s.totalDownloads);
+  const health = useAppStore((s) => s.health);
   const snapshotIndex = useAppStore((s) => s.snapshotIndex);
 
   const [isExporting, setIsExporting] = useState(false);
@@ -69,9 +70,10 @@ export function ExportPage() {
       snapshots,
       versionReleases,
       totalDownloads,
+      health,
       snapshotIndex,
     }),
-    [npmPackageName, liveData, snapshots, versionReleases, totalDownloads, snapshotIndex]
+    [npmPackageName, liveData, snapshots, versionReleases, totalDownloads, health, snapshotIndex]
   );
 
   const files = useMemo(() => getExportFiles(exportData), [exportData]);
