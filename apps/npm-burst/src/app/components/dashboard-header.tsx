@@ -1,5 +1,6 @@
 import { Download, ExternalLink, Info } from 'lucide-react';
 import { memo, useCallback } from 'react';
+import { navigate } from 'vike/client/router';
 import { useAppStore } from '../store';
 import type { AppState } from '../store/app-store';
 import styles from './dashboard-header.module.scss';
@@ -30,7 +31,7 @@ export const DashboardHeader = memo(function DashboardHeader() {
   const handleExport = useCallback(() => {
     const base = import.meta.env.BASE_URL || '/';
     const baseNormalized = base.endsWith('/') ? base : base + '/';
-    window.open(`${baseNormalized}export`, '_blank');
+    navigate(`${baseNormalized}export`);
   }, []);
 
   return (

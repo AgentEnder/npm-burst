@@ -7,6 +7,7 @@ import {
   Package,
   ArrowLeft,
 } from 'lucide-react';
+import { navigate } from 'vike/client/router';
 import { Card } from './components/card';
 import { useAppStore } from './store';
 import {
@@ -112,10 +113,13 @@ export function ExportPage() {
               Navigate to a package dashboard first to load data, then return
               here to export.
             </p>
-            <a href={baseNormalized} className={styles.backLink}>
+            <button
+              className={styles.backLink}
+              onClick={() => navigate(baseNormalized)}
+            >
               <ArrowLeft size={14} />
               Go to home
-            </a>
+            </button>
           </div>
         </Card>
       </main>
@@ -127,10 +131,20 @@ export function ExportPage() {
       <div className={styles.headerRow}>
         <div>
           <h1 className={styles.pageTitle}>
+            <button
+              className={styles.backButton}
+              onClick={() => navigate(dashboardUrl)}
+              title="Back to dashboard"
+            >
+              <ArrowLeft size={16} />
+            </button>
             Export data for{' '}
-            <a href={dashboardUrl} className={styles.packageLink}>
+            <button
+              className={styles.packageLink}
+              onClick={() => navigate(dashboardUrl)}
+            >
               {npmPackageName}
-            </a>
+            </button>
           </h1>
           <p className={styles.subtitle}>
             Download individual files or grab everything as a ZIP
