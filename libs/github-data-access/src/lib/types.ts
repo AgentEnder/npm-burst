@@ -73,6 +73,9 @@ export interface ComputedHealthMetrics {
   activeContributors30d: number;
   staleIssuesCount: number;
   stalePrsCount: number;
+  openIssuesCount: number;
+  openPullRequestsCount: number;
+  starsCount: number;
 }
 
 export interface HealthMetricSeriesPoint extends ComputedHealthMetrics {

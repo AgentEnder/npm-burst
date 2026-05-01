@@ -101,5 +101,8 @@ export function computeHealthMetrics(
     activeContributors30d: 0,
     staleIssuesCount,
     stalePrsCount,
+    openIssuesCount: 0,
+    openPullRequestsCount: 0,
+    starsCount: 0,
   };
 }

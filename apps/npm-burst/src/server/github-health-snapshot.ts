@@ -4,6 +4,7 @@ import {
   decryptToken,
   encryptToken,
   fetchGitHubHealthData,
+  fetchGitHubRepoSnapshotCounts,
   fetchGitHubStaleIssueCount,
   fetchGitHubStalePullRequestCount,
   FULL_FETCH_WINDOW_MS,
@@ -259,9 +260,12 @@ export async function snapshotGitHubHealthForRepo(
     : delta;
 
   const isToday = previousSnapshot?.snapshot_date === snapshotDate;
-  const [, filterConfigs] = await Promise.all([
+  const [, filterConfigs, repoSnapshotCounts] = await Promise.all([
     loadBotPatterns(db),
     getRepoFilterConfigs(db, repo.id),
+    fetchGitHubRepoSnapshotCounts(token, repo.owner, repo.name, {
+      userAgent: 'npm-burst-app',
+    }),
   ]);
   const staleCutoffIso = new Date(
     Date.now() - FULL_FETCH_WINDOW_MS
@@ -341,6 +345,9 @@ export async function snapshotGitHubHealthForRepo(
         active_contributors_30d: metrics.activeContributors30d,
         stale_issues_count: staleIssuesCount,
         stale_prs_count: stalePrsCount,
+        open_issues_count: repoSnapshotCounts.openIssuesCount,
+        open_pull_requests_count: repoSnapshotCounts.openPullRequestsCount,
+        stars_count: repoSnapshotCounts.starsCount,
       })
       .execute();
   }

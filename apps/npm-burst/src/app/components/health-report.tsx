@@ -25,12 +25,15 @@ import { ChartDescription } from './chart-description';
 import { Popover } from './popover';
 import styles from './health-report.module.scss';
 
+type ChartMode = 'value' | 'derivative';
+
 interface MetricDefinition {
   key: MetricKey;
   label: string;
   hint: string;
   getValue: (point: HealthMetricSeriesPoint) => number | null;
   formatValue: (value: number | null) => string;
+  cumulative?: boolean;
 }
 
 type MetricKey =
@@ -41,7 +44,23 @@ type MetricKey =
   | 'prsMerged30d'
   | 'prsClosedUnmerged30d'
   | 'staleIssuesCount'
-  | 'stalePrsCount';
+  | 'stalePrsCount'
+  | 'openIssuesCount'
+  | 'openPullRequestsCount'
+  | 'starsCount';
+
+function formatCount(value: number | null): string {
+  if (value === null) return 'n/a';
+  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return `${value}`;
+}
+
+function formatSignedDelta(value: number | null): string {
+  if (value === null) return 'n/a';
+  if (value === 0) return '±0';
+  const formatted = formatCount(Math.abs(value));
+  return `${value > 0 ? '+' : '−'}${formatted}`;
+}
 
 const METRICS: MetricDefinition[] = [
   {
@@ -103,6 +122,30 @@ const METRICS: MetricDefinition[] = [
     getValue: (point) => point.stalePrsCount,
     formatValue: (value) => `${value ?? 0}`,
   },
+  {
+    key: 'openIssuesCount',
+    label: 'Open Issues',
+    hint: 'Total open issues on the repository',
+    getValue: (point) => point.openIssuesCount,
+    formatValue: formatCount,
+    cumulative: true,
+  },
+  {
+    key: 'openPullRequestsCount',
+    label: 'Open PRs',
+    hint: 'Total open pull requests on the repository',
+    getValue: (point) => point.openPullRequestsCount,
+    formatValue: formatCount,
+    cumulative: true,
+  },
+  {
+    key: 'starsCount',
+    label: 'Stars',
+    hint: 'Total stargazers on the repository',
+    getValue: (point) => point.starsCount,
+    formatValue: formatCount,
+    cumulative: true,
+  },
 ];
 
 function formatDate(value: string): string {
@@ -113,22 +156,58 @@ function formatDate(value: string): string {
   });
 }
 
+function getSeriesValues(
+  points: HealthMetricSeriesPoint[],
+  metric: MetricDefinition,
+  mode: ChartMode
+): { points: HealthMetricSeriesPoint[]; values: number[] } {
+  if (mode === 'derivative') {
+    const seriesPoints: HealthMetricSeriesPoint[] = [];
+    const values: number[] = [];
+    for (let i = 1; i < points.length; i += 1) {
+      const prev = metric.getValue(points[i - 1]) ?? 0;
+      const curr = metric.getValue(points[i]) ?? 0;
+      seriesPoints.push(points[i]);
+      values.push(curr - prev);
+    }
+    return { points: seriesPoints, values };
+  }
+  return {
+    points,
+    values: points.map((point) => metric.getValue(point) ?? 0),
+  };
+}
+
 function Sparkline({
   points,
   metric,
+  mode = 'value',
 }: {
   points: HealthMetricSeriesPoint[];
   metric: MetricDefinition;
+  mode?: ChartMode;
 }) {
-  const values = points.map((point) => metric.getValue(point) ?? 0);
-  const max = Math.max(...values, 1);
+  const series = getSeriesValues(points, metric, mode);
+  if (series.values.length === 0) {
+    return (
+      <svg
+        className={styles.sparkline}
+        viewBox="0 0 150 36"
+        preserveAspectRatio="none"
+      />
+    );
+  }
+  const yMin = Math.min(0, ...series.values);
+  const yMax = Math.max(0, ...series.values, yMin === 0 ? 1 : 0);
   const x = scalePoint<number>()
-    .domain(values.map((_, index) => index))
+    .domain(series.values.map((_, index) => index))
     .range([0, 150]);
-  const y = scaleLinear().domain([0, max]).range([32, 4]);
+  const y = scaleLinear().domain([yMin, yMax]).range([32, 4]);
   const path = line<number>()
     .x((_, index) => x(index) ?? 0)
-    .y((value) => y(value))(values);
+    .y((value) => y(value))(series.values);
+  const zeroY = y(0);
+  const showZeroLine = yMin < 0;
 
   return (
     <svg
@@ -136,6 +215,15 @@ function Sparkline({
       viewBox="0 0 150 36"
       preserveAspectRatio="none"
     >
+      {showZeroLine ? (
+        <line
+          className={styles.gridLine}
+          x1={0}
+          x2={150}
+          y1={zeroY}
+          y2={zeroY}
+        />
+      ) : null}
       <path d={path ?? ''} fill="none" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
@@ -144,9 +232,11 @@ function Sparkline({
 function FullChart({
   points,
   metric,
+  mode = 'value',
 }: {
   points: HealthMetricSeriesPoint[];
   metric: MetricDefinition;
+  mode?: ChartMode;
 }) {
   const width = 700;
   const height = 260;
@@ -154,21 +244,28 @@ function FullChart({
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
 
-  const values = points.map((point) => metric.getValue(point) ?? 0);
-  const max = Math.max(...values, 1);
+  const series = getSeriesValues(points, metric, mode);
+  const yMin = Math.min(0, ...series.values);
+  const yMax = Math.max(0, ...series.values, yMin === 0 ? 1 : 0);
   const x = scalePoint<string>()
-    .domain(points.map((point) => point.snapshotDate))
+    .domain(series.points.map((point) => point.snapshotDate))
     .range([0, chartWidth]);
-  const y = scaleLinear().domain([0, max]).nice().range([chartHeight, 0]);
+  const y = scaleLinear().domain([yMin, yMax]).nice().range([chartHeight, 0]);
+  const zeroY = y(0);
 
-  const linePath = line<HealthMetricSeriesPoint>()
-    .x((point) => x(point.snapshotDate) ?? 0)
-    .y((point) => y(metric.getValue(point) ?? 0))(points);
+  const seriesWithIndex = series.points.map((point, index) => ({
+    point,
+    value: series.values[index],
+  }));
 
-  const areaPath = area<HealthMetricSeriesPoint>()
-    .x((point) => x(point.snapshotDate) ?? 0)
-    .y0(chartHeight)
-    .y1((point) => y(metric.getValue(point) ?? 0))(points);
+  const linePath = line<{ point: HealthMetricSeriesPoint; value: number }>()
+    .x(({ point }) => x(point.snapshotDate) ?? 0)
+    .y(({ value }) => y(value))(seriesWithIndex);
+
+  const areaPath = area<{ point: HealthMetricSeriesPoint; value: number }>()
+    .x(({ point }) => x(point.snapshotDate) ?? 0)
+    .y0(zeroY)
+    .y1(({ value }) => y(value))(seriesWithIndex);
 
   const ticks = y.ticks(4);
 
@@ -196,16 +293,12 @@ function FullChart({
           ))}
           <path className={styles.area} d={areaPath ?? ''} />
           <path className={styles.line} d={linePath ?? ''} />
-          {points.map((point) => (
+          {seriesWithIndex.map(({ point, value }) => (
             <g
               key={point.snapshotDate}
               transform={`translate(${x(point.snapshotDate) ?? 0}, 0)`}
             >
-              <circle
-                cy={y(metric.getValue(point) ?? 0)}
-                r={3.5}
-                fill="var(--accent-main)"
-              />
+              <circle cy={y(value)} r={3.5} fill="var(--accent-main)" />
               <text
                 className={styles.axisLabel}
                 y={chartHeight + 18}
@@ -397,12 +490,23 @@ function MetricRow({
   packageName: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [chartMode, setChartMode] = useState<ChartMode>('value');
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceLoading, setSourceLoading] = useState(false);
   const [sourceData, setSourceData] = useState<MetricSourceData | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const latest = points[points.length - 1];
   const value = latest ? metric.getValue(latest) : null;
+  const latestDelta =
+    points.length >= 2
+      ? (metric.getValue(points[points.length - 1]) ?? 0) -
+        (metric.getValue(points[points.length - 2]) ?? 0)
+      : null;
+  const showToggle = metric.cumulative === true && points.length >= 2;
+  const headlineValue =
+    showToggle && chartMode === 'derivative'
+      ? formatSignedDelta(latestDelta)
+      : metric.formatValue(value);
 
   useEffect(() => {
     if (!showSourceModal) return;
@@ -451,22 +555,63 @@ function MetricRow({
     URL.revokeObjectURL(url);
   };
 
+  const toggleExpanded = () => setExpanded((current) => !current);
+
   return (
     <div className={styles.row}>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         className={styles.rowButton}
-        onClick={() => setExpanded((current) => !current)}
+        onClick={toggleExpanded}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleExpanded();
+          }
+        }}
       >
         <div className={styles.metricLabel}>
           <span className={styles.metricName}>{metric.label}</span>
           <span className={styles.metricHint}>{metric.hint}</span>
         </div>
-        <div className={styles.metricValue}>{metric.formatValue(value)}</div>
-        <Sparkline points={points} metric={metric} />
+        <div className={styles.metricValue}>{headlineValue}</div>
+        <div className={styles.sparklineCell}>
+          {showToggle ? (
+            <div
+              className={styles.modeToggle}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                className={`${styles.modeToggleButton} ${
+                  chartMode === 'value' ? styles.modeToggleButtonActive : ''
+                }`}
+                onClick={() => setChartMode('value')}
+                aria-pressed={chartMode === 'value'}
+              >
+                Total
+              </button>
+              <button
+                type="button"
+                className={`${styles.modeToggleButton} ${
+                  chartMode === 'derivative'
+                    ? styles.modeToggleButtonActive
+                    : ''
+                }`}
+                onClick={() => setChartMode('derivative')}
+                aria-pressed={chartMode === 'derivative'}
+              >
+                Δ
+              </button>
+            </div>
+          ) : null}
+          <Sparkline points={points} metric={metric} mode={chartMode} />
+        </div>
         <div className={styles.expandIcon}>
           {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </div>
-      </button>
+      </div>
       {expanded ? (
         <div className={styles.expanded}>
           <div className={styles.chartMeta}>
@@ -474,9 +619,13 @@ function MetricRow({
               Latest snapshot:{' '}
               {latest ? formatDate(latest.snapshotDate) : 'n/a'}
             </span>
-            <span>{metric.hint}</span>
+            <span>
+              {showToggle && chartMode === 'derivative'
+                ? `Change from prior snapshot — ${metric.hint.toLowerCase()}`
+                : metric.hint}
+            </span>
           </div>
-          <FullChart points={points} metric={metric} />
+          <FullChart points={points} metric={metric} mode={chartMode} />
           <div className={styles.actions}>
             <button
               className={styles.sourceButton}

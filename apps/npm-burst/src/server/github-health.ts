@@ -46,7 +46,10 @@ export type HealthMetricKey =
   | 'medianPrMergeHours'
   | 'activeContributors30d'
   | 'staleIssuesCount'
-  | 'stalePrsCount';
+  | 'stalePrsCount'
+  | 'openIssuesCount'
+  | 'openPullRequestsCount'
+  | 'starsCount';
 
 export interface MetricSourceData {
   metricKey: HealthMetricKey;
@@ -72,6 +75,9 @@ function toMetricPoint(row: {
   active_contributors_30d: number;
   stale_issues_count: number;
   stale_prs_count: number;
+  open_issues_count: number;
+  open_pull_requests_count: number;
+  stars_count: number;
 }): HealthMetricSeriesPoint {
   return {
     snapshotDate: row.snapshot_date,
@@ -87,6 +93,9 @@ function toMetricPoint(row: {
     activeContributors30d: row.active_contributors_30d,
     staleIssuesCount: row.stale_issues_count,
     stalePrsCount: row.stale_prs_count,
+    openIssuesCount: row.open_issues_count,
+    openPullRequestsCount: row.open_pull_requests_count,
+    starsCount: row.stars_count,
   };
 }
 
@@ -445,6 +454,9 @@ export async function getPackageHealthData(
       'ghm.active_contributors_30d as active_contributors_30d',
       'ghm.stale_issues_count as stale_issues_count',
       'ghm.stale_prs_count as stale_prs_count',
+      'ghm.open_issues_count as open_issues_count',
+      'ghm.open_pull_requests_count as open_pull_requests_count',
+      'ghm.stars_count as stars_count',
     ])
     .where('ghm.repo_id', '=', repo.id)
     .orderBy('ghs.snapshot_date', 'asc')
@@ -529,6 +541,60 @@ export async function getPackageMetricSource(
           isIssues ? 'issues' : 'pull requests'
         } not updated since ${staleCutoff}.`,
         searchUrl,
+      },
+      entries: [],
+    };
+  }
+
+  if (
+    metricKey === 'openIssuesCount' ||
+    metricKey === 'openPullRequestsCount' ||
+    metricKey === 'starsCount'
+  ) {
+    const wantedFilter = canonicalizeFilterConfig(repo.filterConfig);
+    const metricRows = await db
+      .selectFrom('github_health_metrics')
+      .select([
+        'filter_config',
+        'open_issues_count',
+        'open_pull_requests_count',
+        'stars_count',
+      ])
+      .where('snapshot_id', '=', latestSnapshot.id)
+      .where('repo_id', '=', repo.id)
+      .execute();
+
+    const exact = metricRows.find((row) => row.filter_config === wantedFilter);
+    const fallback = metricRows.find((row) => row.filter_config === null);
+    const selected = exact ?? fallback;
+
+    const repoUrl = `https://github.com/${repo.owner}/${repo.name}`;
+    let count = 0;
+    let description = '';
+    let externalUrl = repoUrl;
+
+    if (metricKey === 'openIssuesCount') {
+      count = selected?.open_issues_count ?? 0;
+      description = 'Total open issues on the repository.';
+      externalUrl = `${repoUrl}/issues?q=${encodeURIComponent('is:issue is:open')}`;
+    } else if (metricKey === 'openPullRequestsCount') {
+      count = selected?.open_pull_requests_count ?? 0;
+      description = 'Total open pull requests on the repository.';
+      externalUrl = `${repoUrl}/pulls?q=${encodeURIComponent('is:pr is:open')}`;
+    } else {
+      count = selected?.stars_count ?? 0;
+      description = 'Total stargazers on the repository.';
+      externalUrl = `${repoUrl}/stargazers`;
+    }
+
+    return {
+      metricKey,
+      snapshotDate: latestSnapshot.snapshot_date,
+      repo: { owner: repo.owner, name: repo.name },
+      summary: {
+        count,
+        description,
+        externalUrl,
       },
       entries: [],
     };

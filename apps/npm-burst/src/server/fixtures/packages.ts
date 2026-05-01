@@ -27,6 +27,9 @@ export interface FixtureHealthMetricPoint {
   activeContributors30d: number;
   staleIssuesCount: number;
   stalePrsCount: number;
+  openIssuesCount: number;
+  openPullRequestsCount: number;
+  starsCount: number;
 }
 
 /**
@@ -104,6 +107,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 19,
       staleIssuesCount: 38,
       stalePrsCount: 6,
+      openIssuesCount: 642,
+      openPullRequestsCount: 88,
+      starsCount: 24180,
     },
     {
       snapshotDate: '2026-01-26',
@@ -119,6 +125,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 21,
       staleIssuesCount: 37,
       stalePrsCount: 5,
+      openIssuesCount: 646,
+      openPullRequestsCount: 91,
+      starsCount: 24315,
     },
     {
       snapshotDate: '2026-02-09',
@@ -134,6 +143,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 22,
       staleIssuesCount: 35,
       stalePrsCount: 5,
+      openIssuesCount: 650,
+      openPullRequestsCount: 93,
+      starsCount: 24462,
     },
     {
       snapshotDate: '2026-02-23',
@@ -149,6 +161,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 24,
       staleIssuesCount: 33,
       stalePrsCount: 4,
+      openIssuesCount: 657,
+      openPullRequestsCount: 95,
+      starsCount: 24598,
     },
     {
       snapshotDate: '2026-03-09',
@@ -164,6 +179,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 26,
       staleIssuesCount: 30,
       stalePrsCount: 4,
+      openIssuesCount: 651,
+      openPullRequestsCount: 97,
+      starsCount: 24744,
     },
   ],
   react: [
@@ -181,6 +199,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 14,
       staleIssuesCount: 112,
       stalePrsCount: 12,
+      openIssuesCount: 1042,
+      openPullRequestsCount: 268,
+      starsCount: 226140,
     },
     {
       snapshotDate: '2026-01-26',
@@ -196,6 +217,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 15,
       staleIssuesCount: 110,
       stalePrsCount: 11,
+      openIssuesCount: 1054,
+      openPullRequestsCount: 274,
+      starsCount: 226395,
     },
     {
       snapshotDate: '2026-02-09',
@@ -211,6 +235,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 17,
       staleIssuesCount: 104,
       stalePrsCount: 11,
+      openIssuesCount: 1068,
+      openPullRequestsCount: 277,
+      starsCount: 226682,
     },
     {
       snapshotDate: '2026-02-23',
@@ -226,6 +253,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 18,
       staleIssuesCount: 101,
       stalePrsCount: 10,
+      openIssuesCount: 1075,
+      openPullRequestsCount: 282,
+      starsCount: 226958,
     },
     {
       snapshotDate: '2026-03-09',
@@ -241,6 +271,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 20,
       staleIssuesCount: 96,
       stalePrsCount: 10,
+      openIssuesCount: 1070,
+      openPullRequestsCount: 286,
+      starsCount: 227241,
     },
   ],
   lodash: [
@@ -258,6 +291,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 4,
       staleIssuesCount: 47,
       stalePrsCount: 3,
+      openIssuesCount: 308,
+      openPullRequestsCount: 84,
+      starsCount: 59820,
     },
     {
       snapshotDate: '2026-01-26',
@@ -273,6 +309,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 5,
       staleIssuesCount: 44,
       stalePrsCount: 3,
+      openIssuesCount: 311,
+      openPullRequestsCount: 85,
+      starsCount: 59874,
     },
     {
       snapshotDate: '2026-02-09',
@@ -288,6 +327,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 6,
       staleIssuesCount: 41,
       stalePrsCount: 2,
+      openIssuesCount: 310,
+      openPullRequestsCount: 85,
+      starsCount: 59921,
     },
     {
       snapshotDate: '2026-02-23',
@@ -303,6 +345,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 7,
       staleIssuesCount: 39,
       stalePrsCount: 2,
+      openIssuesCount: 309,
+      openPullRequestsCount: 86,
+      starsCount: 59970,
     },
     {
       snapshotDate: '2026-03-09',
@@ -318,6 +363,9 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       activeContributors30d: 8,
       staleIssuesCount: 35,
       stalePrsCount: 2,
+      openIssuesCount: 305,
+      openPullRequestsCount: 86,
+      starsCount: 60018,
     },
   ],
 };

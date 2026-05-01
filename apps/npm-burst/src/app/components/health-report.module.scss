@@ -150,6 +150,47 @@
   width: 100%;
 }
 
+.sparklineCell {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+}
+
+.modeToggle {
+  display: inline-flex;
+  align-self: end;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  font-size: var(--font-size-xs);
+  width: max-content;
+}
+
+.modeToggleButton {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.4;
+}
+
+.modeToggleButton + .modeToggleButton {
+  border-left: 1px solid var(--border-color);
+}
+
+.modeToggleButton:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.modeToggleButtonActive {
+  background: rgba(126, 87, 194, 0.18);
+  color: var(--text-primary);
+}
+
 .expandIcon {
   color: var(--text-secondary);
 }

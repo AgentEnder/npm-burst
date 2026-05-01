@@ -28,6 +28,8 @@ export interface GithubHealthMetrics {
   median_issue_first_response_hours: number | null;
   median_pr_first_review_hours: number | null;
   median_pr_merge_hours: number | null;
+  open_issues_count: Generated<number>;
+  open_pull_requests_count: Generated<number>;
   prs_closed_unmerged_30d: Generated<number>;
   prs_merged_30d: Generated<number>;
   prs_opened_30d: Generated<number>;
@@ -35,6 +37,7 @@ export interface GithubHealthMetrics {
   snapshot_id: number;
   stale_issues_count: Generated<number>;
   stale_prs_count: Generated<number>;
+  stars_count: Generated<number>;
 }
 
 export interface GithubHealthSnapshots {

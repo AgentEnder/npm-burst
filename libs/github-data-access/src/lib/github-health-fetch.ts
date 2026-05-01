@@ -165,6 +165,70 @@ const RECENT_PULL_REQUESTS_QUERY = `
   }
 `;
 
+const REPO_SNAPSHOT_COUNTS_QUERY = `
+  query RepoSnapshotCounts($owner: String!, $name: String!) {
+    repository(owner: $owner, name: $name) {
+      stargazerCount
+      openIssues: issues(states: [OPEN]) { totalCount }
+      openPullRequests: pullRequests(states: [OPEN]) { totalCount }
+    }
+  }
+`;
+
+interface GitHubRepoSnapshotCountsResponse {
+  data?: {
+    repository: {
+      stargazerCount: number;
+      openIssues: { totalCount: number };
+      openPullRequests: { totalCount: number };
+    } | null;
+  };
+  errors?: Array<{ message: string }>;
+}
+
+export interface GitHubRepoSnapshotCounts {
+  starsCount: number;
+  openIssuesCount: number;
+  openPullRequestsCount: number;
+}
+
+export async function fetchGitHubRepoSnapshotCounts(
+  token: string,
+  owner: string,
+  name: string,
+  options?: {
+    userAgent?: string;
+    stats?: GitHubFetchStats;
+  }
+): Promise<GitHubRepoSnapshotCounts> {
+  const response = await githubGraphql<GitHubRepoSnapshotCountsResponse>(
+    token,
+    REPO_SNAPSHOT_COUNTS_QUERY,
+    { owner, name },
+    options?.userAgent ?? 'npm-burst',
+    options?.stats
+  );
+
+  if (response.errors?.length) {
+    const message = response.errors.map((error) => error.message).join('; ');
+    console.error(
+      `GitHub repo-snapshot-counts query errors for ${owner}/${name}: ${message}`
+    );
+    throw new Error(message);
+  }
+
+  const repository = response.data?.repository;
+  if (!repository) {
+    return { starsCount: 0, openIssuesCount: 0, openPullRequestsCount: 0 };
+  }
+
+  return {
+    starsCount: repository.stargazerCount,
+    openIssuesCount: repository.openIssues.totalCount,
+    openPullRequestsCount: repository.openPullRequests.totalCount,
+  };
+}
+
 const STALE_ISSUE_COUNT_QUERY = `
   query StaleIssueCount(
     $owner: String!
