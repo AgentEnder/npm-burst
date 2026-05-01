@@ -17,7 +17,7 @@
       "options": { "cwd": "apps/npm-burst" }
     },
     "db:codegen": {
-      "command": "kysely-codegen --dialect sqlite --url file:local.db --out-file src/server/db-schema.ts",
+      "command": "kysely-codegen --dialect sqlite --url ./local.db --out-file src/server/db-schema.ts",
       "options": { "cwd": "apps/npm-burst" },
       "dependsOn": ["db:migrate"]
     },

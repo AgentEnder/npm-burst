@@ -1,5 +1,5 @@
 import { FileMigrationProvider, Kysely, Migrator, SqliteDialect } from 'kysely';
-import * as Database from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
