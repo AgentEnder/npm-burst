@@ -4,9 +4,9 @@ import {
   ArrowUpCircle,
   ChevronDown,
   ChevronRight,
-  Github,
   RefreshCw,
 } from 'lucide-react';
+import { SiGithub } from '@icons-pack/react-simple-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
@@ -60,8 +60,8 @@ const METRICS: MetricDefinition[] = [
   },
   {
     key: 'openCloseRatio',
-    label: 'Open/Close Ratio',
-    hint: 'Below 1.0 means closure is outpacing intake',
+    label: 'Close/Open Ratio',
+    hint: 'Above 1.0 means open issues went down; below 1.0 means more were opened than closed',
     getValue: (point) =>
       point.issuesOpened30d > 0
         ? point.issuesClosed30d / point.issuesOpened30d
@@ -104,13 +104,6 @@ const METRICS: MetricDefinition[] = [
     formatValue: (value) => `${value ?? 0}`,
   },
 ];
-
-function formatHours(value: number | null): string {
-  if (value === null) return 'n/a';
-  if (value >= 72) return `${(value / 24).toFixed(1)}d`;
-  if (value >= 1) return `${value.toFixed(1)}h`;
-  return `${Math.round(value * 60)}m`;
-}
 
 function formatDate(value: string): string {
   return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
@@ -674,7 +667,7 @@ export function HealthReport({
                     onClick={handleSync}
                     disabled={syncing}
                   >
-                    <Github size={16} />
+                    <SiGithub size={16} />
                     {syncing
                       ? 'Fetching health data…'
                       : 'Fetch with my GitHub access'}
