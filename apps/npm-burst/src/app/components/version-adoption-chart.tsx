@@ -24,6 +24,10 @@ import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
+import {
+  matchVersionFilter,
+  VersionFilterBar,
+} from './version-filter-bar';
 import styles from './version-adoption-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 60, left: 50 };
@@ -81,6 +85,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+  const [versionFilter, setVersionFilter] = useState('');
   const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
   const [yAxisMode, setYAxisMode] = useState<YAxisMode>('percent');
   const [chartMode, setChartMode] = useState<ChartMode>('stacked');
@@ -138,9 +143,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     ]
   );
 
-  // Reset hidden series when grouping changes
+  // Reset hidden series + filter when grouping changes
   useEffect(() => {
     setHiddenSeries(new Set());
+    setVersionFilter('');
   }, [grouping]);
 
   const toggleSeries = useCallback((label: string) => {
@@ -170,10 +176,51 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     [series]
   );
 
-  const visibleSeries = useMemo(
-    () => nonZeroSeries.filter((s) => !hiddenSeries.has(s.label)),
-    [nonZeroSeries, hiddenSeries]
+  const nonZeroLabels = useMemo(
+    () => nonZeroSeries.map((s) => s.label),
+    [nonZeroSeries]
   );
+  const filterMatch = useMemo(
+    () => matchVersionFilter(nonZeroLabels, versionFilter),
+    [nonZeroLabels, versionFilter]
+  );
+
+  const effectiveHidden = useMemo(() => {
+    if (!filterMatch.isRangeActive) return hiddenSeries;
+    const next = new Set(hiddenSeries);
+    for (const label of nonZeroLabels) {
+      if (!filterMatch.matchingLabels.has(label)) next.add(label);
+    }
+    return next;
+  }, [hiddenSeries, filterMatch, nonZeroLabels]);
+
+  const visibleSeries = useMemo(
+    () => nonZeroSeries.filter((s) => !effectiveHidden.has(s.label)),
+    [nonZeroSeries, effectiveHidden]
+  );
+
+  const filteredLegendSeries = useMemo(
+    () => nonZeroSeries.filter((s) => filterMatch.matchingLabels.has(s.label)),
+    [nonZeroSeries, filterMatch]
+  );
+
+  const showMatching = useCallback(() => {
+    if (filteredLegendSeries.length === 0) return;
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      for (const s of filteredLegendSeries) next.delete(s.label);
+      return next;
+    });
+  }, [filteredLegendSeries]);
+
+  const hideMatching = useCallback(() => {
+    if (filteredLegendSeries.length === 0) return;
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      for (const s of filteredLegendSeries) next.add(s.label);
+      return next;
+    });
+  }, [filteredLegendSeries]);
 
   const chartColors = getThemeChartColors(theme);
   const palette = generateThemeColorPalette(series.length + 1, theme);
@@ -538,6 +585,17 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
             </button>
           )}
         </div>
+        {nonZeroSeries.length > 0 ? (
+          <VersionFilterBar
+            value={versionFilter}
+            onChange={setVersionFilter}
+            totalCount={nonZeroSeries.length}
+            matchingCount={filterMatch.matchingLabels.size}
+            isRangeActive={filterMatch.isRangeActive}
+            onShowMatching={showMatching}
+            onHideMatching={hideMatching}
+          />
+        ) : null}
       </div>
 
       <ChartDescription>
@@ -570,35 +628,42 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
 
           {/* Legend with click-to-toggle */}
           <div className={styles.legend}>
-            {nonZeroSeries.map((s) => {
-              const color = colorMap.get(s.label) ?? '#888';
-              const isHidden = hiddenSeries.has(s.label);
-              const isBelowLPF = s.belowThreshold;
-              return (
-                <div
-                  key={s.label}
-                  className={`${styles.legendItem} ${
-                    isHidden ? styles.legendItemDimmed : ''
-                  } ${
-                    isBelowLPF && !isHidden ? styles.legendItemBelowLPF : ''
-                  }`}
-                  onClick={() => toggleSeries(s.label)}
-                  title={
-                    isBelowLPF
-                      ? `Below LPF threshold (${(lowPassFilter * 100).toFixed(
-                          1
-                        )}%)`
-                      : `Click to ${isHidden ? 'show' : 'hide'}`
-                  }
-                >
-                  <span
-                    className={styles.legendSwatch}
-                    style={{ backgroundColor: color }}
-                  />
-                  {s.label}
-                </div>
-              );
-            })}
+            {filteredLegendSeries.length === 0 ? (
+              <span className={styles.legendEmpty}>
+                No versions match &ldquo;{versionFilter}&rdquo;
+              </span>
+            ) : (
+              filteredLegendSeries.map((s) => {
+                const isHidden = hiddenSeries.has(s.label);
+                const color =
+                  colorMap.get(s.label) ?? (isHidden ? 'transparent' : '#888');
+                const isBelowLPF = s.belowThreshold;
+                return (
+                  <div
+                    key={s.label}
+                    className={`${styles.legendItem} ${
+                      isHidden ? styles.legendItemDimmed : ''
+                    } ${
+                      isBelowLPF && !isHidden ? styles.legendItemBelowLPF : ''
+                    }`}
+                    onClick={() => toggleSeries(s.label)}
+                    title={
+                      isBelowLPF
+                        ? `Below LPF threshold (${(lowPassFilter * 100).toFixed(
+                            1
+                          )}%)`
+                        : `Click to ${isHidden ? 'show' : 'hide'}`
+                    }
+                  >
+                    <span
+                      className={styles.legendSwatch}
+                      style={{ backgroundColor: color }}
+                    />
+                    {s.label}
+                  </div>
+                );
+              })
+            )}
           </div>
         </>
       )}

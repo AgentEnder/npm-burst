@@ -11,11 +11,19 @@ import {
 import { getMigrationVelocityData } from '../utils/migration-velocity';
 import {
   getMigrationMaxDays,
+  MIGRATION_GRANULARITY_OPTIONS,
   MIGRATION_WINDOW_OPTIONS,
 } from '../utils/time-window';
-import type { MigrationTimeWindow } from '../utils/time-window';
+import type {
+  MigrationGranularity,
+  MigrationTimeWindow,
+} from '../utils/time-window';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
+import {
+  matchVersionFilter,
+  VersionFilterBar,
+} from './version-filter-bar';
 import styles from './migration-velocity-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 };
@@ -27,21 +35,32 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
   versionReleases,
   migrationTimeWindow,
   onMigrationTimeWindowChange,
+  migrationGranularity,
+  onMigrationGranularityChange,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
   migrationTimeWindow: MigrationTimeWindow;
   onMigrationTimeWindowChange: (v: MigrationTimeWindow) => void;
+  migrationGranularity: MigrationGranularity;
+  onMigrationGranularityChange: (v: MigrationGranularity) => void;
 }) {
   const { theme } = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+  const [legendFilter, setLegendFilter] = useState('');
 
   const series = useMemo(
-    () => getMigrationVelocityData(snapshots, liveData, versionReleases),
-    [snapshots, liveData, versionReleases]
+    () =>
+      getMigrationVelocityData(
+        snapshots,
+        liveData,
+        versionReleases,
+        migrationGranularity
+      ),
+    [snapshots, liveData, versionReleases, migrationGranularity]
   );
 
   const toggleSeries = useCallback((label: string) => {
@@ -56,20 +75,70 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
     });
   }, []);
 
-  const visibleSeries = useMemo(
-    () => series.filter((s) => !hiddenSeries.has(s.label)),
-    [series, hiddenSeries]
+  const allLabels = useMemo(() => series.map((s) => s.label), [series]);
+  const filterMatch = useMemo(
+    () => matchVersionFilter(allLabels, legendFilter),
+    [allLabels, legendFilter]
   );
 
+  const effectiveHidden = useMemo(() => {
+    if (!filterMatch.isRangeActive) return hiddenSeries;
+    const next = new Set(hiddenSeries);
+    for (const label of allLabels) {
+      if (!filterMatch.matchingLabels.has(label)) next.add(label);
+    }
+    return next;
+  }, [hiddenSeries, filterMatch, allLabels]);
+
+  const visibleSeries = useMemo(
+    () => series.filter((s) => !effectiveHidden.has(s.label)),
+    [series, effectiveHidden]
+  );
+
+  const plottableSeriesCount = useMemo(() => {
+    const windowMaxDays = getMigrationMaxDays(migrationTimeWindow);
+    if (windowMaxDays === null) return series.length;
+    return series.filter((s) =>
+      s.points.some((p) => p.daysSinceRelease <= windowMaxDays)
+    ).length;
+  }, [series, migrationTimeWindow]);
+
+  const filteredLegendSeries = useMemo(
+    () => series.filter((s) => filterMatch.matchingLabels.has(s.label)),
+    [series, filterMatch]
+  );
+
+  const showAllInFilter = useCallback(() => {
+    if (filteredLegendSeries.length === 0) return;
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      for (const s of filteredLegendSeries) next.delete(s.label);
+      return next;
+    });
+  }, [filteredLegendSeries]);
+
+  const hideAllInFilter = useCallback(() => {
+    if (filteredLegendSeries.length === 0) return;
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      for (const s of filteredLegendSeries) next.add(s.label);
+      return next;
+    });
+  }, [filteredLegendSeries]);
+
   const chartColors = getThemeChartColors(theme);
-  const palette = generateThemeColorPalette(series.length + 1, theme);
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
-    series.forEach((s, i) => {
+    if (visibleSeries.length === 0) return map;
+    const palette = generateThemeColorPalette(visibleSeries.length, theme);
+    visibleSeries.forEach((s, i) => {
       map.set(s.label, palette[i % palette.length]);
     });
     return map;
-  }, [series, palette]);
+  }, [visibleSeries, theme]);
+
+  const hiddenSwatchColor =
+    theme === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)';
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || series.length === 0) return;
@@ -293,14 +362,34 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
     >
       <div className={styles.controls}>
         <SegmentedControl
+          options={MIGRATION_GRANULARITY_OPTIONS}
+          value={migrationGranularity}
+          onChange={onMigrationGranularityChange}
+          label="Group by"
+        />
+        <SegmentedControl
           options={MIGRATION_WINDOW_OPTIONS}
           value={migrationTimeWindow}
           onChange={onMigrationTimeWindowChange}
           label="Window"
         />
+        {series.length > 0 ? (
+          <VersionFilterBar
+            value={legendFilter}
+            onChange={setLegendFilter}
+            totalCount={series.length}
+            matchingCount={filterMatch.matchingLabels.size}
+            isRangeActive={filterMatch.isRangeActive}
+            onShowMatching={showAllInFilter}
+            onHideMatching={hideAllInFilter}
+          />
+        ) : null}
       </div>
       <ChartDescription>
-        <p>Adoption speed per major version — steeper = faster uptake.</p>
+        <p>
+          Adoption speed per {migrationGranularity} version — steeper = faster
+          uptake.
+        </p>
         <ul>
           <li>X: days since release, Y: adoption %</li>
           <li>
@@ -308,7 +397,7 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
               ? `Showing first ${migrationTimeWindow} after each release`
               : 'Showing full history'}
           </li>
-          <li>Click legend to toggle versions</li>
+          <li>Click a legend entry to toggle a version</li>
         </ul>
       </ChartDescription>
       {series.length === 0 ? (
@@ -318,34 +407,49 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
         </div>
       ) : (
         <>
-          <div className={styles.chart}>
-            <svg ref={svgRef} />
-          </div>
+          {plottableSeriesCount === 0 ? (
+            <div className={styles.noData}>
+              No releases have data points within the selected{' '}
+              <strong>{migrationTimeWindow}</strong> window. Every tracked{' '}
+              {migrationGranularity} version&apos;s first snapshot lands after
+              the cutoff. Try a wider window above to see them.
+            </div>
+          ) : (
+            <div className={styles.chart}>
+              <svg ref={svgRef} />
+            </div>
+          )}
 
-          {/* Legend with click-to-toggle */}
           <div className={styles.legend}>
-            {series.map((s) => {
-              const color = colorMap.get(s.label) ?? '#888';
-              const isHidden = hiddenSeries.has(s.label);
-              return (
-                <div
-                  key={s.label}
-                  className={`${styles.legendItem} ${
-                    isHidden ? styles.legendItemDimmed : ''
-                  }`}
-                  onClick={() => toggleSeries(s.label)}
-                  title={`Released ${s.releaseDate} · Click to ${
-                    isHidden ? 'show' : 'hide'
-                  }`}
-                >
-                  <span
-                    className={styles.legendSwatch}
-                    style={{ backgroundColor: color }}
-                  />
-                  {s.label}
-                </div>
-              );
-            })}
+            {filteredLegendSeries.length === 0 ? (
+              <span className={styles.legendEmpty}>
+                No versions match &ldquo;{legendFilter}&rdquo;
+              </span>
+            ) : (
+              filteredLegendSeries.map((s) => {
+                const isHidden = hiddenSeries.has(s.label);
+                const color =
+                  colorMap.get(s.label) ?? (isHidden ? hiddenSwatchColor : '#888');
+                return (
+                  <div
+                    key={s.label}
+                    className={`${styles.legendItem} ${
+                      isHidden ? styles.legendItemDimmed : ''
+                    }`}
+                    onClick={() => toggleSeries(s.label)}
+                    title={`Released ${s.releaseDate} · Click to ${
+                      isHidden ? 'show' : 'hide'
+                    }`}
+                  >
+                    <span
+                      className={styles.legendSwatch}
+                      style={{ backgroundColor: color }}
+                    />
+                    {s.label}
+                  </div>
+                );
+              })
+            )}
           </div>
         </>
       )}

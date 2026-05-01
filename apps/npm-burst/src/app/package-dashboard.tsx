@@ -16,6 +16,10 @@ import { Table } from './components/table';
 import { MigrationVelocityChart } from './components/migration-velocity-chart';
 import { VersionAdoptionChart } from './components/version-adoption-chart';
 import { VersionLifecycleChart } from './components/version-lifecycle-chart';
+import {
+  matchVersionFilter,
+  VersionFilterBar,
+} from './components/version-filter-bar';
 import { usePackageData } from './hooks/use-package-data';
 import { appStore, useAppStore } from './store';
 import { findNodeByVersion } from './utils/chart-data';
@@ -68,6 +72,14 @@ export function PackageDashboard() {
   const setTimeWindow = useAppStore((s) => s.setTimeWindow);
   const migrationTimeWindow = useAppStore((s) => s.migrationTimeWindow);
   const setMigrationTimeWindow = useAppStore((s) => s.setMigrationTimeWindow);
+  const migrationGranularity = useAppStore((s) => s.migrationGranularity);
+  const setMigrationGranularity = useAppStore(
+    (s) => s.setMigrationGranularity
+  );
+  const sunburstVersionFilter = useAppStore((s) => s.sunburstVersionFilter);
+  const setSunburstVersionFilter = useAppStore(
+    (s) => s.setSunburstVersionFilter
+  );
   const lifecycleShowOnlySnapshotted = useAppStore(
     (s) => s.lifecycleShowOnlySnapshotted
   );
@@ -88,6 +100,20 @@ export function PackageDashboard() {
   const selectedNode = useMemo<SunburstData | SunburstLeafNode | null>(
     () => findNodeByVersion(sunburstChartData, selectedVersion || null),
     [sunburstChartData, selectedVersion]
+  );
+
+  const sunburstSourceVersions = useMemo<string[]>(() => {
+    const downloads =
+      snapshotIndex !== null && snapshots[snapshotIndex]
+        ? snapshots[snapshotIndex].downloads
+        : liveData?.downloads ?? null;
+    if (!downloads) return [];
+    return Object.keys(downloads).map((v) => `v${v}`);
+  }, [snapshots, snapshotIndex, liveData]);
+
+  const sunburstFilterMatch = useMemo(
+    () => matchVersionFilter(sunburstSourceVersions, sunburstVersionFilter),
+    [sunburstSourceVersions, sunburstVersionFilter]
   );
 
   return (
@@ -136,6 +162,22 @@ export function PackageDashboard() {
                   </li>
                 </ul>
               </ChartDescription>
+              {sunburstSourceVersions.length > 0 ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    margin: 'var(--spacing-sm) 0 var(--spacing-md)',
+                  }}
+                >
+                  <VersionFilterBar
+                    value={sunburstVersionFilter}
+                    onChange={setSunburstVersionFilter}
+                    totalCount={sunburstSourceVersions.length}
+                    matchingCount={sunburstFilterMatch.matchingLabels.size}
+                    isRangeActive={sunburstFilterMatch.isRangeActive}
+                  />
+                </div>
+              ) : null}
               {sunburstChartData ? (
                 <Sunburst
                   data={sunburstChartData}
@@ -174,6 +216,8 @@ export function PackageDashboard() {
               versionReleases={versionReleases}
               migrationTimeWindow={migrationTimeWindow}
               onMigrationTimeWindowChange={setMigrationTimeWindow}
+              migrationGranularity={migrationGranularity}
+              onMigrationGranularityChange={setMigrationGranularity}
             />
           ) : viewMode === 'lifecycle' ? (
             <VersionLifecycleChart

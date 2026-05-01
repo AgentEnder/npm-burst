@@ -87,6 +87,14 @@
   justify-content: center;
   gap: var(--spacing-xs) var(--spacing-md);
   margin-top: var(--spacing-sm);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.legendEmpty {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  font-style: italic;
 }
 
 .legendItem {

@@ -62,6 +62,8 @@ export interface AppState {
   // Chart controls
   timeWindow: '30d' | '90d' | '6mo' | '1y' | 'all';
   migrationTimeWindow: '90d' | '180d' | '1y' | 'all';
+  migrationGranularity: 'major' | 'minor' | 'patch';
+  sunburstVersionFilter: string;
   lifecycleShowOnlySnapshotted: boolean;
   lifecycleMinPeak: number;
 
@@ -96,6 +98,8 @@ export interface AppState {
   ) => void;
   setTimeWindow: (v: '30d' | '90d' | '6mo' | '1y' | 'all') => void;
   setMigrationTimeWindow: (v: '90d' | '180d' | '1y' | 'all') => void;
+  setMigrationGranularity: (v: 'major' | 'minor' | 'patch') => void;
+  setSunburstVersionFilter: (v: string) => void;
   setLifecycleShowOnlySnapshotted: (v: boolean) => void;
   setLifecycleMinPeak: (v: number) => void;
 
@@ -153,6 +157,8 @@ export const appStore = createStore<AppState>((set, get) => ({
   viewMode: 'sunburst',
   timeWindow: 'all',
   migrationTimeWindow: 'all',
+  migrationGranularity: 'major',
+  sunburstVersionFilter: '',
   lifecycleShowOnlySnapshotted: false,
   lifecycleMinPeak: 0,
 
@@ -274,6 +280,11 @@ export const appStore = createStore<AppState>((set, get) => ({
   },
   setTimeWindow: (v) => set({ timeWindow: v }),
   setMigrationTimeWindow: (v) => set({ migrationTimeWindow: v }),
+  setMigrationGranularity: (v) => set({ migrationGranularity: v }),
+  setSunburstVersionFilter: (v) => {
+    set({ sunburstVersionFilter: v });
+    get().recomputeChartData();
+  },
   setLifecycleShowOnlySnapshotted: (v) => set({ lifecycleShowOnlySnapshotted: v }),
   setLifecycleMinPeak: (v) => set({ lifecycleMinPeak: v }),
 
@@ -289,7 +300,8 @@ export const appStore = createStore<AppState>((set, get) => ({
     const chartData = getSunburstDataFromDownloads(
       sourceData,
       state.lowPassFilter,
-      state.expandedNodes
+      state.expandedNodes,
+      state.sunburstVersionFilter
     );
 
     // If selectedVersion doesn't exist in the new data, reset it

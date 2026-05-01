@@ -1,15 +1,37 @@
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
-import { parse } from 'semver';
+import { parse, satisfies, validRange } from 'semver';
 import {
   isLeafNode,
   SunburstData,
   SunburstLeafNode,
 } from '../components/sunburst';
 
+const FILTER_OTHER_NAME = 'Other (filtered)';
+
+function buildVersionMatcher(
+  versionFilter: string
+): ((version: string) => boolean) | null {
+  const trimmed = versionFilter.trim();
+  if (!trimmed) return null;
+  const range = validRange(trimmed);
+  if (range) {
+    return (version) => {
+      try {
+        return satisfies(version, range);
+      } catch {
+        return false;
+      }
+    };
+  }
+  const lower = trimmed.toLowerCase();
+  return (version) => `v${version}`.toLowerCase().includes(lower);
+}
+
 export function getSunburstDataFromDownloads(
   { downloads }: NpmDownloadsByVersion,
   lowPassFilter: number,
-  expandedNodes: string[]
+  expandedNodes: string[],
+  versionFilter = ''
 ) {
   const totalDownloads = Object.values(downloads).reduce(
     (acc, next) => acc + next,
@@ -19,6 +41,9 @@ export function getSunburstDataFromDownloads(
     name: 'versions',
     children: [],
   };
+
+  const matcher = buildVersionMatcher(versionFilter);
+  let filteredOutTotal = 0;
 
   const accumulator: {
     [majorVersion: string]: {
@@ -31,6 +56,10 @@ export function getSunburstDataFromDownloads(
   } = {};
 
   for (const version in downloads) {
+    if (matcher && !matcher(version)) {
+      filteredOutTotal += downloads[version];
+      continue;
+    }
     const { major, minor, patch, prerelease } = parse(version)!;
     accumulator[major] ??= {};
     accumulator[major][minor] ??= {};
@@ -127,6 +156,14 @@ export function getSunburstDataFromDownloads(
 
   data.children = partitionAndAggregate(data.children, 'Other');
 
+  if (filteredOutTotal > 0) {
+    data.children.push({
+      name: FILTER_OTHER_NAME,
+      value: filteredOutTotal,
+      isAggregated: true,
+    } as SunburstLeafNode);
+  }
+
   return data;
 }
 
@@ -161,7 +198,7 @@ export function findNodeByVersion(
 }
 
 export function getParentOfAggregatedNode(aggregatedNodeName: string): string {
-  if (aggregatedNodeName === 'Other') {
+  if (aggregatedNodeName === 'Other' || aggregatedNodeName === FILTER_OTHER_NAME) {
     return 'versions';
   }
   if (aggregatedNodeName.endsWith('.?')) {

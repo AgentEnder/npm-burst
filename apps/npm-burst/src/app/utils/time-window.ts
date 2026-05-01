@@ -1,5 +1,12 @@
 export type TimeWindow = '30d' | '90d' | '6mo' | '1y' | 'all';
 export type MigrationTimeWindow = '90d' | '180d' | '1y' | 'all';
+export type MigrationGranularity = 'major' | 'minor' | 'patch';
+
+export const MIGRATION_GRANULARITY_OPTIONS = [
+  { value: 'major' as const, label: 'Major' },
+  { value: 'minor' as const, label: 'Minor' },
+  { value: 'patch' as const, label: 'Patch' },
+] as const;
 
 export const TIME_WINDOW_OPTIONS = [
   { value: '30d' as const, label: '30d' },

@@ -1,0 +1,81 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 240px;
+}
+
+.inputWrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  padding-right: 52px;
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-main);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.inputRange {
+  border-color: rgba(126, 87, 194, 0.45);
+}
+
+.rangeHint {
+  position: absolute;
+  right: 10px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--accent-main);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.matchCount {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.buttons {
+  display: inline-flex;
+  gap: var(--spacing-xs);
+}
+
+.button {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
