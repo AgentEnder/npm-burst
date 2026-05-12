@@ -52,3 +52,6 @@ vitest.config.*.timestamp*
 *.sql
 sample.txt
 .wrangler
+
+.claude/worktrees
+.claude/settings.local.json
