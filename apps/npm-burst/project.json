@@ -5,6 +5,9 @@
   "projectType": "application",
   "tags": [],
   "targets": {
+    "build": {
+      "dependsOn": ["^build", "db:compile"]
+    },
     "deploy": {
       "command": "wrangler pages deploy",
       "dependsOn": ["build"],
@@ -16,13 +19,28 @@
       "command": "tsx src/server/migrate.ts",
       "options": { "cwd": "apps/npm-burst" }
     },
+    "db:compile": {
+      "command": "tsx src/server/compile-migrations.ts",
+      "options": { "cwd": "apps/npm-burst" },
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/src/server/migrations/**/*.ts",
+        "{projectRoot}/src/server/compile-migrations.ts"
+      ],
+      "outputs": ["{projectRoot}/migrations"]
+    },
+    "db:migrate:remote": {
+      "command": "wrangler d1 migrations apply npm-burst-db --remote",
+      "dependsOn": ["db:compile"],
+      "options": { "cwd": "apps/npm-burst" }
+    },
     "db:codegen": {
       "command": "kysely-codegen --dialect sqlite --url ./local.db --out-file src/server/db-schema.ts",
       "options": { "cwd": "apps/npm-burst" },
       "dependsOn": ["db:migrate"]
     },
     "db:generate": {
-      "command": "tsx src/server/migrate.ts && kysely-codegen --dialect sqlite --url ./local.db --out-file src/server/db-schema.ts",
+      "command": "tsx src/server/migrate.ts && tsx src/server/compile-migrations.ts && kysely-codegen --dialect sqlite --url ./local.db --out-file src/server/db-schema.ts",
       "options": { "cwd": "apps/npm-burst" }
     }
   }
