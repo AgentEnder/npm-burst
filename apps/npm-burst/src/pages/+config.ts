@@ -9,4 +9,7 @@ export default {
     enable: true,
   },
   clientRouting: true,
+  // Server-set values that survive server→client hydration. The
+  // matching writers are in `+onCreatePageContext.server.ts`.
+  passToClient: ['isDevMode'],
 } satisfies Config;

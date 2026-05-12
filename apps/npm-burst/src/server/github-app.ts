@@ -283,10 +283,10 @@ async function deleteInstallation(db: Kysely<DB>, installationId: number): Promi
 }
 
 export async function handleGitHubAppInstall(
-  context: EventContext<Record<string, string>, string, unknown>,
+  request: Request,
   env: Env
 ): Promise<Response> {
-  const userId = await getAuthUserId(context.request, env);
+  const userId = await getAuthUserId(request, env);
   if (!userId) {
     return new Response('Authentication required', { status: 401 });
   }
@@ -295,8 +295,8 @@ export async function handleGitHubAppInstall(
     return new Response('GitHub App is not configured', { status: 503 });
   }
 
-  const url = new URL(context.request.url);
-  const basePath = getAppBasePath(context.request);
+  const url = new URL(request.url);
+  const basePath = getAppBasePath(request);
   const fallbackReturnTo = `${basePath}/usage`;
   const owner = url.searchParams.get('owner') ?? '';
   const returnTo = sanitizeReturnTo(url.searchParams.get('returnTo'), fallbackReturnTo);
@@ -316,15 +316,15 @@ export async function handleGitHubAppInstall(
 }
 
 export async function handleGitHubAppSetup(
-  context: EventContext<Record<string, string>, string, unknown>
+  request: Request
 ): Promise<Response> {
-  const url = new URL(context.request.url);
-  const basePath = getAppBasePath(context.request);
+  const url = new URL(request.url);
+  const basePath = getAppBasePath(request);
   const fallbackReturnTo = `${basePath}/usage`;
   const state = decodeState(url.searchParams.get('state'));
   const returnTo = sanitizeReturnTo(state?.returnTo ?? null, fallbackReturnTo);
 
-  const redirect = new URL(context.request.url);
+  const redirect = new URL(request.url);
   redirect.pathname = returnTo;
   redirect.search = '';
   redirect.hash = '';
@@ -337,16 +337,17 @@ export async function handleGitHubAppSetup(
 }
 
 export async function handleGitHubWebhook(
-  context: EventContext<Record<string, string>, string, unknown>,
-  env: Env
+  request: Request,
+  env: Env,
+  executionCtx: ExecutionContext
 ): Promise<Response> {
   if (!env.GITHUB_WEBHOOK_SECRET) {
     return new Response('Webhook secret not configured', { status: 503 });
   }
 
-  const signature = context.request.headers.get('x-hub-signature-256');
-  const event = context.request.headers.get('x-github-event');
-  const body = await context.request.text();
+  const signature = request.headers.get('x-hub-signature-256');
+  const event = request.headers.get('x-github-event');
+  const body = await request.text();
 
   const valid = await verifyWebhookSignature(
     body,
@@ -373,7 +374,7 @@ export async function handleGitHubWebhook(
       payload.action === 'removed'
     ) {
       await upsertInstallation(db, payload.installation, env);
-      context.waitUntil(
+      executionCtx.waitUntil(
         snapshotGitHubHealthForOwner(db, env, payload.installation.account.login).catch(
           (error) => {
             console.error(

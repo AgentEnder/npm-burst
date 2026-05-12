@@ -1,5 +1,6 @@
 import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
 import { PropsWithChildren } from 'react';
+import { useIsDevMode } from './dev-mode-context';
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -20,14 +21,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
  * SSR-safe wrapper around Clerk's useAuth.
  * Returns a default unauthenticated state when ClerkProvider is not available
  * (e.g., during pre-rendering or when VITE_CLERK_PUBLISHABLE_KEY is not set).
- * In dev mode (import.meta.env.DEV), returns isSignedIn: true to bypass auth.
+ * In dev mode (via `DevModeContext`), returns isSignedIn: true to bypass auth.
  */
 export function useSafeAuth(): {
   isSignedIn?: boolean;
   isLoaded?: boolean;
   isAdmin: boolean;
 } {
-  if (import.meta.env.DEV) {
+  const isDevMode = useIsDevMode();
+  if (isDevMode) {
     return { isSignedIn: true, isLoaded: true, isAdmin: true } as const;
   }
   if (!CLERK_PUBLISHABLE_KEY) {

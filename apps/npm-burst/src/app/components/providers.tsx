@@ -1,6 +1,7 @@
 import { PropsWithChildren } from 'react';
 import { config } from 'telefunc/client';
 import { AuthProvider } from '../context/auth-context';
+import { DevModeProvider } from '../context/dev-mode-context';
 import { ThemeProvider } from '../context/theme-context';
 import { ToastRegion } from './toast-region';
 import { isClerkAvailable, useTelefuncAuth } from '../hooks/use-telefunc-auth';
@@ -24,12 +25,14 @@ export function Providers({ children }: PropsWithChildren) {
   );
 
   return (
-    <AuthProvider>
-      {isClerkAvailable() ? (
-        <TelefuncAuthSetup>{inner}</TelefuncAuthSetup>
-      ) : (
-        inner
-      )}
-    </AuthProvider>
+    <DevModeProvider>
+      <AuthProvider>
+        {isClerkAvailable() ? (
+          <TelefuncAuthSetup>{inner}</TelefuncAuthSetup>
+        ) : (
+          inner
+        )}
+      </AuthProvider>
+    </DevModeProvider>
   );
 }

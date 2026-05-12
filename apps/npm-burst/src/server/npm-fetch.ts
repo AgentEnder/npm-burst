@@ -39,7 +39,16 @@ export async function cachedFetch(
     throw new Error(`NPM API request failed (${response.status})`);
   }
 
-  // Store in cache
+  // D1 caps row size around 1 MiB (SQLITE_TOOBIG); popular packages'
+  // full registry docs blow past that. Skip the cache write rather
+  // than fire-and-log every time — the caller still gets `body`.
+  // Long-term fix: gzip-compress into a BLOB column (see
+  // `@npm-burst/shared` `compressJson`, used by the snapshots table).
+  const MAX_CACHE_BYTES = 900_000;
+  if (new Blob([body]).size > MAX_CACHE_BYTES) {
+    return body;
+  }
+
   try {
     await db
       .insertInto('npm_api_cache')

@@ -1,8 +1,20 @@
 {
   "name": "npm-burst",
+  "type": "module",
+  "scripts": {
+    "dev": "vike dev",
+    "build": "vike build",
+    "preview": "vike preview"
+  },
   "dependencies": {
     "@npm-burst/github-data-access": "workspace:",
     "@npm-burst/npm-data-access": "workspace:",
+    "@universal-middleware/core": "^0.4.17",
+    "@vikejs/hono": "^0.2.0",
+    "hono": "^4.12.14",
     "markdown-factory": "^0.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.33.1"
   }
 }

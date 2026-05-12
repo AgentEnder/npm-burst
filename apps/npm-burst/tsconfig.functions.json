@@ -1,16 +1,16 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["@cloudflare/workers-types"],
+    "types": ["@cloudflare/workers-types", "vite/client"],
     "moduleResolution": "bundler",
     "module": "esnext",
     "target": "esnext",
     "lib": ["esnext"],
     "declaration": true,
-    "outDir": "../../dist/npm-burst/functions/out-tsc",
+    "outDir": "../../dist/npm-burst/server/out-tsc",
     "composite": true
   },
-  "include": ["functions/**/*.ts", "src/server/**/*.ts"],
+  "include": ["src/server/**/*.ts", "+server.ts"],
   "references": [
     {
       "path": "../../libs/github-data-access/tsconfig.lib.json"

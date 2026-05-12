@@ -14,7 +14,7 @@
   "devDependencies": {
     "@babel/core": "^7.14.5",
     "@babel/preset-react": "^7.14.5",
-    "@cloudflare/workers-types": "^4.20260310.1",
+    "@cloudflare/workers-types": "^4.20260511.1",
     "@libsql/client": "^0.17.0",
     "@nx/cypress": "22.5.4",
     "@nx/eslint": "^22.5.4",
@@ -79,9 +79,9 @@
     "semver": "^7.3.8",
     "telefunc": "^0.2.19",
     "tslib": "^2.3.0",
-    "vike": "^0.4.255",
+    "vike": "^0.4.259",
     "vike-react": "^0.6.21",
-    "wrangler": "^4.72.0",
+    "wrangler": "^4.90.1",
     "zod": "^4.3.6"
   },
   "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531",

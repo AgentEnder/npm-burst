@@ -327,7 +327,6 @@ export async function snapshotGitHubHealth(
   } else {
     // Fallback: process inline (for local dev or missing config)
     const today = new Date().toISOString().slice(0, 10);
-    const botPatterns = await loadBotPatterns(db);
 
     for (const repo of repos) {
       try {

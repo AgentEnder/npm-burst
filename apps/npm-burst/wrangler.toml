@@ -1,8 +1,15 @@
 "$schema" = "./node_modules/wrangler/config-schema.json"
 
+# This file is only used by the wrangler CLI (e.g. `wrangler d1 migrations
+# apply`). The deployed Worker config — name, bindings, compatibility —
+# is generated into `dist/wrangler.json` at build time by
+# `@cloudflare/vite-plugin` (see `vite.config.ts`). Keep the D1 settings
+# in both places in sync.
+
 name = "npm-burst"
-compatibility_date = "2024-01-01"
-pages_build_output_dir = "./dist/client"
+compatibility_date = "2026-03-09"
+compatibility_flags = ["nodejs_compat"]
+main = "vike:server-entry"
 
 [[d1_databases]]
 binding = "DB"

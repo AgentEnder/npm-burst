@@ -6,18 +6,30 @@
   "tags": [],
   "targets": {
     "build": {
-      "dependsOn": ["^build", "db:compile"]
+      "command": "vike build",
+      "options": { "cwd": "apps/npm-burst" },
+      "dependsOn": ["^build", "db:compile"],
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "dev": {
+      "command": "vike dev",
+      "options": { "cwd": "apps/npm-burst" }
+    },
+    "preview": {
+      "command": "vike preview",
+      "options": { "cwd": "apps/npm-burst" }
     },
     "deploy": {
-      "command": "wrangler pages deploy",
+      "command": "wrangler deploy",
       "dependsOn": ["build"],
       "options": {
-        "cwd": "apps/npm-burst"
+        "cwd": "apps/npm-burst/dist/server"
       }
     },
     "db:migrate": {
-      "command": "tsx src/server/migrate.ts",
-      "options": { "cwd": "apps/npm-burst" }
+      "command": "wrangler d1 migrations apply npm-burst-db --local",
+      "options": { "cwd": "apps/npm-burst" },
+      "dependsOn": ["db:compile"]
     },
     "db:compile": {
       "command": "tsx src/server/compile-migrations.ts",
