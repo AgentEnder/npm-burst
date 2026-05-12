@@ -20,6 +20,10 @@ main = "vike:server-entry"
 [assets]
 run_worker_first = ["/_telefunc", "/api/*"]
 
+[[routes]]
+pattern = "npm-burst.com"
+custom_domain = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "npm-burst-db"
