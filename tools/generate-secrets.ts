@@ -34,7 +34,9 @@ const internalApiSecret = randomBytes(32).toString('hex');
 
 // Inline the PEM as a single-line string with literal \n for env var use
 const privateKeyLine = pemPath
-  ? `GITHUB_APP_PRIVATE_KEY="${readFileSync(pemPath, 'utf8').trim().replace(/\n/g, '\\n')}"\n`
+  ? `GITHUB_APP_PRIVATE_KEY="${readFileSync(pemPath, 'utf8')
+      .trim()
+      .replace(/\n/g, '\\n')}"\n`
   : '';
 
 // apps/npm-burst/.env.local
@@ -75,5 +77,7 @@ console.log('  keys/cloudflare.env  → set as Cloudflare secrets');
 if (privateKeyLine) {
   console.log('  (includes GITHUB_APP_PRIVATE_KEY from PEM file)');
 } else {
-  console.log('  Tip: pass --pem-file <path> to include GITHUB_APP_PRIVATE_KEY');
+  console.log(
+    '  Tip: pass --pem-file <path> to include GITHUB_APP_PRIVATE_KEY'
+  );
 }

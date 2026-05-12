@@ -14,7 +14,9 @@ export function ErrorMessage({
   return (
     <div className={styles.errorContainer}>
       <div className={styles.errorIcon}>
-        <span role="img" aria-label="Warning">⚠️</span>
+        <span role="img" aria-label="Warning">
+          ⚠️
+        </span>
       </div>
       <h2 className={styles.errorTitle}>{title}</h2>
       <p className={styles.errorMessage}>{message}</p>

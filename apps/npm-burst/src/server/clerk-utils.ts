@@ -39,7 +39,11 @@ export async function getUserGitHubOauthAccess(
   const clerk = getClerkClient(env);
   const tokens = await clerk.users.getUserOauthAccessToken(userId, 'github');
   const freshest = [...tokens.data]
-    .sort((a, b) => (b.expiresAt ?? Number.MAX_SAFE_INTEGER) - (a.expiresAt ?? Number.MAX_SAFE_INTEGER))
+    .sort(
+      (a, b) =>
+        (b.expiresAt ?? Number.MAX_SAFE_INTEGER) -
+        (a.expiresAt ?? Number.MAX_SAFE_INTEGER)
+    )
     .find((token) => !!token.token);
 
   if (!freshest?.token) {

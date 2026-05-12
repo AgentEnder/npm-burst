@@ -8,10 +8,6 @@
     "lib": ["esnext"],
     "target": "esnext"
   },
-  "exclude": [
-    "**/*.spec.ts",
-    "**/*.test.ts",
-    "vitest.config.ts"
-  ],
+  "exclude": ["**/*.spec.ts", "**/*.test.ts", "vitest.config.ts"],
   "include": ["**/*.ts"]
 }

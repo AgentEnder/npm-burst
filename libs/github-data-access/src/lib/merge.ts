@@ -1,12 +1,13 @@
-import type { RawGitHubHealthData, RawIssueNode, RawPullRequestNode } from './types';
+import type {
+  RawGitHubHealthData,
+  RawIssueNode,
+  RawPullRequestNode,
+} from './types';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const RETENTION_DAYS = 91;
 
-function mergeById<T extends { id: string }>(
-  previous: T[],
-  delta: T[]
-): T[] {
+function mergeById<T extends { id: string }>(previous: T[], delta: T[]): T[] {
   const map = new Map<string, T>();
   for (const item of previous) {
     map.set(item.id, item);
@@ -21,9 +22,7 @@ function pruneByUpdatedAt<T extends { updatedAt: string }>(
   items: T[],
   cutoffMs: number
 ): T[] {
-  return items.filter(
-    (item) => new Date(item.updatedAt).getTime() >= cutoffMs
-  );
+  return items.filter((item) => new Date(item.updatedAt).getTime() >= cutoffMs);
 }
 
 /**

@@ -1,27 +1,15 @@
-import type { BotPattern } from '@npm-burst/github-data-access';
-import type { Kysely } from 'kysely';
-import type { DB } from './db-schema';
 import { getDb } from './db';
 import type { Env } from './env';
-import { snapshotSingleRepo, getInstallationTokenForRepo } from './github-health';
+import {
+  snapshotSingleRepo,
+  getInstallationTokenForRepo,
+} from './github-health';
 
 interface SnapshotRepoBody {
   repoId: number;
   owner: string;
   name: string;
   installationId: number | null;
-}
-
-async function loadBotPatterns(db: Kysely<DB>): Promise<BotPattern[]> {
-  const rows = await db
-    .selectFrom('github_bot_patterns')
-    .select(['pattern_type', 'pattern_value'])
-    .execute();
-
-  return rows.map((row) => ({
-    pattern_type: row.pattern_type as BotPattern['pattern_type'],
-    pattern_value: row.pattern_value,
-  }));
 }
 
 export async function handleFetch(
@@ -65,14 +53,12 @@ async function handleSnapshotRepo(
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const botPatterns = await loadBotPatterns(db);
 
   const success = await snapshotSingleRepo(
     db,
     { id: repoId, owner, name },
     token,
-    today,
-    botPatterns
+    today
   );
 
   return Response.json({ ok: success });

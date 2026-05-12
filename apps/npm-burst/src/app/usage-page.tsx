@@ -39,7 +39,10 @@ function AddEmailButton() {
 function ConnectGitHubButton() {
   const { openUserProfile } = useClerk();
   return (
-    <button className={styles.connectGitHubButton} onClick={() => openUserProfile()}>
+    <button
+      className={styles.connectGitHubButton}
+      onClick={() => openUserProfile()}
+    >
       <Github size={14} />
       Connect GitHub
     </button>
@@ -234,8 +237,8 @@ export function UsagePage() {
           <div className={styles.noticeBanner}>
             <AlertTriangle size={16} />
             <span>
-              Some external data could not be loaded, so this page may be showing
-              partial results.
+              Some external data could not be loaded, so this page may be
+              showing partial results.
             </span>
           </div>
         )}
@@ -245,9 +248,9 @@ export function UsagePage() {
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>GitHub Account</h2>
           <p className={styles.sectionHint}>
-            Connect your GitHub account in Clerk to run one-off health snapshots for
-            packages you view, even when the repo owner hasn&apos;t installed the
-            GitHub App.
+            Connect your GitHub account in Clerk to run one-off health snapshots
+            for packages you view, even when the repo owner hasn&apos;t
+            installed the GitHub App.
           </p>
           <div className={styles.githubAuthCard}>
             <div>
@@ -285,7 +288,10 @@ export function UsagePage() {
                       {candidate.packageNames.join(', ')}
                     </div>
                   </div>
-                  <a href={candidate.installPath} className={styles.installButton}>
+                  <a
+                    href={candidate.installPath}
+                    className={styles.installButton}
+                  >
                     Install App
                   </a>
                 </div>

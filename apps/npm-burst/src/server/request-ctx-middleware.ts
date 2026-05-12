@@ -44,7 +44,9 @@ interface HonoRuntime {
   set?: (key: string, value: unknown) => void;
 }
 
-function buildRawEnv(honoEnv: Record<string, unknown> | undefined): Record<string, unknown> {
+function buildRawEnv(
+  honoEnv: Record<string, unknown> | undefined
+): Record<string, unknown> {
   // In workerd, `c.env` carries bindings + vars/secrets.
   if (honoEnv && Object.keys(honoEnv).length > 0) {
     return honoEnv;

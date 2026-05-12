@@ -51,7 +51,10 @@ export function usePackageData() {
     let cancelled = false;
 
     const fetchLive = isSignedIn
-      ? onGetDownloads(npmPackageName).catch(() => ({ data: null, warnings: [] }))
+      ? onGetDownloads(npmPackageName).catch(() => ({
+          data: null,
+          warnings: [],
+        }))
       : (() => {
           const { get, cancel } = getDownloadsByVersion(npmPackageName);
           cancelRef.current = cancel;
@@ -64,8 +67,10 @@ export function usePackageData() {
       .then(({ snapshots }) => snapshots)
       .catch(() => []);
 
-    const fetchVersions = onGetVersionDates(npmPackageName)
-      .catch(() => ({ versions: [], warnings: [] }));
+    const fetchVersions = onGetVersionDates(npmPackageName).catch(() => ({
+      versions: [],
+      warnings: [],
+    }));
 
     // Fetch total downloads for last 18 months (npm API max range)
     const end = new Date().toISOString().slice(0, 10);
@@ -74,8 +79,10 @@ export function usePackageData() {
     const start = startDate.toISOString().slice(0, 10);
 
     const fetchTotalDownloads = isSignedIn
-      ? onGetTotalDownloads(npmPackageName, start, end)
-          .catch(() => ({ downloads: [], warnings: [] }))
+      ? onGetTotalDownloads(npmPackageName, start, end).catch(() => ({
+          downloads: [],
+          warnings: [],
+        }))
       : (() => {
           const { get } = getTotalDownloadsRange(npmPackageName, start, end);
           return get()
@@ -91,25 +98,35 @@ export function usePackageData() {
       fetchVersions,
       fetchTotalDownloads,
       fetchHealth,
-    ]).then(([liveResult, snapshots, versionsResult, totalDownloadsResult, health]) => {
-        if (cancelled) return;
-        const s = appStore.getState();
-        s.setLiveData(liveResult.data);
-        s.setSnapshots(snapshots);
-        s.setVersionReleases(versionsResult.versions);
-        s.setTotalDownloads(totalDownloadsResult.downloads);
-        s.setHealth(health);
-        s.setSnapshotIndex(null);
-        s.cacheCurrentPackageData();
-        s.recomputeChartData();
-        const warnings = [
-          ...liveResult.warnings,
-          ...versionsResult.warnings,
-          ...totalDownloadsResult.warnings,
-          ...(health?.warnings ?? []),
-        ];
-        setWarnings(warnings);
-      }).catch((e) => {
+    ])
+      .then(
+        ([
+          liveResult,
+          snapshots,
+          versionsResult,
+          totalDownloadsResult,
+          health,
+        ]) => {
+          if (cancelled) return;
+          const s = appStore.getState();
+          s.setLiveData(liveResult.data);
+          s.setSnapshots(snapshots);
+          s.setVersionReleases(versionsResult.versions);
+          s.setTotalDownloads(totalDownloadsResult.downloads);
+          s.setHealth(health);
+          s.setSnapshotIndex(null);
+          s.cacheCurrentPackageData();
+          s.recomputeChartData();
+          const warnings = [
+            ...liveResult.warnings,
+            ...versionsResult.warnings,
+            ...totalDownloadsResult.warnings,
+            ...(health?.warnings ?? []),
+          ];
+          setWarnings(warnings);
+        }
+      )
+      .catch((e) => {
         if (cancelled || e?.name === 'AbortError') return;
         appStore
           .getState()

@@ -113,7 +113,10 @@
   color: inherit;
   cursor: pointer;
   display: grid;
-  grid-template-columns: minmax(180px, 1.8fr) minmax(120px, 0.7fr) minmax(160px, 1fr) auto;
+  grid-template-columns: minmax(180px, 1.8fr) minmax(120px, 0.7fr) minmax(
+      160px,
+      1fr
+    ) auto;
   align-items: center;
   gap: var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg);

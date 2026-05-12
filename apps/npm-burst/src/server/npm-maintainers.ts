@@ -21,10 +21,14 @@ export async function getPackageMaintainers(
     .executeTakeFirst();
 
   if (existing) {
-    return ensureTrackedPackageMetadata(db, pkg).then((metadata) => metadata.maintainers);
+    return ensureTrackedPackageMetadata(db, pkg).then(
+      (metadata) => metadata.maintainers
+    );
   }
 
-  return fetchPackageMetadataFromRegistry(db, pkg).then((metadata) => metadata.maintainers);
+  return fetchPackageMetadataFromRegistry(db, pkg).then(
+    (metadata) => metadata.maintainers
+  );
 }
 
 export function isUserMaintainer(

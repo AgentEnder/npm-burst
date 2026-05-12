@@ -2,7 +2,13 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
-    "types": ["vitest/globals", "node", "vite/client"],
+    "moduleResolution": "bundler",
+    "types": [
+      "vitest/globals",
+      "node",
+      "vite/client",
+      "@cloudflare/workers-types"
+    ],
     "composite": true,
     "declaration": true
   },

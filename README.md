@@ -93,8 +93,10 @@ GitHub health snapshots use a GitHub App, not a personal access token.
    - App slug -> `GITHUB_APP_SLUG`
    - Private key PEM -> `GITHUB_APP_PRIVATE_KEY`
 10. Run `pnpm generate:github-secrets` and copy:
-   - `ENCRYPTION_KEY` into both the app env and cron env
-   - `GITHUB_WEBHOOK_SECRET` into the app env and the GitHub App webhook secret field
+
+- `ENCRYPTION_KEY` into both the app env and cron env
+- `GITHUB_WEBHOOK_SECRET` into the app env and the GitHub App webhook secret field
+
 11. Deploy the app and cron worker with those secrets configured.
 12. From npm-burst's `/usage` page, click the install link for the GitHub owner you maintain.
 13. Complete the GitHub App installation for that user or organization and grant access to the repos npm-burst should track.

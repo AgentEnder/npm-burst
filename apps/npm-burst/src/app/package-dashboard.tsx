@@ -73,9 +73,7 @@ export function PackageDashboard() {
   const migrationTimeWindow = useAppStore((s) => s.migrationTimeWindow);
   const setMigrationTimeWindow = useAppStore((s) => s.setMigrationTimeWindow);
   const migrationGranularity = useAppStore((s) => s.migrationGranularity);
-  const setMigrationGranularity = useAppStore(
-    (s) => s.setMigrationGranularity
-  );
+  const setMigrationGranularity = useAppStore((s) => s.setMigrationGranularity);
   const sunburstVersionFilter = useAppStore((s) => s.sunburstVersionFilter);
   const setSunburstVersionFilter = useAppStore(
     (s) => s.setSunburstVersionFilter

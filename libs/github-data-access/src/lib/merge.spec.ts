@@ -23,7 +23,9 @@ function makeIssue(
 function makePr(
   id: string,
   updatedAt: string,
-  overrides: Partial<RawGitHubHealthData['repository']['pullRequests'][number]> = {}
+  overrides: Partial<
+    RawGitHubHealthData['repository']['pullRequests'][number]
+  > = {}
 ) {
   return {
     id,
@@ -75,7 +77,9 @@ describe('mergeRawHealthData', () => {
     expect(result.repository.issues).toHaveLength(3);
     const issue1 = result.repository.issues.find((i) => i.id === 'issue-1');
     expect(issue1?.closedAt).toBe('2026-03-17T12:00:00.000Z');
-    expect(result.repository.issues.find((i) => i.id === 'issue-3')).toBeTruthy();
+    expect(
+      result.repository.issues.find((i) => i.id === 'issue-3')
+    ).toBeTruthy();
     expect(result.repository.staleIssues).toHaveLength(1);
     expect(result.repository.staleIssues?.[0].id).toBe('issue-stale-2');
   });

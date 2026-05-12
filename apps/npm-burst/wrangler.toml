@@ -11,6 +11,15 @@ compatibility_date = "2026-03-09"
 compatibility_flags = ["nodejs_compat"]
 main = "vike:server-entry"
 
+# Cloudflare Workers Assets intercepts every request before the Worker
+# runs. Without `run_worker_first`, POSTs to non-asset paths like the
+# telefunc RPC endpoint and the GitHub App routes can fall into the
+# asset layer's `html_handling` / `not_found_handling` lookups and come
+# back as 405 (assets only serve GET/HEAD). Listing those prefixes
+# routes them directly to the Worker.
+[assets]
+run_worker_first = ["/_telefunc", "/api/*"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "npm-burst-db"

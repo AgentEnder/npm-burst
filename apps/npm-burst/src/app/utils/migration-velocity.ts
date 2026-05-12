@@ -73,7 +73,10 @@ export function getMigrationVelocityData(
   versionReleases: VersionRelease[],
   granularity: MigrationGranularity = 'major'
 ): MigrationSeries[] {
-  const releaseDates = getReleaseDatesByGranularity(versionReleases, granularity);
+  const releaseDates = getReleaseDatesByGranularity(
+    versionReleases,
+    granularity
+  );
   if (releaseDates.size === 0) return [];
 
   const timeline: { date: string; downloads: Record<string, number> }[] = [

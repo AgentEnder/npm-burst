@@ -3,7 +3,8 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "../../dist/out-tsc",
-    "types": ["node", "vite/client"],
+    "moduleResolution": "bundler",
+    "types": ["node", "vite/client", "@cloudflare/workers-types"],
     "composite": true,
     "allowSyntheticDefaultImports": true
   },

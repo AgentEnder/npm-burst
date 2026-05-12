@@ -23,11 +23,7 @@ export async function compressJson(value: unknown): Promise<Uint8Array> {
 }
 
 function isNumberArray(data: unknown): data is number[] {
-  return (
-    Array.isArray(data) &&
-    data.length > 0 &&
-    typeof data[0] === 'number'
-  );
+  return Array.isArray(data) && data.length > 0 && typeof data[0] === 'number';
 }
 
 function toBytes(data: unknown): Uint8Array {
@@ -37,7 +33,9 @@ function toBytes(data: unknown): Uint8Array {
     return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
   if (isNumberArray(data)) return new Uint8Array(data);
   throw new Error(
-    `Cannot convert ${typeof data} (${Object.prototype.toString.call(data)}) to bytes`
+    `Cannot convert ${typeof data} (${Object.prototype.toString.call(
+      data
+    )}) to bytes`
   );
 }
 
@@ -66,7 +64,9 @@ export async function decompressJson<T = unknown>(
     bytes = toBytes(data);
   } catch {
     console.error(
-      `[decompressJson] unexpected data type: ${typeof data}, constructor: ${(data as object)?.constructor?.name}, value preview: ${String(data).slice(0, 100)}`
+      `[decompressJson] unexpected data type: ${typeof data}, constructor: ${
+        (data as object)?.constructor?.name
+      }, value preview: ${String(data).slice(0, 100)}`
     );
     return JSON.parse(String(data)) as T;
   }
@@ -99,7 +99,9 @@ async function decompressGzip<T>(bytes: Uint8Array): Promise<T> {
       // with diagnostic info so we can identify the bad row.
       const preview = Array.from(bytes.slice(0, 20)).join(',');
       throw new Error(
-        `Decompression failed (${bytes.length} bytes, first 20: [${preview}]): ${e instanceof Error ? e.message : e}`
+        `Decompression failed (${
+          bytes.length
+        } bytes, first 20: [${preview}]): ${e instanceof Error ? e.message : e}`
       );
     }
   }

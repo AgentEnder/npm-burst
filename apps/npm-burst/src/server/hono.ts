@@ -38,7 +38,10 @@ interface HonoVariables {
 }
 
 function getApp() {
-  const app = new Hono<{ Bindings: WorkerBindings; Variables: HonoVariables }>();
+  const app = new Hono<{
+    Bindings: WorkerBindings;
+    Variables: HonoVariables;
+  }>();
 
   // Plain Hono mirror of `requestCtxMiddleware` for GitHub App routes —
   // those are direct Hono routes, not universal handlers, so the

@@ -20,10 +20,7 @@ import type {
 } from '../utils/time-window';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
-import {
-  matchVersionFilter,
-  VersionFilterBar,
-} from './version-filter-bar';
+import { matchVersionFilter, VersionFilterBar } from './version-filter-bar';
 import styles from './migration-velocity-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 };
@@ -429,7 +426,8 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
               filteredLegendSeries.map((s) => {
                 const isHidden = hiddenSeries.has(s.label);
                 const color =
-                  colorMap.get(s.label) ?? (isHidden ? hiddenSwatchColor : '#888');
+                  colorMap.get(s.label) ??
+                  (isHidden ? hiddenSwatchColor : '#888');
                 return (
                   <div
                     key={s.label}

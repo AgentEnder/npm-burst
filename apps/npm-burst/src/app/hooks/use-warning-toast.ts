@@ -8,10 +8,15 @@ function buildToastId(scope: string, warning: ExternalDataWarning): string {
 }
 
 function buildToastMessage(warning: ExternalDataWarning): string {
-  return `${warning.source.toUpperCase()}: ${warning.operation} failed. ${warning.message}`;
+  return `${warning.source.toUpperCase()}: ${warning.operation} failed. ${
+    warning.message
+  }`;
 }
 
-export function useWarningToast(scope: string, warnings: ExternalDataWarning[]) {
+export function useWarningToast(
+  scope: string,
+  warnings: ExternalDataWarning[]
+) {
   const seenSignatureRef = useRef<string>('');
 
   useEffect(() => {

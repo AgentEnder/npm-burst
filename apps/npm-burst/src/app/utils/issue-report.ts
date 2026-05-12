@@ -39,5 +39,7 @@ export function buildIssueUrl(
     )
   );
 
-  return `${ISSUE_BASE_URL}${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+  return `${ISSUE_BASE_URL}${encodeURIComponent(
+    title
+  )}&body=${encodeURIComponent(body)}`;
 }

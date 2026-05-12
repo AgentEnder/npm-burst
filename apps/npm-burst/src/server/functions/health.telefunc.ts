@@ -1,6 +1,9 @@
 import { Abort, getContext } from 'telefunc';
 import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
-import { getUserGitHubOauthAccess, hasUserGitHubOauthAccess } from '../clerk-utils';
+import {
+  getUserGitHubOauthAccess,
+  hasUserGitHubOauthAccess,
+} from '../clerk-utils';
 import { getDb } from '../db';
 import { getDevGitHubPat, isDevMode } from '../env';
 import {
@@ -112,7 +115,9 @@ export async function onRefreshHealthMetricsWithGitHubUserAccess(
   const db = getDb(env);
   const repo = await ensureGitHubRepoForPackage(db, packageName);
   if (!repo) {
-    throw Abort({ reason: 'No linked GitHub repository found for this package.' });
+    throw Abort({
+      reason: 'No linked GitHub repository found for this package.',
+    });
   }
 
   const snapshotResult = await withExternalFallback(

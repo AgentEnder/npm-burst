@@ -120,10 +120,7 @@ export function getVersionAdoptionData(
   for (const snap of timeline) {
     const grouped = groupDownloads(snap.downloads, grouping);
     groupedBySnap.push(grouped);
-    const total = Object.values(snap.downloads).reduce(
-      (sum, c) => sum + c,
-      0
-    );
+    const total = Object.values(snap.downloads).reduce((sum, c) => sum + c, 0);
     totals.push(total);
     for (const key of Object.keys(grouped)) {
       allGroups.add(key);
@@ -147,7 +144,9 @@ export function getVersionAdoptionData(
   // When totalDownloads is available, use the actual total (from npm API)
   // as the denominator so known versions + unknown = 100%
   const hasActualTotals = totalDownloads.length >= 7;
-  const rollingMap = hasActualTotals ? buildRollingTotalMap(totalDownloads) : null;
+  const rollingMap = hasActualTotals
+    ? buildRollingTotalMap(totalDownloads)
+    : null;
 
   // Resolve the effective total for each timeline point.
   // Use the larger of the rolling total (from npm aggregate API) and the
@@ -176,7 +175,8 @@ export function getVersionAdoptionData(
       });
     }
 
-    const avgShare = grandTotal > 0 ? (totalByGroup[group] ?? 0) / grandTotal : 0;
+    const avgShare =
+      grandTotal > 0 ? (totalByGroup[group] ?? 0) / grandTotal : 0;
     result.push({
       label: group,
       points,

@@ -10,17 +10,18 @@ export interface PackageMaintainerRecord {
 
 export interface StoredPackageMetadata {
   maintainers: PackageMaintainerRecord[];
-  githubRepo:
-    | {
-        owner: string;
-        name: string;
-      }
-    | null;
+  githubRepo: {
+    owner: string;
+    name: string;
+  } | null;
   metadataRefreshedAt: string | null;
 }
 
 function isSameDay(timestamp: string | null): boolean {
-  return !!timestamp && timestamp.slice(0, 10) === new Date().toISOString().slice(0, 10);
+  return (
+    !!timestamp &&
+    timestamp.slice(0, 10) === new Date().toISOString().slice(0, 10)
+  );
 }
 
 function parseMaintainers(value: string | null): PackageMaintainerRecord[] {
@@ -30,8 +31,12 @@ function parseMaintainers(value: string | null): PackageMaintainerRecord[] {
     if (!Array.isArray(parsed)) return [];
     return parsed.flatMap((entry) => {
       if (!entry || typeof entry !== 'object') return [];
-      const name = 'name' in entry && typeof entry.name === 'string' ? entry.name : null;
-      const email = 'email' in entry && typeof entry.email === 'string' ? entry.email : null;
+      const name =
+        'name' in entry && typeof entry.name === 'string' ? entry.name : null;
+      const email =
+        'email' in entry && typeof entry.email === 'string'
+          ? entry.email
+          : null;
       return name && email ? [{ name, email }] : [];
     });
   } catch {

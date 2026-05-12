@@ -104,9 +104,7 @@ async function compressTable(
   const count = Number(countResult.result?.[0]?.results?.[0]?.['cnt'] ?? 0);
 
   if (count === 0) {
-    console.log(
-      `  ${tableName}.${jsonColumn}: no text rows to process`
-    );
+    console.log(`  ${tableName}.${jsonColumn}: no text rows to process`);
     return;
   }
 
@@ -138,7 +136,9 @@ async function compressTable(
           jsonToCompress = await recoverFromMalformedByteArray(textValue);
           fixed++;
         } catch (e) {
-          console.log(`    SKIP row ${id}: failed to recover malformed data: ${e}`);
+          console.log(
+            `    SKIP row ${id}: failed to recover malformed data: ${e}`
+          );
           skipped++;
           // Clear the malformed data by re-storing original (non-gzip) text
           // so it doesn't get re-selected forever
@@ -158,7 +158,9 @@ async function compressTable(
       const sqlSize = hex.length + 100;
       if (sqlSize > 95_000) {
         console.log(
-          `    SKIP row ${id}: compressed hex too large (${(sqlSize / 1024).toFixed(0)}KB)`
+          `    SKIP row ${id}: compressed hex too large (${(
+            sqlSize / 1024
+          ).toFixed(0)}KB)`
         );
         skipped++;
         // Store the recovered (uncompressed) JSON back so it's valid
@@ -168,7 +170,9 @@ async function compressTable(
             `UPDATE "${tableName}" SET "${jsonColumn}" = ? WHERE "${idColumn}" = ?`,
             [jsonToCompress, id]
           );
-          console.log(`    Row ${id}: restored original JSON (too large to compress via API)`);
+          console.log(
+            `    Row ${id}: restored original JSON (too large to compress via API)`
+          );
         }
         continue;
       }
@@ -183,7 +187,9 @@ async function compressTable(
       const total = compressed + skipped;
       if (total % 10 === 0 || total === count) {
         console.log(
-          `    ${total}/${count} (last: ${(originalSize / 1024).toFixed(0)}KB -> ${(compressedSize / 1024).toFixed(0)}KB, ${ratio}% reduction)`
+          `    ${total}/${count} (last: ${(originalSize / 1024).toFixed(
+            0
+          )}KB -> ${(compressedSize / 1024).toFixed(0)}KB, ${ratio}% reduction)`
         );
       }
     }

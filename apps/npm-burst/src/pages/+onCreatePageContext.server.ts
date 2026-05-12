@@ -25,17 +25,19 @@ interface HonoRuntime {
 export async function onCreatePageContext(
   pageContext: PageContextServer
 ): Promise<void> {
-  const runtime = pageContext.runtime as
-    | { hono?: HonoRuntime }
-    | undefined;
+  const runtime = pageContext.runtime as { hono?: HonoRuntime } | undefined;
   const ctx = runtime?.hono?.get?.(REQUEST_CTX_VAR) as RequestCtx | undefined;
   pageContext.isDevMode = ctx ? isDevMode(ctx.env) : false;
 }
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Vike {
     interface PageContext {
       isDevMode: boolean;
+    }
+    interface Server {
+      server: 'hono';
     }
   }
 }

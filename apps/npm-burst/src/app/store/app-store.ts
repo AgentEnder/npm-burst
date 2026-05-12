@@ -285,7 +285,8 @@ export const appStore = createStore<AppState>((set, get) => ({
     set({ sunburstVersionFilter: v });
     get().recomputeChartData();
   },
-  setLifecycleShowOnlySnapshotted: (v) => set({ lifecycleShowOnlySnapshotted: v }),
+  setLifecycleShowOnlySnapshotted: (v) =>
+    set({ lifecycleShowOnlySnapshotted: v }),
   setLifecycleMinPeak: (v) => set({ lifecycleMinPeak: v }),
 
   recomputeChartData: () => {

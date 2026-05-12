@@ -63,5 +63,8 @@ export async function onGetVersionDates(
     [],
     { packageName: pkg }
   );
-  return { versions: result.value, warnings: result.warning ? [result.warning] : [] };
+  return {
+    versions: result.value,
+    warnings: result.warning ? [result.warning] : [],
+  };
 }

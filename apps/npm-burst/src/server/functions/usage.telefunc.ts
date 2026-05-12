@@ -180,9 +180,10 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
           countsAgainstQuota,
         },
         metadata,
-        warnings: [weeklyDownloadsResult.warning, metadataResult.warning].filter(
-          (warning): warning is ExternalDataWarning => warning !== null
-        ),
+        warnings: [
+          weeklyDownloadsResult.warning,
+          metadataResult.warning,
+        ].filter((warning): warning is ExternalDataWarning => warning !== null),
       };
     })
   );
@@ -194,9 +195,7 @@ export async function onGetUsageInfo(): Promise<UsageInfo> {
 
   const githubRepos = trackedPackageResults
     .map((result) => result.metadata)
-    .flatMap((metadata) =>
-      metadata.githubRepo ? [metadata.githubRepo] : []
-    );
+    .flatMap((metadata) => (metadata.githubRepo ? [metadata.githubRepo] : []));
 
   const installedRepoRows =
     githubRepos.length === 0

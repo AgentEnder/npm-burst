@@ -576,7 +576,9 @@ export async function getPackageMetricSource(
     if (metricKey === 'openIssuesCount') {
       count = selected?.open_issues_count ?? 0;
       description = 'Total open issues on the repository.';
-      externalUrl = `${repoUrl}/issues?q=${encodeURIComponent('is:issue is:open')}`;
+      externalUrl = `${repoUrl}/issues?q=${encodeURIComponent(
+        'is:issue is:open'
+      )}`;
     } else if (metricKey === 'openPullRequestsCount') {
       count = selected?.open_pull_requests_count ?? 0;
       description = 'Total open pull requests on the repository.';

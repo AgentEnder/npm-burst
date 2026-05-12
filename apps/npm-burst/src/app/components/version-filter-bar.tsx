@@ -47,7 +47,11 @@ export function matchVersionFilter(
       if (label.toLowerCase().includes(lower)) matching.add(label);
     }
   }
-  return { matchingLabels: matching, isRangeActive: range !== null, query: trimmed };
+  return {
+    matchingLabels: matching,
+    isRangeActive: range !== null,
+    query: trimmed,
+  };
 }
 
 export interface VersionFilterBarProps {

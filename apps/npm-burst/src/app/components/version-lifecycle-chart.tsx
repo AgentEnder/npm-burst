@@ -10,10 +10,7 @@ import {
 } from '../utils/theme-colors';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
-import {
-  getVersionLifecycleData,
-  type LifecycleMilestone,
-} from '../utils/version-lifecycle';
+import { getVersionLifecycleData } from '../utils/version-lifecycle';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
 import styles from './version-lifecycle-chart.module.scss';

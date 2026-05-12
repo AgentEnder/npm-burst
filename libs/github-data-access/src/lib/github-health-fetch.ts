@@ -1,4 +1,8 @@
-import type { RawGitHubHealthData, RawIssueNode, RawPullRequestNode } from './types';
+import type {
+  RawGitHubHealthData,
+  RawIssueNode,
+  RawPullRequestNode,
+} from './types';
 
 interface GitHubGraphqlPageInfo {
   endCursor: string | null;
@@ -303,18 +307,17 @@ async function githubGraphql<T>(
 
     if (stats) {
       stats.requestCount += 1;
-      stats.lastRateLimitLimit = Number.parseInt(
-        response.headers.get('x-ratelimit-limit') ?? '',
-        10
-      ) || null;
-      stats.lastRateLimitRemaining = Number.parseInt(
-        response.headers.get('x-ratelimit-remaining') ?? '',
-        10
-      ) || null;
-      stats.lastRateLimitUsed = Number.parseInt(
-        response.headers.get('x-ratelimit-used') ?? '',
-        10
-      ) || null;
+      stats.lastRateLimitLimit =
+        Number.parseInt(response.headers.get('x-ratelimit-limit') ?? '', 10) ||
+        null;
+      stats.lastRateLimitRemaining =
+        Number.parseInt(
+          response.headers.get('x-ratelimit-remaining') ?? '',
+          10
+        ) || null;
+      stats.lastRateLimitUsed =
+        Number.parseInt(response.headers.get('x-ratelimit-used') ?? '', 10) ||
+        null;
 
       const resetEpochSeconds = Number.parseInt(
         response.headers.get('x-ratelimit-reset') ?? '',
@@ -331,11 +334,13 @@ async function githubGraphql<T>(
 
     const body = await response.text();
     const isSecondaryRateLimit =
-      response.status === 403 && body.toLowerCase().includes('secondary rate limit');
+      response.status === 403 &&
+      body.toLowerCase().includes('secondary rate limit');
 
     if (isSecondaryRateLimit && attempt < 2) {
       const retryAfterMs =
-        Number.parseInt(response.headers.get('retry-after') ?? '', 10) * 1000 || 5000;
+        Number.parseInt(response.headers.get('retry-after') ?? '', 10) * 1000 ||
+        5000;
       console.warn(
         `GitHub GraphQL secondary rate limit hit; retrying in ${retryAfterMs}ms`,
         { variables }
@@ -346,9 +351,13 @@ async function githubGraphql<T>(
 
     const tokenPrefix = token.slice(0, 8);
     console.error(
-      `GitHub GraphQL ${response.status}: token=${tokenPrefix}… vars=${JSON.stringify(variables)} body=${body}`
+      `GitHub GraphQL ${
+        response.status
+      }: token=${tokenPrefix}… vars=${JSON.stringify(variables)} body=${body}`
     );
-    throw new Error(`GitHub GraphQL request failed (${response.status}): ${body}`);
+    throw new Error(
+      `GitHub GraphQL request failed (${response.status}): ${body}`
+    );
   }
 
   throw new Error('GitHub GraphQL request failed after retries');
@@ -399,28 +408,34 @@ async function fetchRecentIssues(
   const issues: RawIssueNode[] = [];
 
   while (updatedHasNextPage || createdHasNextPage) {
-    const response: GitHubRecentIssuesResponse = await githubGraphql<GitHubRecentIssuesResponse>(
-      token,
-      RECENT_ISSUES_QUERY,
-      {
-        owner,
-        name,
-        since,
-        updatedCursor: updatedHasNextPage ? updatedCursor : null,
-        createdCursor: createdHasNextPage ? createdCursor : null,
-      },
-      userAgent,
-      stats
-    );
+    const response: GitHubRecentIssuesResponse =
+      await githubGraphql<GitHubRecentIssuesResponse>(
+        token,
+        RECENT_ISSUES_QUERY,
+        {
+          owner,
+          name,
+          since,
+          updatedCursor: updatedHasNextPage ? updatedCursor : null,
+          createdCursor: createdHasNextPage ? createdCursor : null,
+        },
+        userAgent,
+        stats
+      );
 
     if (response.errors?.length) {
-      const message = response.errors.map((error: { message: string }) => error.message).join('; ');
-      console.error(`GitHub recent-issues query errors for ${owner}/${name}: ${message}`);
+      const message = response.errors
+        .map((error: { message: string }) => error.message)
+        .join('; ');
+      console.error(
+        `GitHub recent-issues query errors for ${owner}/${name}: ${message}`
+      );
       throw new Error(message);
     }
 
-    const repository: NonNullable<GitHubRecentIssuesResponse['data']>['repository'] =
-      response.data?.repository ?? null;
+    const repository: NonNullable<
+      GitHubRecentIssuesResponse['data']
+    >['repository'] = response.data?.repository ?? null;
     if (!repository) {
       return issues;
     }
@@ -466,27 +481,33 @@ async function fetchRecentPullRequests(
   const pullRequests: RawPullRequestNode[] = [];
 
   while (updatedHasNextPage || createdHasNextPage) {
-    const response: GitHubRecentPullRequestsResponse = await githubGraphql<GitHubRecentPullRequestsResponse>(
-      token,
-      RECENT_PULL_REQUESTS_QUERY,
-      {
-        owner,
-        name,
-        updatedCursor: updatedHasNextPage ? updatedCursor : null,
-        createdCursor: createdHasNextPage ? createdCursor : null,
-      },
-      userAgent,
-      stats
-    );
+    const response: GitHubRecentPullRequestsResponse =
+      await githubGraphql<GitHubRecentPullRequestsResponse>(
+        token,
+        RECENT_PULL_REQUESTS_QUERY,
+        {
+          owner,
+          name,
+          updatedCursor: updatedHasNextPage ? updatedCursor : null,
+          createdCursor: createdHasNextPage ? createdCursor : null,
+        },
+        userAgent,
+        stats
+      );
 
     if (response.errors?.length) {
-      const message = response.errors.map((error: { message: string }) => error.message).join('; ');
-      console.error(`GitHub recent-PR query errors for ${owner}/${name}: ${message}`);
+      const message = response.errors
+        .map((error: { message: string }) => error.message)
+        .join('; ');
+      console.error(
+        `GitHub recent-PR query errors for ${owner}/${name}: ${message}`
+      );
       throw new Error(message);
     }
 
-    const repository: NonNullable<GitHubRecentPullRequestsResponse['data']>['repository'] =
-      response.data?.repository ?? null;
+    const repository: NonNullable<
+      GitHubRecentPullRequestsResponse['data']
+    >['repository'] = response.data?.repository ?? null;
     if (!repository) {
       return pullRequests;
     }
@@ -501,7 +522,8 @@ async function fetchRecentPullRequests(
       }
 
       if (updatedHasNextPage) {
-        updatedHasNextPage = repository.updatedPullRequests.pageInfo.hasNextPage;
+        updatedHasNextPage =
+          repository.updatedPullRequests.pageInfo.hasNextPage;
         updatedCursor = repository.updatedPullRequests.pageInfo.endCursor;
       }
     }
@@ -516,7 +538,8 @@ async function fetchRecentPullRequests(
       }
 
       if (createdHasNextPage) {
-        createdHasNextPage = repository.createdPullRequests.pageInfo.hasNextPage;
+        createdHasNextPage =
+          repository.createdPullRequests.pageInfo.hasNextPage;
         createdCursor = repository.createdPullRequests.pageInfo.endCursor;
       }
     }
@@ -551,7 +574,9 @@ export async function fetchGitHubStaleIssueCount(
 
   if (response.errors?.length) {
     const message = response.errors.map((error) => error.message).join('; ');
-    console.error(`GitHub stale-count query errors for ${owner}/${name}: ${message}`);
+    console.error(
+      `GitHub stale-count query errors for ${owner}/${name}: ${message}`
+    );
     throw new Error(message);
   }
 
@@ -562,7 +587,8 @@ export async function fetchGitHubStaleIssueCount(
 
   return Math.max(
     0,
-    repository.totalOpenIssues.totalCount - repository.updatedOpenIssues.totalCount
+    repository.totalOpenIssues.totalCount -
+      repository.updatedOpenIssues.totalCount
   );
 }
 
@@ -578,9 +604,14 @@ export async function fetchGitHubStalePullRequestCount(
   }
 ): Promise<number> {
   const labelQualifier =
-    labels.length > 0 ? ` ${labels.map((label) => `label:\"${label}\"`).join(' ')}` : '';
+    labels.length > 0
+      ? ` ${labels.map((label) => `label:\"${label}\"`).join(' ')}`
+      : '';
   const totalQuery = `repo:${owner}/${name} is:pr is:open${labelQualifier}`;
-  const updatedQuery = `repo:${owner}/${name} is:pr is:open updated:>=${staleCutoffIso.replace(/\.\d{3}Z$/, 'Z')}${labelQualifier}`;
+  const updatedQuery = `repo:${owner}/${name} is:pr is:open updated:>=${staleCutoffIso.replace(
+    /\.\d{3}Z$/,
+    'Z'
+  )}${labelQualifier}`;
   const response = await githubGraphql<{
     data?: {
       totalOpenPullRequests: { issueCount: number };
@@ -596,8 +627,12 @@ export async function fetchGitHubStalePullRequestCount(
   );
 
   if (response.errors?.length) {
-    const message = response.errors.map((error: { message: string }) => error.message).join('; ');
-    console.error(`GitHub stale-PR-count query errors for ${owner}/${name}: ${message}`);
+    const message = response.errors
+      .map((error: { message: string }) => error.message)
+      .join('; ');
+    console.error(
+      `GitHub stale-PR-count query errors for ${owner}/${name}: ${message}`
+    );
     throw new Error(message);
   }
 
@@ -623,8 +658,22 @@ export async function fetchGitHubHealthData(
   const userAgent = fetchOptions?.userAgent ?? 'npm-burst';
 
   const [issues, pullRequests] = await Promise.all([
-    fetchRecentIssues(token, owner, name, since, userAgent, fetchOptions?.stats),
-    fetchRecentPullRequests(token, owner, name, since, userAgent, fetchOptions?.stats),
+    fetchRecentIssues(
+      token,
+      owner,
+      name,
+      since,
+      userAgent,
+      fetchOptions?.stats
+    ),
+    fetchRecentPullRequests(
+      token,
+      owner,
+      name,
+      since,
+      userAgent,
+      fetchOptions?.stats
+    ),
   ]);
 
   console.info(`Fetched GitHub health data for ${owner}/${name}`, {

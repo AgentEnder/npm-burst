@@ -74,9 +74,7 @@ export function computeHealthMetrics(
   ).length;
   const prsClosedUnmerged30d = prs.filter(
     (pr) =>
-      pr.closedAt &&
-      !pr.mergedAt &&
-      new Date(pr.closedAt).getTime() >= sinceMs
+      pr.closedAt && !pr.mergedAt && new Date(pr.closedAt).getTime() >= sinceMs
   ).length;
 
   const staleIssuesCount = issues.filter((issue) => {

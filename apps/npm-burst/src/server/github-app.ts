@@ -33,11 +33,17 @@ export function buildGitHubAppInstallPath(
   returnTo: string
 ): string {
   const basePath = getAppBasePath(request);
-  const url = new URL(`${basePath}/api/github/install`, new URL(request.url).origin);
+  const url = new URL(
+    `${basePath}/api/github/install`,
+    new URL(request.url).origin
+  );
   if (owner) {
     url.searchParams.set('owner', owner);
   }
-  url.searchParams.set('returnTo', sanitizeReturnTo(returnTo, `${basePath}/usage`));
+  url.searchParams.set(
+    'returnTo',
+    sanitizeReturnTo(returnTo, `${basePath}/usage`)
+  );
   return `${url.pathname}${url.search}`;
 }
 
@@ -93,10 +99,16 @@ function toBase64Url(input: string | Uint8Array): string {
   for (const value of bytes) {
     binary += String.fromCharCode(value);
   }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
 }
 
-async function createAppJwt(appId: string, privateKey: string): Promise<string> {
+async function createAppJwt(
+  appId: string,
+  privateKey: string
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = { iat: now - 60, exp: now + 9 * 60, iss: appId };
@@ -108,7 +120,9 @@ async function createAppJwt(appId: string, privateKey: string): Promise<string> 
     key,
     new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
   );
-  return `${encodedHeader}.${encodedPayload}.${toBase64Url(new Uint8Array(signature))}`;
+  return `${encodedHeader}.${encodedPayload}.${toBase64Url(
+    new Uint8Array(signature)
+  )}`;
 }
 
 async function verifyWebhookSignature(
@@ -146,7 +160,10 @@ async function refreshInstallationToken(
   installation: { id: number; installation_id: number },
   env: Env
 ): Promise<string> {
-  const jwt = await createAppJwt(env.GITHUB_APP_ID!, env.GITHUB_APP_PRIVATE_KEY!);
+  const jwt = await createAppJwt(
+    env.GITHUB_APP_ID!,
+    env.GITHUB_APP_PRIVATE_KEY!
+  );
   const response = await fetch(
     `https://api.github.com/app/installations/${installation.installation_id}/access_tokens`,
     {
@@ -161,7 +178,9 @@ async function refreshInstallationToken(
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to refresh installation token (${response.status})`);
+    throw new Error(
+      `Failed to refresh installation token (${response.status})`
+    );
   }
 
   const body = (await response.json()) as { token: string; expires_at: string };
@@ -186,17 +205,22 @@ async function syncInstallationRepositories(
   env: Env
 ): Promise<void> {
   const token = await refreshInstallationToken(db, installation, env);
-  const response = await fetch('https://api.github.com/installation/repositories', {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': GITHUB_API_VERSION,
-      Authorization: `Bearer ${token}`,
-      'User-Agent': 'npm-burst-app',
-    },
-  });
+  const response = await fetch(
+    'https://api.github.com/installation/repositories',
+    {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': GITHUB_API_VERSION,
+        Authorization: `Bearer ${token}`,
+        'User-Agent': 'npm-burst-app',
+      },
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(`Failed to list installation repositories (${response.status})`);
+    throw new Error(
+      `Failed to list installation repositories (${response.status})`
+    );
   }
 
   const body = (await response.json()) as {
@@ -263,7 +287,10 @@ async function upsertInstallation(
   await syncInstallationRepositories(db, row, env);
 }
 
-async function deleteInstallation(db: Kysely<DB>, installationId: number): Promise<void> {
+async function deleteInstallation(
+  db: Kysely<DB>,
+  installationId: number
+): Promise<void> {
   const row = await db
     .selectFrom('github_installations')
     .select(['id'])
@@ -279,7 +306,10 @@ async function deleteInstallation(db: Kysely<DB>, installationId: number): Promi
     .where('installation_id', '=', row.id)
     .execute();
 
-  await db.deleteFrom('github_installations').where('id', '=', row.id).execute();
+  await db
+    .deleteFrom('github_installations')
+    .where('id', '=', row.id)
+    .execute();
 }
 
 export async function handleGitHubAppInstall(
@@ -299,7 +329,10 @@ export async function handleGitHubAppInstall(
   const basePath = getAppBasePath(request);
   const fallbackReturnTo = `${basePath}/usage`;
   const owner = url.searchParams.get('owner') ?? '';
-  const returnTo = sanitizeReturnTo(url.searchParams.get('returnTo'), fallbackReturnTo);
+  const returnTo = sanitizeReturnTo(
+    url.searchParams.get('returnTo'),
+    fallbackReturnTo
+  );
 
   const state = encodeState({
     owner,
@@ -375,19 +408,18 @@ export async function handleGitHubWebhook(
     ) {
       await upsertInstallation(db, payload.installation, env);
       executionCtx.waitUntil(
-        snapshotGitHubHealthForOwner(db, env, payload.installation.account.login).catch(
-          (error) => {
-            console.error(
-              `Failed to run initial GitHub health fetch for ${payload.installation.account.login}:`,
-              error
-            );
-          }
-        )
+        snapshotGitHubHealthForOwner(
+          db,
+          env,
+          payload.installation.account.login
+        ).catch((error) => {
+          console.error(
+            `Failed to run initial GitHub health fetch for ${payload.installation.account.login}:`,
+            error
+          );
+        })
       );
-    } else if (
-      payload.action === 'deleted' ||
-      payload.action === 'suspend'
-    ) {
+    } else if (payload.action === 'deleted' || payload.action === 'suspend') {
       await deleteInstallation(db, payload.installation.id);
     }
   } catch (error) {

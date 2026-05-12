@@ -24,10 +24,7 @@ import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
-import {
-  matchVersionFilter,
-  VersionFilterBar,
-} from './version-filter-bar';
+import { matchVersionFilter, VersionFilterBar } from './version-filter-bar';
 import styles from './version-adoption-chart.module.scss';
 
 const MARGIN = { top: 20, right: 20, bottom: 60, left: 50 };

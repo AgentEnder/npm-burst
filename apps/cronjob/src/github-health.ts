@@ -10,7 +10,6 @@ import {
   mergeRawHealthData,
   parseFilterConfig,
   parseGitHubRepositoryUrl,
-  type BotPattern,
   type RawGitHubHealthData,
 } from '@npm-burst/github-data-access';
 import type { Kysely } from 'kysely';
@@ -253,18 +252,6 @@ async function ensureGitHubRepoForPackage(
     })
     .onConflict((oc) => oc.columns(['repo_id', 'package_name']).doNothing())
     .execute();
-}
-
-async function loadBotPatterns(db: Kysely<DB>): Promise<BotPattern[]> {
-  const rows = await db
-    .selectFrom('github_bot_patterns')
-    .select(['pattern_type', 'pattern_value'])
-    .execute();
-
-  return rows.map((row) => ({
-    pattern_type: row.pattern_type as BotPattern['pattern_type'],
-    pattern_value: row.pattern_value,
-  }));
 }
 
 export async function snapshotGitHubHealth(

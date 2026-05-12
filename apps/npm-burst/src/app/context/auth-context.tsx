@@ -1,4 +1,8 @@
-import { ClerkProvider, useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
+import {
+  ClerkProvider,
+  useAuth as useClerkAuth,
+  useUser,
+} from '@clerk/clerk-react';
 import { PropsWithChildren } from 'react';
 import { useIsDevMode } from './dev-mode-context';
 

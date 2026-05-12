@@ -198,7 +198,10 @@ export function findNodeByVersion(
 }
 
 export function getParentOfAggregatedNode(aggregatedNodeName: string): string {
-  if (aggregatedNodeName === 'Other' || aggregatedNodeName === FILTER_OTHER_NAME) {
+  if (
+    aggregatedNodeName === 'Other' ||
+    aggregatedNodeName === FILTER_OTHER_NAME
+  ) {
     return 'versions';
   }
   if (aggregatedNodeName.endsWith('.?')) {

@@ -6,10 +6,7 @@ import { getUserEmails } from '../clerk-utils';
 import { getPackageMaintainers, isUserMaintainer } from '../npm-maintainers';
 import { getPackageWeeklyDownloads } from '../npm-downloads';
 import { ensureTrackedPackageMetadata } from '../package-metadata';
-import {
-  WEEKLY_DOWNLOAD_THRESHOLD,
-  getUserQuota,
-} from '../constants';
+import { WEEKLY_DOWNLOAD_THRESHOLD, getUserQuota } from '../constants';
 
 // In-memory tracked packages for dev mode (no DB required)
 const devTrackedPackages = new Set<string>(getAllFixturePackageNames());
