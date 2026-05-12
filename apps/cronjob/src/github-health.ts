@@ -338,7 +338,7 @@ export async function snapshotGitHubHealth(
         );
         if (!token) continue;
 
-        await snapshotSingleRepo(db, repo, token, today, botPatterns);
+        await snapshotSingleRepo(db, repo, token, today);
       } catch (error) {
         console.error(
           `Failed to snapshot GitHub health for ${repo.owner}/${repo.name}:`,
@@ -353,8 +353,7 @@ export async function snapshotSingleRepo(
   db: Kysely<DB>,
   repo: { id: number; owner: string; name: string },
   token: string,
-  snapshotDate: string,
-  botPatterns: BotPattern[]
+  snapshotDate: string
 ): Promise<boolean> {
   // Load most recent snapshot for incremental fetch
   const previousSnapshot = await db
