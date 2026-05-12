@@ -7,6 +7,7 @@
     "build": "nx build",
     "test": "nx test",
     "generate:secrets": "tsx tools/generate-secrets.ts",
+    "secrets:push": "tsx --env-file=apps/npm-burst/.env.local tools/push-secrets.ts",
     "db:query": "tsx --env-file=apps/npm-burst/.env.local tools/db-query.ts",
     "github:fetch": "tsx --env-file=apps/npm-burst/.env.local tools/github-fetch.ts"
   },

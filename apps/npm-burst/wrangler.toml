@@ -26,3 +26,15 @@ database_name = "npm-burst-db"
 database_id = "273b28f0-f0e3-43e6-b7aa-1fd083c1ae6f"
 # SQL files generated from src/server/migrations/*.ts via `nx run npm-burst:db:compile`.
 migrations_dir = "./migrations"
+
+[secrets]
+required = ["VITE_CLERK_PUBLISHABLE_KEY",
+    "CLERK_PUBLISHABLE_KEY",
+    "CLERK_SECRET_KEY",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "ENCRYPTION_KEY",
+    "GITHUB_WEBHOOK_SECRET",
+    "GITHUB_APP_ID",
+    "GITHUB_APP_SLUG",
+    "GITHUB_APP_PRIVATE_KEY"
+]
