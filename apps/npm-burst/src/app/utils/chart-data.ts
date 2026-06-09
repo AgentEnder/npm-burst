@@ -60,7 +60,15 @@ export function getSunburstDataFromDownloads(
       filteredOutTotal += downloads[version];
       continue;
     }
-    const { major, minor, patch, prerelease } = parse(version)!;
+    const parsed = parse(version);
+    if (!parsed) {
+      // npm occasionally reports versions that aren't valid semver (e.g.
+      // legacy or malformed tags). Bucket their downloads into the filtered
+      // total instead of crashing.
+      filteredOutTotal += downloads[version];
+      continue;
+    }
+    const { major, minor, patch, prerelease } = parsed;
     accumulator[major] ??= {};
     accumulator[major][minor] ??= {};
     accumulator[major][minor][patch] ??= {};
