@@ -1,5 +1,6 @@
-import { ExternalLink, Info } from 'lucide-react';
-import { memo } from 'react';
+import { Download, ExternalLink, Info } from 'lucide-react';
+import { memo, useCallback } from 'react';
+import { navigate } from 'vike/client/router';
 import { useAppStore } from '../store';
 import type { AppState } from '../store/app-store';
 import styles from './dashboard-header.module.scss';
@@ -21,10 +22,17 @@ export const DashboardHeader = memo(function DashboardHeader() {
   const showDataTable = useAppStore((s) => s.showDataTable);
   const lowPassFilter = useAppStore((s) => s.lowPassFilter);
   const viewMode = useAppStore((s) => s.viewMode);
+  const liveData = useAppStore((s) => s.liveData);
   const setSortByVersion = useAppStore((s) => s.setSortByVersion);
   const setShowDataTable = useAppStore((s) => s.setShowDataTable);
   const setLowPassFilter = useAppStore((s) => s.setLowPassFilter);
   const setViewMode = useAppStore((s) => s.setViewMode);
+
+  const handleExport = useCallback(() => {
+    const base = import.meta.env.BASE_URL || '/';
+    const baseNormalized = base.endsWith('/') ? base : base + '/';
+    navigate(`${baseNormalized}export`);
+  }, []);
 
   return (
     <div className={styles.wrapper}>
@@ -43,6 +51,15 @@ export const DashboardHeader = memo(function DashboardHeader() {
           </a>
         </h1>
         <TrackStar packageName={npmPackageName} />
+        <button
+          className={styles.exportButton}
+          onClick={handleExport}
+          disabled={!liveData}
+          title="Export data"
+        >
+          <Download size={14} />
+          <span>Export</span>
+        </button>
       </div>
 
       {/* Controls bar */}
