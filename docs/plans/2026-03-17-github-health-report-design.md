@@ -223,7 +223,18 @@ Minimal inline SVG — no axes, no labels, just the trend shape. Provides instan
 
 ### Empty State
 
-If no repo detected from npm metadata: "No linked repository found."
+**Superseded 2026-08.** This originally specified one state ("No linked repository found."). It is now a resolved matrix — see `resolveHealthEmptyPlan` in `apps/npm-burst/src/app/components/health-empty-state-model.ts`, which is a pure, tested function over three *independent* axes:
+
+- **App installed** → no actions offered at all; the daily job will fill it in, and offering a button would imply something is broken.
+- **Not signed in** → sign in.
+- **Signed in + npm maintainer** → install the GitHub App. Leads with the durable fix, and it's a GitHub-side flow needing no OAuth token from us, so a maintainer who hasn't linked GitHub can still do it.
+- **Signed in, not a maintainer** → pull a one-off snapshot, or connect GitHub first if unlinked.
+
+Two axes that mattered and were previously conflated: *signed in* and *GitHub linked* are separate. In the original nested-ternary implementation the "signed in but GitHub not linked" case collapsed into the linked one, differing only by a button label — effectively unreachable.
+
+Repo absence also splits in two, because "no repository at all" and "hosted on GitLab" need different explanations: one package may become trackable later, the other never will. `parseNonGitHubRepository` (in `libs/github-data-access`) detects the second.
+
+Maintainer status is fetched **after hydration**, not in `+data` — package HTML is edge-cached and shared between visitors, so nothing user-specific may be baked into it.
 
 ## Usage Page Integration
 
