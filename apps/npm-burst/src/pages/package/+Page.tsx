@@ -1,23 +1,47 @@
 import { AlertTriangle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { Card } from '../../app/components/card';
 import { PackageSearch } from '../../app/components/package-search';
-import { PackageDashboard } from '../../app/package-dashboard';
+import {
+  buildLegacyRedirectPath,
+  buildPackagePath,
+} from '../../app/utils/package-route';
 
-function hasPackageInHash(): boolean {
-  if (typeof window === 'undefined') return false;
-  const hash = window.location.hash;
-  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
-  const normalized = raw.startsWith('/') ? raw.slice(1) : raw;
-  const qIdx = normalized.indexOf('?');
-  const name = qIdx === -1 ? normalized : normalized.slice(0, qIdx);
-  return decodeURIComponent(name).trim().length > 0;
-}
+// Layout effects don't run during SSR; React warns if you use one there.
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
-function PackageMissing() {
+/**
+ * `/package` with no package named.
+ *
+ * Deep links (`/package/nx`, `/package/@nx/devkit/health`) are handled by the
+ * `package-detail` page, so this is purely the "pick something" state and can
+ * stay prerendered — it has no per-request content.
+ *
+ * It also rescues the retired `/package#/nx` hash URLs. The server never sees
+ * a fragment, so those requests land here looking like a bare `/package` and
+ * can only be redirected client-side.
+ */
+export default function Page() {
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  useIsomorphicLayoutEffect(() => {
+    const target = buildLegacyRedirectPath(window.location.hash);
+    if (!target) return;
+
+    setIsRedirecting(true);
+    // `replace`, not `assign`: the legacy URL should not sit in history where
+    // Back would bounce the visitor straight into another redirect.
+    window.location.replace(target);
+  }, []);
+
   const handleSelect = (pkg: string) => {
-    window.location.hash = `#/${encodeURIComponent(pkg)}`;
+    window.location.href = buildPackagePath(pkg);
   };
+
+  // Runs before paint, so the "no package selected" card never flashes on the
+  // way to the canonical URL.
+  if (isRedirecting) return null;
 
   return (
     <Card>
@@ -50,28 +74,4 @@ function PackageMissing() {
       </div>
     </Card>
   );
-}
-
-export default function Page() {
-  // Start with null (unknown) to avoid hydration mismatch — the server never
-  // sees the hash fragment, so we must defer the check to a client-side effect.
-  const [hasPackage, setHasPackage] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setHasPackage(hasPackageInHash());
-    const onHashChange = () => setHasPackage(hasPackageInHash());
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
-
-  // Render nothing until client-side check completes (matches SSR empty output)
-  if (hasPackage === null) {
-    return null;
-  }
-
-  if (!hasPackage) {
-    return <PackageMissing />;
-  }
-
-  return <PackageDashboard />;
 }

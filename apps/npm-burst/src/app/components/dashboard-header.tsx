@@ -1,19 +1,11 @@
-import { ExternalLink, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { memo } from 'react';
 import { useAppStore } from '../store';
-import type { AppState } from '../store/app-store';
 import styles from './dashboard-header.module.scss';
+import { HealthRefreshControl } from './health-refresh-control';
+import { PackageTabs, PackageTitle } from './package-tabs';
 import { Popover } from './popover';
-import { SegmentedControl } from './segmented-control';
 import { TrackStar } from './track-star';
-
-const VIEW_MODES: { value: AppState['viewMode']; label: string }[] = [
-  { value: 'sunburst', label: 'Breakdown' },
-  { value: 'adoption', label: 'Adoption' },
-  { value: 'migration', label: 'Migration' },
-  { value: 'lifecycle', label: 'Lifecycle' },
-  { value: 'health', label: 'Health' },
-];
 
 export const DashboardHeader = memo(function DashboardHeader() {
   const npmPackageName = useAppStore((s) => s.npmPackageName);
@@ -24,35 +16,27 @@ export const DashboardHeader = memo(function DashboardHeader() {
   const setSortByVersion = useAppStore((s) => s.setSortByVersion);
   const setShowDataTable = useAppStore((s) => s.setShowDataTable);
   const setLowPassFilter = useAppStore((s) => s.setLowPassFilter);
-  const setViewMode = useAppStore((s) => s.setViewMode);
 
   return (
     <div className={styles.wrapper}>
       {/* Package title row */}
       <div className={styles.titleRow}>
-        <h1 className={styles.pageTitle}>
-          Data for{' '}
-          <a
-            href={`https://www.npmjs.com/package/${npmPackageName}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.packageLink}
-          >
-            <span className={styles.packageName}>{npmPackageName}</span>
-            <ExternalLink size={14} className={styles.externalIcon} />
-          </a>
-        </h1>
+        <PackageTitle packageName={npmPackageName} />
         <TrackStar packageName={npmPackageName} />
       </div>
 
       {/* Controls bar */}
       <div className={styles.header}>
-        {/* View mode selector */}
-        <SegmentedControl
-          options={VIEW_MODES}
-          value={viewMode}
-          onChange={setViewMode}
-        />
+        {/* Tabs are links so they stay shareable and crawlable */}
+        <PackageTabs packageName={npmPackageName} activeTab={viewMode} />
+
+        {/* Per-tab controls live in this strip; health's is the refresh. */}
+        {viewMode === 'health' && (
+          <>
+            <div className={styles.spacer} />
+            <HealthRefreshControl />
+          </>
+        )}
 
         {viewMode === 'sunburst' && (
           <>

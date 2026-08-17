@@ -1,10 +1,11 @@
 import { PropsWithChildren } from 'react';
 import { Providers } from '../app/components/providers';
 import { Navbar } from '../app/components/navbar';
+import { buildPackagePath } from '../app/utils/package-route';
 import '../styles.scss';
 
 function handleSelectPackage(pkg: string) {
-  window.location.hash = `#/${encodeURIComponent(pkg)}`;
+  window.location.href = buildPackagePath(pkg);
 }
 
 /**

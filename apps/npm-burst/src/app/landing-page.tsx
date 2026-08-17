@@ -1,5 +1,6 @@
 import { PieChart, History, Star, Filter } from 'lucide-react';
 import { PackageSearch } from './components/package-search';
+import { buildPackagePath } from './utils/package-route';
 import styles from './landing-page.module.scss';
 
 function FeatureCard({
@@ -22,13 +23,7 @@ function FeatureCard({
 
 export function LandingPage() {
   const handleSelectPackage = (pkg: string) => {
-    // Navigate to the package dashboard page.
-    const base = import.meta.env.BASE_URL || '/';
-    // Ensure trailing slash before 'package'
-    const baseNormalized = base.endsWith('/') ? base : base + '/';
-    window.location.href = `${baseNormalized}package#/${encodeURIComponent(
-      pkg
-    )}`;
+    window.location.href = buildPackagePath(pkg);
   };
 
   return (

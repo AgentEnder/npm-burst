@@ -11,8 +11,8 @@ import {
   getParentOfAggregatedNode,
   getSunburstDataFromDownloads,
 } from '../utils/chart-data';
+import { buildPackagePath, type PackageTab } from '../utils/package-route';
 import {
-  isPackagePage,
   listenForURLChanges,
   readInitialStateFromURL,
   subscribeToURLSync,
@@ -52,10 +52,15 @@ export interface AppState {
 
   // UI
   isLoading: boolean;
+  /**
+   * The snapshot history loads in the background after the first paint, so it
+   * gets its own flag — it must never gate the main loading skeleton.
+   */
+  isLoadingHistory: boolean;
   error: string | null;
   showDataTable: boolean;
-  /** View mode for the package dashboard */
-  viewMode: 'sunburst' | 'adoption' | 'migration' | 'lifecycle' | 'health';
+  /** Active tab, mirrored from the route by `seedPackageStore` */
+  viewMode: PackageTab;
   /** Incremented to force re-fetch after cache invalidation */
   fetchGeneration: number;
 
@@ -91,11 +96,10 @@ export interface AppState {
   resetSelection: () => void;
 
   setLoading: (v: boolean) => void;
+  setLoadingHistory: (v: boolean) => void;
   setError: (v: string | null) => void;
   setShowDataTable: (v: boolean) => void;
-  setViewMode: (
-    v: 'sunburst' | 'adoption' | 'migration' | 'lifecycle' | 'health'
-  ) => void;
+  setViewMode: (v: PackageTab) => void;
   setTimeWindow: (v: '30d' | '90d' | '6mo' | '1y' | 'all') => void;
   setMigrationTimeWindow: (v: '90d' | '180d' | '1y' | 'all') => void;
   setMigrationGranularity: (v: 'major' | 'minor' | 'patch') => void;
@@ -122,14 +126,25 @@ function getSourceData(state: {
       package: state.npmPackageName,
     };
   }
-  return state.liveData;
+  if (state.liveData) return state.liveData;
+
+  // Live download counts come from the npm registry and arrive after
+  // hydration. Until then, fall back to the newest snapshot — which `+data`
+  // inlines into the HTML — so the chart paints immediately instead of
+  // waiting on a network round-trip.
+  const newest = state.snapshots[state.snapshots.length - 1];
+  if (newest) {
+    return { downloads: newest.downloads, package: state.npmPackageName };
+  }
+  return null;
 }
 
 const initialURL = readInitialStateFromURL();
 
 export const appStore = createStore<AppState>((set, get) => ({
-  // URL-synced (initialized from URL)
-  npmPackageName: (initialURL.npmPackageName as string) ?? 'nx',
+  // The package and tab come from the route (seeded via `seedPackageStore`),
+  // not the query string — only view state is URL-synced here.
+  npmPackageName: 'nx',
   sortByVersion: (initialURL.sortByVersion as boolean) ?? true,
   lowPassFilter: (initialURL.lowPassFilter as number) ?? 0.02,
   selectedVersion: (initialURL.selectedVersion as string | null) ?? null,
@@ -151,6 +166,7 @@ export const appStore = createStore<AppState>((set, get) => ({
 
   // UI
   isLoading: false,
+  isLoadingHistory: false,
   error: null,
   fetchGeneration: 0,
   showDataTable: true,
@@ -244,20 +260,11 @@ export const appStore = createStore<AppState>((set, get) => ({
   },
 
   selectPackage: (pkg) => {
-    if (typeof window !== 'undefined' && !isPackagePage()) {
-      // Navigate to the package page — the hash will carry the package name
-      const base = window.location.pathname.split('/package')[0];
-      window.location.href = `${base}/package#/${encodeURIComponent(pkg)}`;
-      return;
+    // The package lives in the path, so switching packages is a navigation.
+    // Vike's client router picks the link up and re-runs `+data`.
+    if (typeof window !== 'undefined') {
+      window.location.href = buildPackagePath(pkg, get().viewMode);
     }
-
-    // Update store state — subscribeToURLSync will push the hash automatically
-    set({
-      npmPackageName: pkg,
-      selectedVersion: null,
-      expandedNodes: [],
-      snapshotIndex: null,
-    });
   },
 
   resetSelection: () => {
@@ -266,6 +273,7 @@ export const appStore = createStore<AppState>((set, get) => ({
   },
 
   setLoading: (v) => set({ isLoading: v }),
+  setLoadingHistory: (v) => set({ isLoadingHistory: v }),
   setError: (v) => set({ error: v }),
   setShowDataTable: (v) => set({ showDataTable: v }),
   setViewMode: (v) => {

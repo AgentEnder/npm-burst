@@ -10,14 +10,34 @@ interface SegmentedControlProps<T extends string = string> {
   options: readonly SegmentedControlOption<T>[];
   value: T;
   onChange: (value: T) => void;
+  /** Visible inline label rendered inside the control. */
   label?: string;
+  /**
+   * Accessible name for the radiogroup when there is no visible `label`.
+   * Without one, a screen reader announces a bare group of radios.
+   */
+  ariaLabel?: string;
+  /**
+   * When provided, the segments render as real links instead of buttons, so
+   * they are crawlable and middle-clickable. Vike's client router intercepts
+   * the click, so navigation stays client-side — `onChange` is then only used
+   * by the mobile `<select>` fallback, which cannot be an anchor.
+   */
+  hrefFor?: (value: T) => string;
 }
 
 export const SegmentedControl = memo(function SegmentedControl<
-  T extends string = string,
->({ options, value, onChange, label }: SegmentedControlProps<T>) {
+  T extends string = string
+>({
+  options,
+  value,
+  onChange,
+  label,
+  ariaLabel,
+  hrefFor,
+}: SegmentedControlProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const buttonRefs = useRef<Map<string, HTMLElement>>(new Map());
   const [pillStyle, setPillStyle] = useState<{
     width: number;
     transform: string;
@@ -51,7 +71,7 @@ export const SegmentedControl = memo(function SegmentedControl<
         className={styles.group}
         ref={containerRef}
         role="radiogroup"
-        aria-label={label}
+        aria-label={ariaLabel ?? label}
       >
         {/* Animated pill background */}
         {pillStyle && (
@@ -63,24 +83,46 @@ export const SegmentedControl = memo(function SegmentedControl<
             }}
           />
         )}
-        {label && <span className={styles.label} aria-hidden="true">{label}</span>}
-        {options.map((opt) => (
-          <button
-            key={opt.value}
-            ref={(el) => {
-              if (el) buttonRefs.current.set(opt.value, el);
-              else buttonRefs.current.delete(opt.value);
-            }}
-            role="radio"
-            aria-checked={value === opt.value}
-            className={`${styles.button} ${value === opt.value ? styles.active : ''}`}
-            onClick={() => {
-              if (opt.value !== value) onChange(opt.value);
-            }}
-          >
-            {opt.label}
-          </button>
-        ))}
+        {label && (
+          <span className={styles.label} aria-hidden="true">
+            {label}
+          </span>
+        )}
+        {options.map((opt) => {
+          const setRef = (el: HTMLElement | null) => {
+            if (el) buttonRefs.current.set(opt.value, el);
+            else buttonRefs.current.delete(opt.value);
+          };
+          const className = `${styles.button} ${
+            value === opt.value ? styles.active : ''
+          }`;
+
+          return hrefFor ? (
+            <a
+              key={opt.value}
+              ref={setRef}
+              href={hrefFor(opt.value)}
+              role="radio"
+              aria-checked={value === opt.value}
+              className={className}
+            >
+              {opt.label}
+            </a>
+          ) : (
+            <button
+              key={opt.value}
+              ref={setRef}
+              role="radio"
+              aria-checked={value === opt.value}
+              className={className}
+              onClick={() => {
+                if (opt.value !== value) onChange(opt.value);
+              }}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Mobile: native select dropdown */}
@@ -97,7 +139,9 @@ export const SegmentedControl = memo(function SegmentedControl<
             </option>
           ))}
         </select>
-        <span className={styles.selectChevron} aria-hidden="true">▾</span>
+        <span className={styles.selectChevron} aria-hidden="true">
+          ▾
+        </span>
       </div>
     </>
   );

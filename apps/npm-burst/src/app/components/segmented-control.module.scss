@@ -46,9 +46,15 @@
   cursor: pointer;
   transition: color var(--transition-fast);
   white-space: nowrap;
+  /* Segments render as <a> when routed (see `hrefFor`), so suppress the
+     default link styling and keep them looking identical to the <button>
+     variant. */
+  text-decoration: none;
+  display: inline-block;
 
   &:hover {
     color: var(--text-secondary);
+    text-decoration: none;
   }
 }
 

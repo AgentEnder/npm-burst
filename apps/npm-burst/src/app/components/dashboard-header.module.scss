@@ -320,3 +320,48 @@
     justify-content: center;
   }
 }
+
+/*
+ * Shown while the snapshot history streams in behind the already-painted
+ * chart. Deliberately unobtrusive — the page is usable without it.
+ */
+.historyPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  align-self: flex-start;
+  margin-bottom: var(--spacing-sm);
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.historySpinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-main);
+  border-radius: 50%;
+  animation: historySpin 0.7s linear infinite;
+}
+
+@keyframes historySpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .historySpinner {
+    animation: none;
+  }
+}
+
+/* Pushes the trailing per-tab control to the right edge of the strip. */
+.spacer {
+  flex: 1 1 auto;
+  min-width: var(--spacing-md);
+}

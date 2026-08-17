@@ -18,6 +18,7 @@ import type {
 import { useClerk } from '@clerk/clerk-react';
 import { useSafeAuth } from './context/auth-context';
 import { useWarningToast } from './hooks/use-warning-toast';
+import { buildPackagePath } from './utils/package-route';
 import styles from './usage-page.module.scss';
 
 function formatDownloads(n: number): string {
@@ -113,11 +114,7 @@ function MaintainerEmails({
 }
 
 function PackageRow({ pkg }: { pkg: TrackedPackageInfo }) {
-  const base = import.meta.env.BASE_URL || '/';
-  const baseNormalized = base.endsWith('/') ? base : base + '/';
-  const packageUrl = `${baseNormalized}package#/${encodeURIComponent(
-    pkg.packageName
-  )}`;
+  const packageUrl = buildPackagePath(pkg.packageName);
 
   return (
     <tr className={pkg.countsAgainstQuota ? styles.quotaRow : styles.exemptRow}>

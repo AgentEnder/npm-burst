@@ -63,9 +63,24 @@ export function usePackageData() {
             .catch(() => ({ data: null, warnings: [] }));
         })();
 
-    const fetchSnapshots = onGetSnapshots(npmPackageName)
-      .then(({ snapshots }) => snapshots)
-      .catch(() => []);
+    // The snapshot history is the heaviest payload and nothing on the first
+    // paint needs it — `+data` already inlined the newest snapshot, which is
+    // all the sunburst reads. So it loads alongside, on its own flag, instead
+    // of inside the Promise.all that gates the loading skeleton.
+    store.setLoadingHistory(true);
+    onGetSnapshots(npmPackageName)
+      .then(({ snapshots }) => {
+        if (cancelled || snapshots.length === 0) return;
+        const s = appStore.getState();
+        s.setSnapshots(snapshots);
+        s.recomputeChartData();
+      })
+      .catch(() => {
+        /* history is additive — the seeded snapshot still renders */
+      })
+      .finally(() => {
+        if (!cancelled) appStore.getState().setLoadingHistory(false);
+      });
 
     const fetchVersions = onGetVersionDates(npmPackageName).catch(() => ({
       versions: [],
@@ -92,40 +107,25 @@ export function usePackageData() {
 
     const fetchHealth = onGetHealthMetrics(npmPackageName).catch(() => null);
 
-    Promise.all([
-      fetchLive,
-      fetchSnapshots,
-      fetchVersions,
-      fetchTotalDownloads,
-      fetchHealth,
-    ])
-      .then(
-        ([
-          liveResult,
-          snapshots,
-          versionsResult,
-          totalDownloadsResult,
-          health,
-        ]) => {
-          if (cancelled) return;
-          const s = appStore.getState();
-          s.setLiveData(liveResult.data);
-          s.setSnapshots(snapshots);
-          s.setVersionReleases(versionsResult.versions);
-          s.setTotalDownloads(totalDownloadsResult.downloads);
-          s.setHealth(health);
-          s.setSnapshotIndex(null);
-          s.cacheCurrentPackageData();
-          s.recomputeChartData();
-          const warnings = [
-            ...liveResult.warnings,
-            ...versionsResult.warnings,
-            ...totalDownloadsResult.warnings,
-            ...(health?.warnings ?? []),
-          ];
-          setWarnings(warnings);
-        }
-      )
+    Promise.all([fetchLive, fetchVersions, fetchTotalDownloads, fetchHealth])
+      .then(([liveResult, versionsResult, totalDownloadsResult, health]) => {
+        if (cancelled) return;
+        const s = appStore.getState();
+        s.setLiveData(liveResult.data);
+        s.setVersionReleases(versionsResult.versions);
+        s.setTotalDownloads(totalDownloadsResult.downloads);
+        s.setHealth(health);
+        s.setSnapshotIndex(null);
+        s.cacheCurrentPackageData();
+        s.recomputeChartData();
+        const warnings = [
+          ...liveResult.warnings,
+          ...versionsResult.warnings,
+          ...totalDownloadsResult.warnings,
+          ...(health?.warnings ?? []),
+        ];
+        setWarnings(warnings);
+      })
       .catch((e) => {
         if (cancelled || e?.name === 'AbortError') return;
         appStore

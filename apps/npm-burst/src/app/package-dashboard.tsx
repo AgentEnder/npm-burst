@@ -1,4 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { PackageDetailData } from '../pages/package-detail/+data';
+import { seedPackageStore } from './store/seed';
 import { Card } from './components/card';
 import { DashboardHeader } from './components/dashboard-header';
 import styles from './components/dashboard-header.module.scss';
@@ -21,35 +23,24 @@ import {
   VersionFilterBar,
 } from './components/version-filter-bar';
 import { usePackageData } from './hooks/use-package-data';
-import { appStore, useAppStore } from './store';
+import { useAppStore } from './store';
 import { findNodeByVersion } from './utils/chart-data';
 
-function parsePackageFromHash(): string {
-  if (typeof window === 'undefined') return 'nx';
-  const hash = window.location.hash; // e.g. "#/nx" or "#/nx?sortBy=version"
-  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
-  const normalized = raw.startsWith('/') ? raw.slice(1) : raw;
-  const qIdx = normalized.indexOf('?');
-  const name = qIdx === -1 ? normalized : normalized.slice(0, qIdx);
-  return decodeURIComponent(name) || 'nx';
-}
+export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
+  // Seed synchronously in a state initializer, before the `useAppStore`
+  // selectors below run, so this render already sees the route's package and
+  // tab rather than briefly showing the store's defaults.
+  useState(() => {
+    seedPackageStore(seed);
+    return null;
+  });
 
-export function PackageDashboard() {
-  // Initialize package from hash on mount
+  // Re-seed when the route changes under a client-side navigation (tab switch
+  // or a new package) — the initializer above only runs on mount.
   useEffect(() => {
-    const pkg = parsePackageFromHash();
-    const currentPkg = appStore.getState().npmPackageName;
-    if (pkg !== currentPkg) {
-      appStore.setState({
-        npmPackageName: pkg,
-        selectedVersion: null,
-        expandedNodes: [],
-        snapshotIndex: null,
-      });
-    }
-  }, []);
+    seedPackageStore(seed);
+  }, [seed]);
 
-  // Fetch data when package changes (hashchange is handled by url-sync.ts)
   usePackageData();
 
   // Read state from the store
@@ -57,6 +48,7 @@ export function PackageDashboard() {
   const showDataTable = useAppStore((s) => s.showDataTable);
   const sunburstChartData = useAppStore((s) => s.sunburstChartData);
   const isLoading = useAppStore((s) => s.isLoading);
+  const isLoadingHistory = useAppStore((s) => s.isLoadingHistory);
   const error = useAppStore((s) => s.error);
   const selectedVersion = useAppStore((s) => s.selectedVersion);
   const expandedNodes = useAppStore((s) => s.expandedNodes);
@@ -124,6 +116,13 @@ export function PackageDashboard() {
         <ErrorMessage message={error} onRetry={invalidateCache} />
       ) : (
         <div className="container-with-table">
+          {isLoadingHistory && viewMode !== 'health' ? (
+            <div className={styles.historyPill} role="status">
+              <span className={styles.historySpinner} aria-hidden="true" />
+              Loading snapshot history…
+            </div>
+          ) : null}
+
           {viewMode === 'sunburst' && snapshots.length > 0 && (
             <SnapshotControls
               currentIndex={snapshotIndex ?? snapshots.length}

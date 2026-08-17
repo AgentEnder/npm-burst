@@ -11,12 +11,16 @@ interface UrlParamDef<T> {
 const identity = (s: string) => s;
 
 /**
- * URL params synced via hash on the package page.
- * npmPackageName is encoded in the hash path (e.g., #/nx),
- * the rest are hash query params (e.g., #/nx?sortBy=version&lpf=2.00).
+ * View state synced to the query string.
+ *
+ * The package name and tab are NOT here — they live in the path
+ * (`/package/@nx/devkit/health`) and are supplied by the route, so this module
+ * only owns the incidental view state. That split matters for the edge cache:
+ * these params never change what the server renders, so the HTML cache key
+ * deliberately ignores them.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const HASH_PARAMS: Record<string, UrlParamDef<any>> = {
+const QUERY_PARAMS: Record<string, UrlParamDef<any>> = {
   sortByVersion: {
     key: 'sortBy',
     defaultValue: true,
@@ -46,71 +50,24 @@ const HASH_PARAMS: Record<string, UrlParamDef<any>> = {
   },
 };
 
-/** All fields that participate in URL sync (hash path + hash query params) */
-const URL_SYNCED_FIELDS = ['npmPackageName', ...Object.keys(HASH_PARAMS)];
+const URL_SYNCED_FIELDS = Object.keys(QUERY_PARAMS);
 
-/** Check whether the current page is the package page */
+/** Check whether the current page is a package page */
 export function isPackagePage(): boolean {
   if (typeof window === 'undefined') return false;
   return window.location.pathname.includes('/package');
 }
 
-/**
- * Parse the hash into a package name and query params.
- * Examples:
- *   #/nx              -> { packageName: 'nx', params: URLSearchParams{} }
- *   #/nx?sortBy=version&lpf=2.00 -> { packageName: 'nx', params: URLSearchParams{sortBy=version, lpf=2.00} }
- *   (empty)           -> { packageName: '', params: URLSearchParams{} }
- */
-function parseHash(hash: string): {
-  packageName: string;
-  params: URLSearchParams;
-} {
-  // Strip leading '#'
-  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
-  // Strip leading '/'
-  const normalized = raw.startsWith('/') ? raw.slice(1) : raw;
-
-  const questionIdx = normalized.indexOf('?');
-  if (questionIdx === -1) {
-    return {
-      packageName: decodeURIComponent(normalized),
-      params: new URLSearchParams(),
-    };
-  }
-
-  return {
-    packageName: decodeURIComponent(normalized.slice(0, questionIdx)),
-    params: new URLSearchParams(normalized.slice(questionIdx + 1)),
-  };
-}
-
-/** Build a hash string from a package name and params */
-function buildHash(packageName: string, params: URLSearchParams): string {
-  const paramStr = params.toString();
-  const encodedName = encodeURIComponent(packageName);
-  return paramStr ? `#/${encodedName}?${paramStr}` : `#/${encodedName}`;
-}
-
-/** Read URL hash into partial state for store initialization (package page only) */
+/** Read query params into partial state for store initialization */
 export function readInitialStateFromURL(): Partial<AppState> {
   if (typeof document === 'undefined') {
     return getDefaults();
   }
 
-  if (!isPackagePage()) {
-    return getDefaults();
-  }
-
-  const { packageName, params } = parseHash(document.location.hash);
-
+  const params = new URLSearchParams(document.location.search);
   const state: Record<string, unknown> = {};
 
-  // Package name from hash path
-  state['npmPackageName'] = packageName || 'nx';
-
-  // Other params from hash query string
-  for (const [field, def] of Object.entries(HASH_PARAMS)) {
+  for (const [field, def] of Object.entries(QUERY_PARAMS)) {
     const encoded = params.get(def.key);
     state[field] =
       encoded !== null ? def.deserialize(encoded) : def.defaultValue;
@@ -121,23 +78,24 @@ export function readInitialStateFromURL(): Partial<AppState> {
 
 /** Return default values for all URL-synced fields */
 function getDefaults(): Partial<AppState> {
-  const state: Record<string, unknown> = {
-    npmPackageName: 'nx',
-  };
-  for (const [field, def] of Object.entries(HASH_PARAMS)) {
+  const state: Record<string, unknown> = {};
+  for (const [field, def] of Object.entries(QUERY_PARAMS)) {
     state[field] = def.defaultValue;
   }
   return state as Partial<AppState>;
 }
 
-/** Push current URL-synced state fields to the hash (package page only) */
+/**
+ * Push current URL-synced state to the query string, leaving the path (and
+ * therefore the package and tab) untouched.
+ */
 function pushStateToURL(state: AppState) {
   if (typeof document === 'undefined') return;
   if (!isPackagePage()) return;
 
   const params = new URLSearchParams();
 
-  for (const [field, def] of Object.entries(HASH_PARAMS)) {
+  for (const [field, def] of Object.entries(QUERY_PARAMS)) {
     const value = (state as unknown as Record<string, unknown>)[field];
     const serialized = def.serialize(value);
     if (serialized !== null && serialized !== undefined) {
@@ -145,9 +103,10 @@ function pushStateToURL(state: AppState) {
     }
   }
 
-  const newHash = buildHash(state.npmPackageName, params);
-  if (newHash !== document.location.hash) {
-    window.history.pushState({}, document.title, newHash);
+  const query = params.toString();
+  const next = `${window.location.pathname}${query ? `?${query}` : ''}`;
+  if (next !== `${window.location.pathname}${window.location.search}`) {
+    window.history.replaceState({}, document.title, next);
   }
 }
 
@@ -165,20 +124,19 @@ export function subscribeToURLSync(store: StoreApi<AppState>): () => void {
   });
 }
 
-/** Listen for hashchange (browser back/forward) and update store from URL */
+/** Listen for back/forward navigation and update store from the query string */
 export function listenForURLChanges(store: StoreApi<AppState>): () => void {
-  if (!isPackagePage()) {
-    // On non-package pages, no URL sync needed
+  if (typeof window === 'undefined') {
     return () => {
       /* noop */
     };
   }
 
   const handler = () => {
-    const fromURL = readInitialStateFromURL();
-    store.setState(fromURL);
+    if (!isPackagePage()) return;
+    store.setState(readInitialStateFromURL());
   };
 
-  window.addEventListener('hashchange', handler);
-  return () => window.removeEventListener('hashchange', handler);
+  window.addEventListener('popstate', handler);
+  return () => window.removeEventListener('popstate', handler);
 }
