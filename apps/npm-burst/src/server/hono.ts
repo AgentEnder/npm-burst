@@ -21,6 +21,7 @@ import {
   handleGitHubAppSetup,
   handleGitHubWebhook,
 } from './github-app';
+import { htmlCacheMiddleware } from './html-cache';
 import {
   buildRequestCtx,
   requestCtxMiddleware,
@@ -52,6 +53,11 @@ function getApp() {
     c.set(REQUEST_CTX_VAR, await buildRequestCtx(c.req.raw, honoEnv));
     await next();
   });
+
+  // Edge-cache SSR'd package HTML. Scoped to `/package/*` so it can only ever
+  // see the dynamic, user-agnostic route — the telefunc RPC endpoint and the
+  // GitHub App routes are registered outside this prefix and are unaffected.
+  app.use('/package/*', htmlCacheMiddleware);
 
   app.get('/api/github/install', (c) =>
     handleGitHubAppInstall(c.req.raw, c.var.requestCtx.env)
