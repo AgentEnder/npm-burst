@@ -385,7 +385,10 @@ export async function snapshotSingleRepo(
     snapshotId = previousSnapshot.id;
     await db
       .updateTable('github_health_snapshots')
-      .set({ raw_data: await compressJson(rawData) })
+      .set({
+        raw_data: await compressJson(rawData),
+        refreshed_at: rawData.fetchedAt,
+      })
       .where('id', '=', snapshotId)
       .execute();
 
@@ -401,6 +404,7 @@ export async function snapshotSingleRepo(
           repo_id: repo.id,
           snapshot_date: snapshotDate,
           raw_data: await compressJson(rawData),
+          refreshed_at: rawData.fetchedAt,
         })
         .returning('id')
         .$narrowType<{ id: number }>()

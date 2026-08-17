@@ -71,6 +71,16 @@ async function main() {
       // `wrangler d1 migrations create`, not by full lexicographic name —
       // so we emit `NNNN_<original-name>.sql` to match that convention while
       // preserving the original name for traceability back to the TS source.
+      //
+      // ⚠️ The prefix counts EMITTED files only, so it shifts if this set
+      // changes. Wrangler identifies applied migrations by filename, and D1
+      // records them under the name they had when applied — remote currently
+      // holds `0001_2026-04-30_github_repo_snapshot_counts.sql`. Renumbering an
+      // already-applied migration makes wrangler treat it as new and re-run it,
+      // which fails on `duplicate column name` and blocks everything behind it.
+      //
+      // So: never add to, remove from, or reorder `APPLIED_VIA_KYSELY`, and
+      // never delete a migration whose `.sql` has shipped. Append only.
       emittedCount += 1;
       const prefix = String(emittedCount).padStart(4, '0');
       const outName = `${prefix}_${file.replace(/\.(ts|js)$/, '.sql')}`;

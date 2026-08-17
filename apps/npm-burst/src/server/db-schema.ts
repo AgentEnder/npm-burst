@@ -44,6 +44,7 @@ export interface GithubHealthSnapshots {
   created_at: Generated<string>;
   id: Generated<number | null>;
   raw_data: Uint8Array | string;
+  refreshed_at: string | null;
   repo_id: number;
   snapshot_date: string;
 }
