@@ -1,0 +1,74 @@
+/*
+ * One ghost button rather than a label plus a separate icon square: the
+ * timestamp and the refresh are the same affordance, and two adjacent bordered
+ * boxes in the tab strip read as clutter.
+ */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.button:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-color);
+  background: var(--hover-overlay);
+}
+
+.button:disabled {
+  cursor: default;
+}
+
+/* The icon carries the affordance; it firms up on hover. */
+.icon {
+  color: var(--text-tertiary);
+  flex: none;
+  transition: color var(--transition-fast);
+}
+
+.button:hover:not(:disabled) .icon {
+  color: var(--accent-main);
+}
+
+/*
+ * Reads as unavailable but stays clickable — the click is what starts sign-in
+ * or connects GitHub, which is exactly what it is blocked on.
+ */
+.buttonBlocked {
+  opacity: 0.55;
+}
+
+.syncing .icon {
+  animation: refreshSpin 0.9s linear infinite;
+  color: var(--accent-main);
+}
+
+.error {
+  color: var(--error-main, #ff7b72);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+@keyframes refreshSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .syncing .icon {
+    animation: none;
+  }
+}

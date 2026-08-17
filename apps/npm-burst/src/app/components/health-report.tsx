@@ -4,24 +4,21 @@ import {
   ArrowUpCircle,
   ChevronDown,
   ChevronRight,
-  RefreshCw,
 } from 'lucide-react';
 import { SiGithub } from '@icons-pack/react-simple-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
-import {
-  onRefreshHealthMetricsWithGitHubUserAccess,
-  type PackageHealthResponse,
-} from '../../server/functions/health.telefunc';
+import type { PackageHealthResponse } from '../../server/functions/health.telefunc';
 import {
   onGetHealthMetricSource,
   type MetricSourceData,
 } from '../../server/functions/health-source.telefunc';
-import { appStore } from '../store';
 import { useSafeAuth } from '../context/auth-context';
+import { useHealthRefresh } from '../hooks/use-health-refresh';
 import { useWarningToast } from '../hooks/use-warning-toast';
-import { ChartDescription } from './chart-description';
+import { HealthEmptyState } from './health-empty-state';
+import { HealthEmptyShell } from './health-empty-shell';
 import { Popover } from './popover';
 import styles from './health-report.module.scss';
 
@@ -709,191 +706,98 @@ export function HealthReport({
     health && health.warnings.length > 0
       ? 'Some GitHub or npm data could not be loaded, so this report may be partial.'
       : null;
-  const { isSignedIn, isAdmin } = useSafeAuth();
-  const [syncing, setSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const { isSignedIn } = useSafeAuth();
+  const {
+    syncing,
+    error: syncError,
+    authPending,
+    refresh,
+    connectGitHub,
+    signIn,
+  } = useHealthRefresh(health?.githubUserAuthAvailable === true);
 
   useWarningToast(
     `health:${health?.packageName ?? 'unknown'}`,
     health?.warnings ?? []
   );
 
-  const canRefreshViaGitHub =
-    isSignedIn && health?.githubUserAuthAvailable === true;
-
   const latestSnapshot =
     health && health.snapshots.length > 0
       ? health.snapshots[health.snapshots.length - 1]
       : null;
 
-  const isStale = useMemo(() => {
-    if (!latestSnapshot) return false;
-    const snapshotTime = new Date(
-      `${latestSnapshot.snapshotDate}T00:00:00`
-    ).getTime();
-    const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
-    return snapshotTime < twoDaysAgo;
-  }, [latestSnapshot]);
-
-  async function handleSync() {
-    if (syncing || !health) return;
-    setSyncing(true);
-    setSyncError(null);
-    try {
-      const refreshed = await onRefreshHealthMetricsWithGitHubUserAccess(
-        health.packageName
-      );
-      const store = appStore.getState();
-      store.setHealth(refreshed);
-      store.cacheCurrentPackageData();
-    } catch (error) {
-      setSyncError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to fetch GitHub health data.'
-      );
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   if (!health?.repo) {
+    // Listing a repo we can't read is a different situation from listing none
+    // at all — one will never be trackable here, the other might be later.
+    if (health?.externalRepo) {
+      return (
+        <HealthEmptyShell
+          title={`Hosted on ${health.externalRepo.host}`}
+          tone="missing"
+          body={`This package's repository is on ${health.externalRepo.host}. Health reporting reads issue and pull request activity through the GitHub API, so there's nothing to track here.`}
+          actions={
+            <a
+              className={styles.secondaryAction}
+              href={health.externalRepo.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View the repository on {health.externalRepo.host}
+            </a>
+          }
+        />
+      );
+    }
+
     return (
-      <div className={styles.emptyState}>
-        <h2>No linked repository found</h2>
-        <p>
-          This package does not expose a GitHub repository in its npm metadata
-          yet.
-        </p>
-      </div>
+      <HealthEmptyShell
+        title="No linked repository"
+        tone="missing"
+        body="This package doesn't list a repository in its npm metadata, so there is nothing to track yet."
+      />
     );
   }
 
   if (!hasSnapshots) {
     if (health && !health.installationConfigured) {
-      const repoPath = `${health.repo.owner}/${health.repo.name}`;
-
       return (
-        <div className={styles.emptyState}>
-          <div className={styles.frownWrap}>
-            <svg
-              className={styles.frownFace}
-              viewBox="0 0 120 120"
-              role="img"
-              aria-label="Health data unavailable"
-            >
-              <circle className={styles.frownStroke} cx="60" cy="60" r="44" />
-              <circle cx="44" cy="48" r="5" fill="currentColor" />
-              <circle cx="76" cy="48" r="5" fill="currentColor" />
-              <path
-                className={styles.frownStroke}
-                d="M38 84c6-8 16-12 22-12s16 4 22 12"
-              />
-            </svg>
-            <h2>GitHub App authorization required</h2>
-            <p>
-              Automatic tracking still requires a maintainer to install the
-              GitHub App for{' '}
-              <a
-                className={styles.repoLink}
-                href={`https://github.com/${health.repo.owner}/${health.repo.name}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {repoPath}
-              </a>
-              .
-            </p>
-            {isSignedIn ? (
-              health.githubUserAuthAvailable ? (
-                <>
-                  <p>
-                    You can still run a one-off snapshot for this repo using
-                    your own connected GitHub account.
-                  </p>
-                  <button
-                    className={styles.oauthActionButton}
-                    onClick={handleSync}
-                    disabled={syncing}
-                  >
-                    <SiGithub size={16} />
-                    {syncing
-                      ? 'Fetching health data…'
-                      : 'Fetch with my GitHub access'}
-                  </button>
-                </>
-              ) : (
-                <p>
-                  Connect GitHub from{' '}
-                  <a className={styles.repoLink} href="/usage">
-                    Usage &amp; Tracking
-                  </a>{' '}
-                  to run a one-off snapshot as yourself.
-                </p>
-              )
-            ) : (
-              <p>
-                Sign in and connect GitHub to run a one-off snapshot as
-                yourself.
-              </p>
-            )}
-            {syncError ? (
-              <p className={styles.oauthError}>{syncError}</p>
-            ) : null}
-          </div>
-        </div>
+        <HealthEmptyState
+          packageName={health.packageName}
+          repo={health.repo}
+          appInstalled={false}
+          isSignedIn={isSignedIn === true}
+          githubLinked={health.githubUserAuthAvailable === true}
+          authPending={authPending}
+          syncing={syncing}
+          syncError={syncError}
+          onSnapshot={() => refresh(health.packageName)}
+          onSignIn={signIn}
+          onConnectGitHub={connectGitHub}
+        />
       );
     }
 
     return (
-      <div className={styles.emptyState}>
-        <h2>Health snapshots aren&apos;t available yet</h2>
-        <p>
-          Repo detected at{' '}
-          <a
-            className={styles.repoLink}
-            href={`https://github.com/${health.repo.owner}/${health.repo.name}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {health.repo.owner}/{health.repo.name}
-          </a>
-          . Once the daily snapshot job captures data, this report will
-          populate.
-        </p>
-      </div>
+      <HealthEmptyState
+        packageName={health.packageName}
+        repo={health.repo}
+        appInstalled
+        isSignedIn={isSignedIn === true}
+        githubLinked={health.githubUserAuthAvailable === true}
+        authPending={authPending}
+        syncing={syncing}
+        syncError={syncError}
+        onSnapshot={() => refresh(health.packageName)}
+        onSignIn={signIn}
+        onConnectGitHub={connectGitHub}
+      />
     );
   }
 
   return (
     <div className={styles.report}>
-      <ChartDescription>
-        <p>GitHub repo health over time.</p>
-        <ul>
-          <li>Click a row to expand the full chart and source data</li>
-        </ul>
-      </ChartDescription>
       {warningMessage ? (
         <div className={styles.warningBanner}>{warningMessage}</div>
-      ) : null}
-      {(isStale || isAdmin) && canRefreshViaGitHub ? (
-        <div className={styles.refreshBar}>
-          <span className={styles.refreshStale}>
-            Last snapshot:{' '}
-            {latestSnapshot ? formatDate(latestSnapshot.snapshotDate) : 'n/a'}
-          </span>
-          <button
-            className={styles.oauthActionButton}
-            onClick={handleSync}
-            disabled={syncing}
-          >
-            <RefreshCw size={14} />
-            {syncing ? 'Refreshing…' : 'Refresh with GitHub'}
-          </button>
-          {syncError ? (
-            <span className={styles.oauthError}>{syncError}</span>
-          ) : null}
-        </div>
       ) : null}
       <div className={styles.summaryGrid}>
         <div className={styles.summaryCard}>
@@ -906,8 +810,12 @@ export function HealthReport({
               href={`https://github.com/${health.repo.owner}/${health.repo.name}`}
               target="_blank"
               rel="noreferrer"
+              title={`${health.repo.owner}/${health.repo.name}`}
             >
-              {health.repo.owner}/{health.repo.name}
+              <SiGithub size={13} />
+              <span className={styles.repoLinkName}>
+                {health.repo.owner}/{health.repo.name}
+              </span>
             </a>
           </span>
         </div>

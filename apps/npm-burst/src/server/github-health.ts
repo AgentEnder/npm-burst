@@ -2,6 +2,8 @@ import {
   canonicalizeFilterConfig,
   parseFilterConfig,
   parseGitHubRepositoryUrl,
+  parseNonGitHubRepository,
+  type ExternalRepository,
   type FilterConfig,
   type HealthMetricSeriesPoint,
   type RawGitHubHealthData,
@@ -11,11 +13,14 @@ import { decompressJson } from '@npm-burst/shared';
 import type { DB } from './db-schema';
 import { logExternalFailure } from './external-data';
 import {
+  getFixtureExternalRepo,
   getFixtureHealthMetrics,
   getFixtureHealthRepo,
+  isFixtureGitHubAppInstalled,
 } from './fixtures/packages';
 import { ensureTrackedPackageMetadata } from './package-metadata';
 import { cachedFetch } from './npm-fetch';
+import { toIsoTimestamp } from './utils';
 
 export interface ResolvedRepoInfo {
   id: number;
@@ -29,8 +34,16 @@ export interface PackageHealthData {
   packageName: string;
   installationConfigured: boolean;
   repo: { owner: string; name: string } | null;
+  /**
+   * Set when npm lists a repository we cannot track — GitLab, Bitbucket and
+   * friends. Distinguishes "nothing to track" from "hosted somewhere we can't
+   * read", which need different explanations.
+   */
+  externalRepo: ExternalRepository | null;
   filterConfig: FilterConfig | null;
   snapshots: HealthMetricSeriesPoint[];
+  /** ISO timestamp of the most recent GitHub fetch, or null if never fetched. */
+  lastRefreshedAt: string | null;
 }
 
 export type HealthMetricKey =
@@ -420,6 +433,34 @@ export async function ensureGitHubRepoForPackage(
   };
 }
 
+/**
+ * Read the npm `repository` field for a package that has no GitHub repo, to
+ * see whether it points somewhere else. Uses the same cached registry fetch as
+ * `ensureGitHubRepoForPackage`, so it adds no network round-trip.
+ */
+async function getExternalRepository(
+  db: Kysely<DB>,
+  packageName: string
+): Promise<ExternalRepository | null> {
+  let body: string;
+  try {
+    body = await cachedFetch(
+      db,
+      `https://registry.npmjs.org/${encodeURIComponent(packageName)}`
+    );
+  } catch {
+    return null;
+  }
+
+  try {
+    const repository = (JSON.parse(body) as { repository?: unknown })
+      .repository;
+    return parseNonGitHubRepository(repository);
+  } catch {
+    return null;
+  }
+}
+
 export async function getPackageHealthData(
   db: Kysely<DB>,
   packageName: string
@@ -431,8 +472,10 @@ export async function getPackageHealthData(
       packageName,
       installationConfigured: false,
       repo: null,
+      externalRepo: await getExternalRepository(db, packageName),
       filterConfig: null,
       snapshots: [],
+      lastRefreshedAt: null,
     };
   }
 
@@ -442,6 +485,7 @@ export async function getPackageHealthData(
     .select([
       'ghm.filter_config as filter_config',
       'ghs.snapshot_date as snapshot_date',
+      'ghs.refreshed_at as refreshed_at',
       'ghm.issues_opened_30d as issues_opened_30d',
       'ghm.issues_closed_30d as issues_closed_30d',
       'ghm.prs_opened_30d as prs_opened_30d',
@@ -467,12 +511,22 @@ export async function getPackageHealthData(
   const fallback = rows.filter((row) => row.filter_config === null);
   const selected = exactMatch.length > 0 ? exactMatch : fallback;
 
+  const lastRefreshedAt = selected
+    .map((row) => toIsoTimestamp(row.refreshed_at))
+    .filter((value): value is string => value !== null)
+    .reduce<string | null>(
+      (latest, value) => (latest === null || value > latest ? value : latest),
+      null
+    );
+
   return {
     packageName,
     installationConfigured: repo.installationId !== null,
     repo: { owner: repo.owner, name: repo.name },
+    externalRepo: null,
     filterConfig: repo.filterConfig,
     snapshots: selected.map(toMetricPoint),
+    lastRefreshedAt,
   };
 }
 
@@ -618,12 +672,19 @@ export async function getPackageMetricSource(
 export function getFixturePackageHealthData(
   packageName: string
 ): PackageHealthData {
+  const snapshots = getFixtureHealthMetrics(packageName);
+  const latest = snapshots[snapshots.length - 1];
+
   return {
     packageName,
-    installationConfigured: true,
+    // Fixture-driven so the "GitHub App not installed" empty state is
+    // reachable locally, not hardcoded true.
+    installationConfigured: isFixtureGitHubAppInstalled(packageName),
     repo: getFixtureHealthRepo(packageName),
+    externalRepo: getFixtureExternalRepo(packageName),
     filterConfig: null,
-    snapshots: getFixtureHealthMetrics(packageName),
+    snapshots,
+    lastRefreshedAt: latest ? `${latest.snapshotDate}T00:00:00.000Z` : null,
   };
 }
 

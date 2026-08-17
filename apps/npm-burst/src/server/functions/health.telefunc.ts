@@ -1,15 +1,22 @@
 import { Abort, getContext } from 'telefunc';
 import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
 import {
+  getUserEmails,
   getUserGitHubOauthAccess,
   hasUserGitHubOauthAccess,
 } from '../clerk-utils';
+import { isUserMaintainer } from '../npm-maintainers';
+import { ensureTrackedPackageMetadata } from '../package-metadata';
 import { getDb } from '../db';
 import { getDevGitHubPat, isDevMode } from '../env';
 import {
   type ExternalDataWarning,
   withExternalFallback,
 } from '../external-data';
+import {
+  isFixtureGitHubLinked,
+  isFixtureMaintainer,
+} from '../fixtures/packages';
 import {
   ensureGitHubRepoForPackage,
   getFixturePackageHealthData,
@@ -22,8 +29,12 @@ export interface PackageHealthResponse {
   installationConfigured: boolean;
   githubUserAuthAvailable: boolean;
   repo: { owner: string; name: string } | null;
+  /** Set when npm lists a repository we cannot track (GitLab, Bitbucket, …). */
+  externalRepo: { host: string; url: string } | null;
   filterConfig: Record<string, unknown> | null;
   snapshots: HealthMetricSeriesPoint[];
+  /** ISO timestamp of the most recent GitHub fetch, or null if never fetched. */
+  lastRefreshedAt: string | null;
   warnings: ExternalDataWarning[];
 }
 
@@ -37,8 +48,10 @@ function getEmptyHealthResponse(
     installationConfigured: false,
     githubUserAuthAvailable,
     repo: null,
+    externalRepo: null,
     filterConfig: null,
     snapshots: [],
+    lastRefreshedAt: null,
     warnings,
   };
 }
@@ -51,7 +64,9 @@ export async function onGetHealthMetrics(
   if (isDevMode(env) && !getDevGitHubPat(env)) {
     return {
       ...getFixturePackageHealthData(packageName),
-      githubUserAuthAvailable: true,
+      // Fixture-driven so the "GitHub not linked yet" branch is reachable in
+      // dev, where the dev user otherwise always has a token.
+      githubUserAuthAvailable: isFixtureGitHubLinked(packageName),
       warnings: [],
     };
   }
@@ -141,4 +156,36 @@ export async function onRefreshHealthMetricsWithGitHubUserAccess(
     githubUserAuthAvailable: true,
     warnings,
   };
+}
+
+export interface PackageMaintainerStatus {
+  /** Whether the signed-in user's emails match an npm maintainer of the package. */
+  isMaintainer: boolean;
+}
+
+/**
+ * User-specific, so it is deliberately NOT part of `+data`: package HTML is
+ * edge-cached and shared between visitors, and maintainer status must never be
+ * baked into it. The client asks for this after hydration.
+ */
+export async function onGetPackageMaintainerStatus(
+  packageName: string
+): Promise<PackageMaintainerStatus> {
+  const { env, userId } = getContext();
+
+  if (!userId) {
+    return { isMaintainer: false };
+  }
+
+  if (isDevMode(env) && !getDevGitHubPat(env)) {
+    return { isMaintainer: isFixtureMaintainer(packageName) };
+  }
+
+  const db = getDb(env);
+  const [emails, metadata] = await Promise.all([
+    getUserEmails(userId, env),
+    ensureTrackedPackageMetadata(db, packageName),
+  ]);
+
+  return { isMaintainer: isUserMaintainer(emails, metadata.maintainers) };
 }

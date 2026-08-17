@@ -10,10 +10,13 @@
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
+  /* Sections were each carrying their own bottom margin (lg here, md there),
+     which read as uneven gaps. One grid gap owns the rhythm instead. */
+  display: grid;
+  gap: var(--spacing-lg);
 }
 
 .warningBanner {
-  margin-bottom: var(--spacing-lg);
   padding: var(--spacing-md) var(--spacing-lg);
   border: 1px solid rgba(245, 166, 35, 0.35);
   border-radius: var(--radius-lg);
@@ -38,27 +41,113 @@
   flex: 1;
 }
 
-.frownWrap {
+/* Panel layout: icon badge anchors the left edge, everything else reads
+   left-aligned beside it. Replaces a centred icon/heading/badge/text/button
+   stack that had no visual anchor. */
+.emptyPanel {
   display: grid;
-  justify-items: center;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  border: 1px solid var(--border-color);
+  /* Tone lives on the leading edge instead of an icon column. */
+  border-left-width: 3px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  text-align: left;
+}
+
+/* Muted on purpose: an ordinary empty state must not read as an error. */
+.tone_blocked {
+  border-left-color: var(--accent-main);
+}
+
+.tone_waiting {
+  border-left-color: var(--warning-main, #f5a623);
+}
+
+.tone_missing {
+  border-left-color: var(--border-color);
+}
+
+.emptyBody {
+  display: grid;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.emptyHeading {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+}
+
+.emptyHint {
+  margin: 0;
+  max-width: 46ch;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Primary and secondary share a row instead of stacking. */
+.emptyActions {
+  display: flex;
+  align-items: center;
   gap: var(--spacing-md);
-}
-
-.frownFace {
-  width: 120px;
-  height: 120px;
-}
-
-.frownStroke {
-  fill: none;
-  stroke: var(--text-secondary);
-  stroke-linecap: round;
-  stroke-width: 6;
+  flex-wrap: wrap;
+  margin-top: var(--spacing-xs);
 }
 
 .repoLink {
-  color: var(--accent-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  max-width: 100%;
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-sm);
   text-decoration: none;
+}
+
+.repoLink:hover {
+  color: var(--accent-main);
+}
+
+.repoLinkName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repoMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  max-width: 100%;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.repoMeta:hover {
+  color: var(--accent-main);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.repoMetaName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .oauthActionButton {
@@ -82,6 +171,23 @@
 .oauthActionButton:disabled {
   opacity: 0.7;
   cursor: progress;
+}
+
+/*
+ * Reads as disabled, but stays clickable — the click is what starts sign-in or
+ * connects GitHub, which is exactly what the button is blocked on.
+ */
+.oauthActionButtonBlocked {
+  border-color: var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.oauthActionButtonBlocked:hover:not(:disabled) {
+  background: transparent;
+  opacity: 0.8;
 }
 
 .oauthError {
@@ -341,7 +447,6 @@
   grid-template-rows: auto auto;
   gap: var(--spacing-md);
   width: 100%;
-  margin-bottom: var(--spacing-md);
 }
 
 .summaryCard {
@@ -383,6 +488,13 @@
 .summaryValueCompact {
   font-size: var(--font-size-lg);
   color: var(--text-secondary);
+  /* The card sets `align-items: start`, which is right for the large numeric
+     values that fill their row. A short link would otherwise hang at the top
+     of the row instead of sitting level with them. */
+  display: flex;
+  align-items: center;
+  align-self: center;
+  min-height: 2rem;
 }
 
 .summaryMeta {
@@ -563,4 +675,35 @@
   .summaryGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* The explanation, its primary action, and the muted alternative. */
+.emptyPanel {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacing-md);
+  width: 100%;
+  align-content: start;
+}
+
+/* The other path, kept one click away without competing with the primary. */
+.secondaryAction {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.secondaryAction:hover:not(:disabled) {
+  color: var(--text-secondary);
+}
+
+.secondaryAction:disabled {
+  opacity: 0.6;
+  cursor: default;
 }

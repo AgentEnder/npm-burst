@@ -83,13 +83,126 @@ const fixtures: Record<string, FixturePackage> = {
       '4.17.21': 8900000,
     },
   },
+  // Exists so the health tab's empty states are reachable locally. Both have a
+  // GitHub repo but no health metrics; they differ only in whether the GitHub
+  // App is installed, which is what splits the two empty states apart.
+  'fixture-no-app': {
+    package: 'fixture-no-app',
+    downloads: {
+      '1.0.0': 4200,
+      '1.1.0': 11800,
+      '2.0.0': 24500,
+    },
+  },
+  'fixture-awaiting-snapshot': {
+    package: 'fixture-awaiting-snapshot',
+    downloads: {
+      '0.9.0': 1500,
+      '1.0.0': 9300,
+    },
+  },
+  // Same as `fixture-no-app`, but the dev user maintains it — which flips the
+  // empty state from "pull a snapshot" to "install the app".
+  'fixture-no-app-maintained': {
+    package: 'fixture-no-app-maintained',
+    downloads: {
+      '1.0.0': 6100,
+      '1.2.0': 15400,
+    },
+  },
+  // The same two cases again, but for a user who has not linked GitHub —
+  // which changes the primary action rather than just its label.
+  'fixture-no-link': {
+    package: 'fixture-no-link',
+    downloads: {
+      '1.0.0': 3300,
+      '1.4.0': 8700,
+    },
+  },
+  'fixture-no-link-maintained': {
+    package: 'fixture-no-link-maintained',
+    downloads: {
+      '2.0.0': 5200,
+      '2.1.0': 12900,
+    },
+  },
+  // Lists a repository, just not one we can read.
+  'fixture-gitlab': {
+    package: 'fixture-gitlab',
+    downloads: {
+      '1.0.0': 2400,
+      '1.1.0': 7600,
+    },
+  },
 };
 
 const fixtureHealthRepos: Record<string, { owner: string; name: string }> = {
   nx: { owner: 'nrwl', name: 'nx' },
   react: { owner: 'facebook', name: 'react' },
   lodash: { owner: 'lodash', name: 'lodash' },
+  'fixture-no-app': { owner: 'fixture-org', name: 'no-app' },
+  'fixture-awaiting-snapshot': {
+    owner: 'fixture-org',
+    name: 'awaiting-snapshot',
+  },
+  'fixture-no-app-maintained': {
+    owner: 'fixture-org',
+    name: 'no-app-maintained',
+  },
+  'fixture-no-link': { owner: 'fixture-org', name: 'no-link' },
+  'fixture-no-link-maintained': {
+    owner: 'fixture-org',
+    name: 'no-link-maintained',
+  },
 };
+
+/**
+ * Fixture packages whose GitHub App is deliberately NOT installed.
+ *
+ * `installationConfigured` is what separates the two "nothing to show" states:
+ * false renders the install / one-off-snapshot choice, true renders "waiting
+ * for the daily job". Without a fixture for each, neither is reachable in dev.
+ */
+const fixturePackagesWithoutGitHubApp = new Set([
+  'fixture-no-app',
+  'fixture-no-app-maintained',
+  'fixture-no-link',
+  'fixture-no-link-maintained',
+]);
+
+/**
+ * Fixture packages viewed as a user who has NOT linked their GitHub account.
+ *
+ * In reality this is a property of the user, not the package — but keying it
+ * per package is what makes the "connect GitHub first" branch reachable in
+ * dev, where the dev user always has a token.
+ */
+const fixturePackagesWithoutGitHubLink = new Set([
+  'fixture-no-link',
+  'fixture-no-link-maintained',
+]);
+
+/**
+ * Fixture packages the dev user "maintains". Data-driven rather than a
+ * hardcoded `=== 'nx'` so the maintainer-led empty state is reachable on a
+ * package that has no health metrics.
+ */
+/**
+ * Fixture packages hosted outside GitHub — npm lists a repository, but not one
+ * the GitHub API can read.
+ */
+const fixtureExternalRepos: Record<string, { host: string; url: string }> = {
+  'fixture-gitlab': {
+    host: 'gitlab.com',
+    url: 'https://gitlab.com/fixture-group/fixture-gitlab',
+  },
+};
+
+const fixtureMaintainedPackages = new Set([
+  'nx',
+  'fixture-no-app-maintained',
+  'fixture-no-link-maintained',
+]);
 
 const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
   nx: [
@@ -838,6 +951,24 @@ export function getFixtureHealthRepo(name: string): {
   return fixtureHealthRepos[name] ?? null;
 }
 
+export function isFixtureGitHubAppInstalled(name: string): boolean {
+  return !fixturePackagesWithoutGitHubApp.has(name);
+}
+
+export function getFixtureExternalRepo(
+  name: string
+): { host: string; url: string } | null {
+  return fixtureExternalRepos[name] ?? null;
+}
+
+export function isFixtureMaintainer(name: string): boolean {
+  return fixtureMaintainedPackages.has(name);
+}
+
+export function isFixtureGitHubLinked(name: string): boolean {
+  return !fixturePackagesWithoutGitHubLink.has(name);
+}
+
 export function getFixtureHealthMetrics(
   name: string
 ): FixtureHealthMetricPoint[] {
@@ -915,6 +1046,34 @@ const versionReleaseDates: Record<string, Record<string, string>> = {
     '4.17.19': '2020-08-17',
     '4.17.20': '2020-08-13',
     '4.17.21': '2021-02-20',
+  },
+  // Keep the health-empty-state fixtures self-consistent: without release
+  // dates the version lookup falls through to the real npm registry and 404s,
+  // which surfaces as an error toast over the state being demonstrated.
+  'fixture-no-app': {
+    '1.0.0': '2025-11-04',
+    '1.1.0': '2026-01-20',
+    '2.0.0': '2026-03-02',
+  },
+  'fixture-awaiting-snapshot': {
+    '0.9.0': '2026-01-08',
+    '1.0.0': '2026-02-24',
+  },
+  'fixture-no-app-maintained': {
+    '1.0.0': '2025-12-02',
+    '1.2.0': '2026-02-10',
+  },
+  'fixture-no-link': {
+    '1.0.0': '2025-10-21',
+    '1.4.0': '2026-01-30',
+  },
+  'fixture-no-link-maintained': {
+    '2.0.0': '2025-11-18',
+    '2.1.0': '2026-02-16',
+  },
+  'fixture-gitlab': {
+    '1.0.0': '2025-12-15',
+    '1.1.0': '2026-02-28',
   },
 };
 
