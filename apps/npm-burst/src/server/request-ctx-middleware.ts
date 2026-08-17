@@ -23,6 +23,7 @@
 import { enhance } from '@universal-middleware/core';
 import type { UniversalMiddleware } from '@universal-middleware/core';
 
+import { DEV_AUTH_HEADER } from '../dev-auth';
 import { getAuthUserId } from './auth';
 import { parseEnv, type Env } from './env';
 
@@ -42,6 +43,27 @@ interface HonoRuntime {
   env?: Record<string, unknown>;
   executionCtx?: ExecutionContext;
   set?: (key: string, value: unknown) => void;
+}
+
+/**
+ * Local-only: the dev FAB's mock sign-in.
+ *
+ * `wrangler.toml`'s `[secrets].required` block acts as an allowlist — per
+ * wrangler's schema it "replaces .dev.vars/.env inference" — so `DEV_MODE`
+ * never reaches the Worker via `.dev.vars`, and the dev branch that the rest
+ * of this codebase already implements is unreachable locally. This turns it
+ * back on per-request.
+ *
+ * Gated on `import.meta.env.DEV`, a compile-time constant, so the whole branch
+ * is absent from production bundles — no env var or header can re-enable it.
+ */
+function applyDevAuthOverride(
+  raw: Record<string, unknown>,
+  request: Request | undefined
+): Record<string, unknown> {
+  if (!import.meta.env.DEV) return raw;
+  if (request?.headers.get(DEV_AUTH_HEADER) !== '1') return raw;
+  return { ...raw, DEV_MODE: 'true' };
 }
 
 function buildRawEnv(
@@ -68,7 +90,7 @@ export async function buildRequestCtx(
   request: Request,
   honoEnv: Record<string, unknown> | undefined
 ): Promise<RequestCtx> {
-  const env = parseEnv(buildRawEnv(honoEnv));
+  const env = parseEnv(applyDevAuthOverride(buildRawEnv(honoEnv), request));
   const userId = await getAuthUserId(request, env);
   return { env, userId, request };
 }
@@ -80,7 +102,9 @@ export const requestCtxMiddleware: UniversalMiddleware<
 > = enhance(
   async (request, _context, runtime) => {
     const honoRuntime = (runtime as { hono?: HonoRuntime } | undefined)?.hono;
-    const env = parseEnv(buildRawEnv(honoRuntime?.env));
+    const env = parseEnv(
+      applyDevAuthOverride(buildRawEnv(honoRuntime?.env), request)
+    );
     const userId = await getAuthUserId(request, env);
     const ctx: RequestCtx = { env, userId, request };
     honoRuntime?.set?.(REQUEST_CTX_VAR, ctx);

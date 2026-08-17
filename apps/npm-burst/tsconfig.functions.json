@@ -10,7 +10,7 @@
     "outDir": "../../dist/npm-burst/server/out-tsc",
     "composite": true
   },
-  "include": ["src/server/**/*.ts", "+server.ts"],
+  "include": ["src/server/**/*.ts", "src/dev-auth.ts", "+server.ts"],
   "references": [
     {
       "path": "../../libs/github-data-access/tsconfig.lib.json"
