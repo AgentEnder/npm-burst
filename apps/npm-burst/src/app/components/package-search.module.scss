@@ -6,28 +6,23 @@
   &.compact {
     max-width: 280px;
 
-    .searchIcon {
-      left: var(--spacing-sm);
-    }
-
     .input {
       padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs)
-        calc(var(--spacing-sm) + 24px);
+        calc(var(--spacing-sm) + 22px);
       font-size: var(--font-size-sm);
-      border-width: 1px;
-      border-radius: var(--radius-md);
-      background-color: var(--hover-overlay);
-      border-color: transparent;
+      border-radius: var(--radius-sm);
+      // A real edge at rest. This was a transparent border that only appeared
+      // on hover, which read as an unfinished field sitting in the navbar.
+      border-color: var(--border-color);
+      background-color: var(--bg-primary);
 
       &:hover {
-        border-color: var(--input-border);
-        background-color: var(--input-bg);
+        border-color: var(--input-hover-border);
       }
 
       &:focus {
-        border-color: var(--input-focus-border);
-        background-color: var(--input-bg);
-        box-shadow: 0 0 0 2px var(--focus-ring);
+        border-color: var(--brand-main);
+        box-shadow: inset 0 0 0 1px var(--brand-main);
       }
     }
 
@@ -47,49 +42,77 @@
 
 .searchIcon {
   position: absolute;
-  left: var(--spacing-md);
+  left: var(--spacing-sm);
   color: var(--text-tertiary);
   pointer-events: none;
   z-index: 1;
 }
 
+// Cmd/Ctrl+K affordance. Sits inside the field, and is unmounted as soon as
+// there is a query so it can never collide with typed text.
+.shortcutHint {
+  position: absolute;
+  right: var(--spacing-md);
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  background-color: var(--surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
 .input {
   width: 100%;
-  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md)
-    calc(var(--spacing-md) + 28px);
-  font-size: var(--font-size-lg);
-  font-family: var(--font-family);
+  // Right padding reserves room for .shortcutHint so it cannot crowd the
+  // placeholder. ("Ctrl K" is the wide case, not "⌘K".)
+  padding: var(--spacing-sm) calc(var(--spacing-md) + 60px) var(--spacing-sm)
+    calc(var(--spacing-sm) + 28px);
+  font-size: var(--font-size-base);
+  // You are typing an identifier, so the field is set in the identifier face,
+  // like every package name elsewhere in the app.
+  font-family: var(--font-mono);
   color: var(--text-primary);
   background-color: var(--input-bg);
-  border: 2px solid var(--input-border);
-  border-radius: var(--radius-lg);
+  // 1px and radius-sm, matching every other surface edge. This was a 2px
+  // border at radius-lg, which made it the roundest, heaviest control on the
+  // page by some distance.
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
   outline: none;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 
   &::placeholder {
-    color: var(--text-disabled);
+    font-family: var(--font-family);
+    color: var(--text-tertiary);
   }
 
   &:hover {
     border-color: var(--input-hover-border);
-    box-shadow: var(--shadow-sm);
   }
 
+  // Crisp doubled edge rather than a blurred halo -- an unmotivated glow is
+  // its own tell, and this palette separates things with hard edges.
   &:focus {
-    border-color: var(--input-focus-border);
-    box-shadow: 0 0 0 3px var(--focus-ring), var(--shadow-md);
+    border-color: var(--brand-main);
+    box-shadow: inset 0 0 0 1px var(--brand-main);
   }
 }
 
 .dropdown {
   position: absolute;
-  top: calc(100% + var(--spacing-md));
+  top: calc(100% + var(--spacing-xs));
   left: 0;
   right: 0;
   background-color: var(--surface-1);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
   max-height: 400px;
   overflow-y: auto;
   z-index: 1000;
@@ -138,7 +161,7 @@
 }
 
 .trackedStar {
-  color: #f5a623;
+  color: var(--warning-main);
   flex-shrink: 0;
 }
 
@@ -149,6 +172,7 @@
 }
 
 .itemName {
+  font-family: var(--font-mono);
   font-weight: 500;
   font-size: var(--font-size-sm);
 }

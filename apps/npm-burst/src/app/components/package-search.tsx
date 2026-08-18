@@ -16,6 +16,58 @@ interface NpmSearchResult {
   version: string;
 }
 
+interface SearchHandle {
+  compact: boolean;
+  focus: () => void;
+}
+
+/**
+ * Cmd/Ctrl+K focuses the search.
+ *
+ * Registry rather than a listener per component, because pages like
+ * package-detail mount two of these at once — the navbar's compact one and a
+ * page-level one. Independent listeners would both call `focus()` on the same
+ * keystroke and whichever ran last would win, non-deterministically. Instead
+ * every instance registers here, one shared listener is attached while any
+ * exist, and it picks a single target.
+ */
+const instances = new Set<SearchHandle>();
+let detachShortcut: (() => void) | null = null;
+
+function attachShortcut() {
+  if (detachShortcut) return;
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key.toLowerCase() !== 'k') return;
+    if (!event.metaKey && !event.ctrlKey) return;
+
+    // Prefer a page-level search over the navbar's compact one: it is the
+    // larger target and, on the pages that have both, the one the page is
+    // actually about.
+    const target =
+      [...instances].find((instance) => !instance.compact) ?? [...instances][0];
+    if (!target) return;
+
+    // Only now, so an unhandled Cmd+K still reaches the browser.
+    event.preventDefault();
+    target.focus();
+  };
+
+  document.addEventListener('keydown', onKeyDown);
+  detachShortcut = () => document.removeEventListener('keydown', onKeyDown);
+}
+
+function isMacPlatform() {
+  // `navigator.platform` is deprecated; userAgentData where available, and the
+  // UA string otherwise (it carries "Macintosh").
+  const { userAgentData } = navigator as Navigator & {
+    userAgentData?: { platform?: string };
+  };
+  return /mac|iphone|ipad|ipod/i.test(
+    userAgentData?.platform ?? navigator.userAgent
+  );
+}
+
 export function PackageSearch({
   onSelectPackage,
   compact = false,
@@ -27,6 +79,7 @@ export function PackageSearch({
   const [isOpen, setIsOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [isLoading, setIsLoading] = useState(false);
+  const [shortcutHint, setShortcutHint] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -84,6 +137,41 @@ export function PackageSearch({
     return () => debounceRef.current && clearTimeout(debounceRef.current);
   }, [query]);
 
+  // Register with the Cmd/Ctrl+K registry above.
+  useEffect(() => {
+    const handle: SearchHandle = {
+      compact,
+      focus: () => {
+        const input = inputRef.current;
+        if (!input) return;
+        // `focus()` scrolls the input into view on its own, which matters now
+        // that the navbar is not sticky and either search can be off-screen.
+        input.focus();
+        input.select();
+        setIsOpen(true);
+      },
+    };
+
+    instances.add(handle);
+    attachShortcut();
+
+    return () => {
+      instances.delete(handle);
+      if (instances.size === 0) {
+        detachShortcut?.();
+        detachShortcut = null;
+      }
+    };
+  }, [compact]);
+
+  // Resolved after mount, never during SSR: the prerendered HTML cannot know
+  // the platform, so deciding this at render time would hydrate mismatched.
+  // Left null on touch devices, where there is no key to press.
+  useEffect(() => {
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    setShortcutHint(isMacPlatform() ? '⌘K' : 'Ctrl K');
+  }, []);
+
   // Click outside to close
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -133,7 +221,10 @@ export function PackageSearch({
         handleSelect(query.trim().toLowerCase());
       }
     } else if (e.key === 'Escape') {
+      // Blur too, so Cmd+K is reversible with the key you would expect and
+      // focus does not sit trapped in a search you just dismissed.
       setIsOpen(false);
+      inputRef.current?.blur();
     }
   };
 
@@ -164,6 +255,14 @@ export function PackageSearch({
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
         />
+        {/* Only on the instance the shortcut actually targets — see the
+            registry's preference for non-compact — so the badge never
+            advertises a key that would focus a different box. */}
+        {shortcutHint && !query && !compact && (
+          <kbd aria-hidden="true" className={styles.shortcutHint}>
+            {shortcutHint}
+          </kbd>
+        )}
       </div>
 
       {showDropdown && (
@@ -182,7 +281,7 @@ export function PackageSearch({
                 >
                   <Star
                     size={14}
-                    fill="#f5a623"
+                    fill="var(--warning-main)"
                     className={styles.trackedStar}
                   />
                   <span className={styles.itemName}>{name}</span>
