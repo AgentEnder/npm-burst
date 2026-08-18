@@ -28,6 +28,7 @@ import {
   REQUEST_CTX_VAR,
   type RequestCtx,
 } from './request-ctx-middleware';
+import { robotsResponse, sitemapResponse } from './seo-routes';
 import { telefuncHandler } from './telefunc-handler';
 
 export interface WorkerBindings {
@@ -54,10 +55,21 @@ function getApp() {
     await next();
   });
 
-  // Edge-cache SSR'd package HTML. Scoped to `/package/*` so it can only ever
-  // see the dynamic, user-agnostic route — the telefunc RPC endpoint and the
-  // GitHub App routes are registered outside this prefix and are unaffected.
+  // Edge-cache SSR'd HTML. Scoped to the two dynamic, user-agnostic document
+  // routes — the telefunc RPC endpoint and the GitHub App routes are
+  // registered outside these paths and are unaffected. The landing page joined
+  // `/package/*` here when it started server-rendering its tracked-package
+  // list; like package pages it renders the same HTML for everyone.
   app.use('/package/*', htmlCacheMiddleware);
+  app.use('/', htmlCacheMiddleware);
+
+  // robots.txt and the sitemap are generated, not static assets — the sitemap
+  // enumerates tracked packages from the database. Registered before the Vike
+  // catch-all so they are not swallowed by the SSR handler.
+  app.get('/robots.txt', () => robotsResponse());
+  app.get('/sitemap.xml', (c) =>
+    sitemapResponse(c.env as unknown as Record<string, unknown> | undefined)
+  );
 
   app.get('/api/github/install', (c) =>
     handleGitHubAppInstall(c.req.raw, c.var.requestCtx.env)

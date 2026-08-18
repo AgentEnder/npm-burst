@@ -1,69 +1,68 @@
-import { PieChart, History, Star, Filter } from 'lucide-react';
+import { useData } from 'vike-react/useData';
+
 import { PackageSearch } from './components/package-search';
 import { buildPackagePath } from './utils/package-route';
+import type { IndexData } from '../pages/index/+data';
 import styles from './landing-page.module.scss';
 
-function FeatureCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className={styles.featureCard}>
-      <div className={styles.featureIcon}>{icon}</div>
-      <h3 className={styles.featureTitle}>{title}</h3>
-      <p className={styles.featureDescription}>{description}</p>
-    </div>
-  );
-}
+/**
+ * Fallback for a fresh instance that is not yet tracking anything, so the
+ * page always offers somewhere to go.
+ */
+const FALLBACK_PACKAGES = [
+  'react',
+  'typescript',
+  'nx',
+  'vite',
+  'express',
+  'eslint',
+];
 
 export function LandingPage() {
+  const { trackedPackages } = useData<IndexData>();
   const handleSelectPackage = (pkg: string) => {
     window.location.href = buildPackagePath(pkg);
   };
 
+  const hasTracked = trackedPackages.length > 0;
+  const packages = hasTracked ? trackedPackages : FALLBACK_PACKAGES;
+
   return (
     <main className={styles.main}>
       <section className={styles.hero}>
+        <p className={styles.eyebrow}>npm download analytics</p>
         <h1 className={styles.title}>
-          Npm <span className={styles.titleAccent}>Burst</span>
+          See which versions people actually install.
         </h1>
         <p className={styles.subtitle}>
-          Visualize npm package download distributions across versions
+          Look up any package on the npm registry and see its weekly downloads
+          split by major, minor and patch version.
         </p>
+
         <div className={styles.searchContainer}>
           <PackageSearch onSelectPackage={handleSelectPackage} />
         </div>
       </section>
 
-      <section className={styles.features}>
-        <h2 className={styles.featuresHeading}>What you can do</h2>
-        <div className={styles.featureGrid}>
-          <FeatureCard
-            icon={<PieChart size={28} />}
-            title="Version Breakdown"
-            description="Interactive sunburst chart showing download distribution across major, minor, and patch versions."
-          />
-          <FeatureCard
-            icon={<History size={28} />}
-            title="Historical Snapshots"
-            description="Track how download patterns change over time with daily snapshots and a visual timeline."
-          />
-          <FeatureCard
-            icon={<Star size={28} />}
-            title="Track Packages"
-            description="Sign in to track your favorite packages and automatically collect daily download snapshots."
-          />
-          <FeatureCard
-            icon={<Filter size={28} />}
-            title="Smart Filtering"
-            description="Low-pass filter aggregates small versions so you can focus on the versions that matter most."
-          />
-        </div>
+      <section className={styles.tracked} aria-labelledby="tracked-heading">
+        <h2 className={styles.trackedHeading} id="tracked-heading">
+          {hasTracked ? 'Tracked here' : 'Start with one of these'}
+        </h2>
+        <ul className={styles.packageList}>
+          {packages.map((pkg) => (
+            <li key={pkg}>
+              <a className={styles.packageLink} href={buildPackagePath(pkg)}>
+                {pkg}
+              </a>
+            </li>
+          ))}
+        </ul>
+        {hasTracked && (
+          <p className={styles.trackedNote}>
+            These have daily snapshots, so their history goes back further than
+            a package looked up for the first time.
+          </p>
+        )}
       </section>
     </main>
   );

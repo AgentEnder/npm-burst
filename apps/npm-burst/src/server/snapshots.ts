@@ -79,6 +79,45 @@ export async function getSnapshots(
   return Promise.all(rows.map(toSnapshot));
 }
 
+export interface TrackedPackageSummary {
+  packageName: string;
+  /** Newest snapshot date, or null if tracked but never snapshotted yet. */
+  lastSnapshotDate: string | null;
+}
+
+/**
+ * Every package we hold snapshots for, newest tracked first.
+ *
+ * Feeds the sitemap (all of them) and the landing page (a slice). Deliberately
+ * does *not* touch the `downloads` blob — that column is compressed JSON and
+ * decompressing one per package would make both callers far more expensive
+ * than they need to be. `max(snapshot_date)` gives the sitemap a `lastmod`
+ * without reading any payload.
+ */
+export async function listTrackedPackages(
+  db: Kysely<DB>,
+  limit?: number
+): Promise<TrackedPackageSummary[]> {
+  let query = db
+    .selectFrom('tracked_packages as tp')
+    .leftJoin('snapshots as s', 's.package_id', 'tp.id')
+    .select(({ fn }) => [
+      'tp.package_name as packageName',
+      fn.max('s.snapshot_date').as('lastSnapshotDate'),
+    ])
+    .groupBy('tp.package_name')
+    .orderBy('tp.created_at', 'desc');
+
+  if (limit !== undefined) query = query.limit(limit);
+
+  const rows = await query.execute();
+
+  return rows.map((row) => ({
+    packageName: row.packageName,
+    lastSnapshotDate: row.lastSnapshotDate ?? null,
+  }));
+}
+
 /** Whether the package is known to us at all — drives 404 vs empty state. */
 export async function isPackageTracked(
   db: Kysely<DB>,
