@@ -7,27 +7,48 @@
   background-color: var(--bg-nav);
   color: var(--text-primary);
   padding: var(--spacing-md) var(--spacing-xl);
-  box-shadow: var(--shadow-md);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  transition: background-color var(--transition-base),
-    box-shadow var(--transition-base);
+  // Not sticky. There is nothing here you need mid-scroll -- search, theme,
+  // and auth are all start-of-session actions -- so pinning it just spends
+  // vertical space on every page. Separated by a rule rather than a shadow,
+  // like every other surface edge in this system.
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color var(--transition-base);
 }
 
+// The wordmark is the one place the brand red is the point rather than a
+// state, so it carries the mark. Everything else in the chrome stays neutral.
 .title {
   font-weight: 700;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
+  letter-spacing: -0.02em;
   color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   text-decoration: none;
   transition: opacity var(--transition-fast);
+  flex-shrink: 0;
 
   &:hover {
     opacity: 0.8;
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.titleMark {
+  width: 1.05em;
+  height: 1.05em;
+  color: var(--brand-main);
+  flex-shrink: 0;
+  // Optical centring: the mark's open middle sits high against a cap-height
+  // wordmark, so nudge it down rather than aligning the boxes.
+  position: relative;
+  top: 0.03em;
 }
 
 .navSearch {

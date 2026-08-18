@@ -8,6 +8,7 @@ import {
   SignInButton,
   UserButton,
 } from '@clerk/clerk-react';
+import { BrandMark } from './brand-mark';
 import { PackageSearch } from './package-search';
 import styles from './navbar.module.scss';
 
@@ -24,6 +25,7 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
   return (
     <nav className={styles.navbar}>
       <a href={import.meta.env.BASE_URL || '/'} className={styles.title}>
+        <BrandMark className={styles.titleMark} />
         Npm Burst
       </a>
       {onSelectPackage && (
