@@ -595,23 +595,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         ) : null}
       </div>
 
-      <ChartDescription>
-        <p>
-          {chartMode === 'stacked'
-            ? `Stacked area — ${grouping} version share over time.`
-            : `Line chart — ${grouping} version trends over time.`}
-        </p>
-        <ul>
-          <li>
-            Y-axis: {yAxisMode === 'percent' ? '% share' : 'download count'}
-          </li>
-          {lowPassFilter > 0 && (
-            <li>Below {(lowPassFilter * 100).toFixed(1)}% dimmed in legend</li>
-          )}
-          <li>Click legend to toggle series</li>
-        </ul>
-      </ChartDescription>
-
       {series.length === 0 ? (
         <div className={styles.noData}>
           No historical snapshot data available. Track this package to start
@@ -664,6 +647,22 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
           </div>
         </>
       )}
+      <ChartDescription>
+        <p>
+          {chartMode === 'stacked'
+            ? `Stacked area — ${grouping} version share over time.`
+            : `Line chart — ${grouping} version trends over time.`}
+        </p>
+        <ul>
+          <li>
+            Y-axis: {yAxisMode === 'percent' ? '% share' : 'download count'}
+          </li>
+          {lowPassFilter > 0 && (
+            <li>Below {(lowPassFilter * 100).toFixed(1)}% dimmed in legend</li>
+          )}
+          <li>Click legend to toggle series</li>
+        </ul>
+      </ChartDescription>
     </div>
   );
 });

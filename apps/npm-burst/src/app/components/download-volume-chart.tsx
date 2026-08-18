@@ -295,13 +295,6 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
           label="Releases"
         />
       </div>
-      <ChartDescription>
-        <p>Total downloads — 7-day rolling sum.</p>
-        <ul>
-          <li>Release markers: {releaseTickFilter}</li>
-          <li>Hover for exact counts</li>
-        </ul>
-      </ChartDescription>
       {filteredVolumeData.length === 0 ? (
         <div className={styles.noData}>
           No download volume data available for this package.
@@ -311,6 +304,13 @@ export const DownloadVolumeChart = memo(function DownloadVolumeChart({
           <svg ref={svgRef} />
         </div>
       )}
+      <ChartDescription>
+        <p>Total downloads — 7-day rolling sum.</p>
+        <ul>
+          <li>Release markers: {releaseTickFilter}</li>
+          <li>Hover for exact counts</li>
+        </ul>
+      </ChartDescription>
     </div>
   );
 });

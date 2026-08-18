@@ -1,24 +1,45 @@
+// A legend, not help text.
+//
+// This used to sit between the control bar and the chart as a paragraph with a
+// bulleted list, which put a block of prose in the most prominent spot on the
+// page and pushed the actual chart down. It now renders beneath the chart it
+// describes, and reads as a caption: a lead sentence, then the active settings
+// inline. Nothing here is instructional any more -- the controls above are
+// legible on their own -- so it is annotation about what you are looking at.
 .description {
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
   line-height: 1.6;
-  margin-bottom: var(--spacing-sm);
+  margin: var(--spacing-lg) 0 0;
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--divider);
 
   p {
     margin: 0;
   }
 
+  // Inline and wrapped rather than stacked bullets. Each item is one short
+  // fact about the current view, so a vertical list overstated them.
   ul {
     margin: 2px 0 0;
-    padding-left: 1.25em;
-    list-style: disc;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px var(--spacing-sm);
   }
 
   li {
     padding: 0;
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
   }
 
-  li + li {
-    margin-top: 1px;
+  // Separator between items, suppressed on the first so the row never opens
+  // with a stray dot.
+  li + li::before {
+    content: '·';
+    color: var(--text-disabled);
   }
 }

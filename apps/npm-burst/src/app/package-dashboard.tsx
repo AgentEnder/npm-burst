@@ -141,24 +141,6 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
 
           {viewMode === 'sunburst' ? (
             <>
-              <ChartDescription>
-                <p>Hierarchical breakdown of downloads by version.</p>
-                <ul>
-                  <li>Each ring = major → minor → patch</li>
-                  <li>Click to zoom in, center to zoom out</li>
-                  {lowPassFilter > 0 && (
-                    <li>
-                      Below {(lowPassFilter * 100).toFixed(1)}% grouped as
-                      &ldquo;Other&rdquo;
-                    </li>
-                  )}
-                  <li>
-                    {sortByVersion
-                      ? 'Sorted by version'
-                      : 'Sorted by downloads'}
-                  </li>
-                </ul>
-              </ChartDescription>
               {sunburstSourceVersions.length > 0 ? (
                 <div
                   style={{
@@ -195,6 +177,24 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
                   onVersionClick={handleVersionClick}
                 />
               ) : null}
+              <ChartDescription>
+                <p>Hierarchical breakdown of downloads by version.</p>
+                <ul>
+                  <li>Each ring = major → minor → patch</li>
+                  <li>Click to zoom in, center to zoom out</li>
+                  {lowPassFilter > 0 && (
+                    <li>
+                      Below {(lowPassFilter * 100).toFixed(1)}% grouped as
+                      &ldquo;Other&rdquo;
+                    </li>
+                  )}
+                  <li>
+                    {sortByVersion
+                      ? 'Sorted by version'
+                      : 'Sorted by downloads'}
+                  </li>
+                </ul>
+              </ChartDescription>
             </>
           ) : viewMode === 'adoption' ? (
             <VersionAdoptionChart

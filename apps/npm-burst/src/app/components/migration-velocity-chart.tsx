@@ -382,21 +382,6 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
           />
         ) : null}
       </div>
-      <ChartDescription>
-        <p>
-          Adoption speed per {migrationGranularity} version — steeper = faster
-          uptake.
-        </p>
-        <ul>
-          <li>X: days since release, Y: adoption %</li>
-          <li>
-            {migrationTimeWindow !== 'all'
-              ? `Showing first ${migrationTimeWindow} after each release`
-              : 'Showing full history'}
-          </li>
-          <li>Click a legend entry to toggle a version</li>
-        </ul>
-      </ChartDescription>
       {series.length === 0 ? (
         <div className={styles.noData}>
           No historical snapshot data or version release information available.
@@ -451,6 +436,21 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
           </div>
         </>
       )}
+      <ChartDescription>
+        <p>
+          Adoption speed per {migrationGranularity} version — steeper = faster
+          uptake.
+        </p>
+        <ul>
+          <li>X: days since release, Y: adoption %</li>
+          <li>
+            {migrationTimeWindow !== 'all'
+              ? `Showing first ${migrationTimeWindow} after each release`
+              : 'Showing full history'}
+          </li>
+          <li>Click a legend entry to toggle a version</li>
+        </ul>
+      </ChartDescription>
     </div>
   );
 });

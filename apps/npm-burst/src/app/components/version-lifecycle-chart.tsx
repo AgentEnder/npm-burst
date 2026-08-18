@@ -415,15 +415,6 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         </label>
       </div>
 
-      <ChartDescription>
-        <p>Major version lifecycle — release through peak to decline.</p>
-        <ul>
-          <li>Adoption threshold: {threshold}%</li>
-          {showOnlySnapshotted && <li>Tracked versions only</li>}
-          {minPeak > 0 && <li>Hiding below {minPeak}% peak</li>}
-        </ul>
-      </ChartDescription>
-
       {filteredMilestones.length === 0 ? (
         <div className={styles.noData}>
           No historical snapshot data or version release information available.
@@ -434,6 +425,14 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
           <svg ref={svgRef} />
         </div>
       )}
+      <ChartDescription>
+        <p>Major version lifecycle — release through peak to decline.</p>
+        <ul>
+          <li>Adoption threshold: {threshold}%</li>
+          {showOnlySnapshotted && <li>Tracked versions only</li>}
+          {minPeak > 0 && <li>Hiding below {minPeak}% peak</li>}
+        </ul>
+      </ChartDescription>
     </div>
   );
 });
