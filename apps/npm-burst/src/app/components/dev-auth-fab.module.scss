@@ -14,7 +14,7 @@
   display: flex;
   align-items: stretch;
   border: 1px dashed var(--border-color);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -108,6 +108,6 @@
 }
 
 .optionActive {
-  background: rgba(126, 87, 194, 0.18);
+  background: rgba(var(--brand-rgb), 0.18);
   color: var(--text-primary);
 }

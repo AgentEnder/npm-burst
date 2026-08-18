@@ -30,9 +30,9 @@
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
   padding: var(--spacing-sm) var(--spacing-lg);
-  border: 1px solid rgba(126, 87, 194, 0.25);
+  border: 1px solid rgba(var(--brand-rgb), 0.25);
   border-radius: var(--radius-lg);
-  background: rgba(126, 87, 194, 0.06);
+  background: rgba(var(--brand-rgb), 0.06);
   font-size: var(--font-size-sm);
 }
 
@@ -64,7 +64,7 @@
 }
 
 .tone_waiting {
-  border-left-color: var(--warning-main, #f5a623);
+  border-left-color: var(--warning-main);
 }
 
 .tone_missing {
@@ -112,7 +112,7 @@
   gap: 0.4em;
   max-width: 100%;
   color: var(--text-primary);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   text-decoration: none;
 }
@@ -133,7 +133,7 @@
   gap: 0.35em;
   max-width: 100%;
   color: var(--text-tertiary);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   text-decoration: none;
 }
@@ -155,7 +155,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   border: 1px solid var(--accent-main);
-  background: rgba(126, 87, 194, 0.12);
+  background: rgba(var(--brand-rgb), 0.12);
   color: var(--text-primary);
   border-radius: var(--radius-md);
   padding: 0.65rem 1rem;
@@ -165,7 +165,7 @@
 }
 
 .oauthActionButton:hover:not(:disabled) {
-  background: rgba(126, 87, 194, 0.18);
+  background: rgba(var(--brand-rgb), 0.18);
 }
 
 .oauthActionButton:disabled {
@@ -191,7 +191,7 @@
 }
 
 .oauthError {
-  color: var(--error-main, #ff7b72);
+  color: var(--error-main);
 }
 
 .accordion {
@@ -204,11 +204,7 @@
   width: 100%;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.03),
-    rgba(255, 255, 255, 0.01)
-  );
+  background: var(--surface-1);
   overflow: hidden;
 }
 
@@ -248,7 +244,7 @@
 }
 
 .metricValue {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: var(--font-size-lg);
   font-weight: 600;
 }
@@ -295,7 +291,7 @@
 }
 
 .modeToggleButtonActive {
-  background: rgba(126, 87, 194, 0.18);
+  background: rgba(var(--brand-rgb), 0.18);
   color: var(--text-primary);
 }
 
@@ -358,10 +354,10 @@
 .sourceJson {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-secondary);
   padding: var(--spacing-md);
   overflow: auto;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   line-height: 1.6;
 }
@@ -372,19 +368,19 @@
 }
 
 .jsonKey {
-  color: #d1b3ff;
+  color: var(--syntax-key);
 }
 
 .jsonString {
-  color: #cfd8dc;
+  color: var(--syntax-string);
 }
 
 .jsonNumber {
-  color: #80cbc4;
+  color: var(--syntax-number);
 }
 
 .jsonBoolean {
-  color: #ffcc80;
+  color: var(--syntax-boolean);
 }
 
 .jsonNull {
@@ -433,7 +429,7 @@
 }
 
 .area {
-  fill: rgba(126, 87, 194, 0.16);
+  fill: rgba(var(--brand-rgb), 0.16);
 }
 
 .gridLine {
@@ -454,11 +450,7 @@
   padding: var(--spacing-md) var(--spacing-lg);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.035),
-    rgba(255, 255, 255, 0.012)
-  );
+  background: var(--surface-1);
   display: grid;
   grid-row: span 2;
   grid-template-rows: subgrid;
@@ -607,7 +599,7 @@
 .sourceSummary {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-secondary);
   padding: var(--spacing-md);
 }
 
@@ -619,7 +611,7 @@
 .sourceEntry {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-secondary);
   padding: var(--spacing-md);
   display: grid;
   gap: var(--spacing-sm);

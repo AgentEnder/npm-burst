@@ -96,7 +96,7 @@
   cursor: pointer;
   user-select: none;
   padding: 5px 10px;
-  border-radius: 20px;
+  border-radius: var(--radius-sm);
   transition: background-color var(--transition-fast);
 
   &:hover {
@@ -111,11 +111,7 @@
   height: 0;
 
   &:checked + .toggleTrack {
-    background: linear-gradient(
-      135deg,
-      var(--primary-main),
-      var(--accent-main)
-    );
+    background: var(--brand-main);
 
     .toggleThumb {
       transform: translateX(14px);
@@ -164,7 +160,7 @@
   margin-left: auto;
   padding: 4px 12px 4px 10px;
   background-color: var(--hover-overlay);
-  border-radius: 20px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   transition: border-color var(--transition-fast);
 
@@ -231,7 +227,7 @@
   }
 
   &:focus {
-    background-color: rgba(92, 107, 192, 0.1);
+    background-color: rgba(var(--brand-rgb), 0.1);
   }
 }
 
@@ -333,7 +329,7 @@
   margin-bottom: var(--spacing-sm);
   padding: 0.25rem 0.6rem;
   border: 1px solid var(--border-color);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);

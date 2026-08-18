@@ -34,7 +34,7 @@
 }
 
 .inputRange {
-  border-color: rgba(126, 87, 194, 0.45);
+  border-color: rgba(var(--brand-rgb), 0.45);
 }
 
 .rangeHint {

@@ -1,5 +1,25 @@
-// Import Google Fonts
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+// ---------------------------------------------------------------------------
+// Visual system: the npm / GitHub developer ecosystem.
+//
+// The reference is deliberate, not a default. This tool reads npm registry data
+// and renders GitHub repository health, so it borrows the visual language of
+// the ecosystem it reports on: GitHub Primer's cool near-black neutral ramp,
+// with npm red as the single warm signal against it.
+//
+// Two rules hold the palette together:
+//
+//   1. Red carries IDENTITY and PRIMARY ACTION only -- the wordmark, primary
+//      buttons, active indicators, selected cells. Always as a solid fill with
+//      --brand-contrast on top, never as body text or link color. That is what
+//      keeps it from colliding with the status layer below, and it is how npm's
+//      own site uses it.
+//   2. STATUS is a separate hue set (danger / success / attention). Those three
+//      values are Primer's, and were already living in this codebase as
+//      hardcoded fallbacks next to undefined tokens; they are promoted here.
+//
+// Fonts are loaded in `pages/+Head.tsx` (preconnect + non-blocking link) rather
+// than via CSS @import, which is render-blocking and cannot be preloaded.
+// ---------------------------------------------------------------------------
 
 // CSS Reset and Base
 *,
@@ -9,9 +29,15 @@
 }
 
 :root {
-  // Typography
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  // Typography.
+  // Archivo: an industrial grotesque drawn for high-density display, tighter
+  // and more mechanical than the usual UI sans. IBM Plex Mono: carries every
+  // numeric in the app (versions, download counts, dates) and has true tabular
+  // figures, which the tables depend on for column alignment.
+  --font-family: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo,
+    Consolas, monospace;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -28,11 +54,12 @@
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
 
-  // Border radius
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  // Border radius. Deliberately tight -- this is an instrument panel, not a
+  // consumer app. Nothing in the UI is a pill except genuinely circular things.
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 
   // Transitions
   --transition-fast: 150ms ease-in-out;
@@ -43,129 +70,175 @@
 // Dark Theme (default)
 :root,
 [data-theme='dark'] {
-  // Background colors
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --bg-tertiary: #2d2d2d;
-  --bg-elevated: #242424;
-  --bg-nav: #1a1a1a;
+  // Background colors -- Primer's canvas ramp. Cool, blue-tinted near-black,
+  // not the neutral greys it replaced.
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-elevated: #161b22;
+  --bg-nav: #010409;
 
   // Surface colors
-  --surface-1: #1e1e1e;
-  --surface-2: #2d2d2d;
-  --surface-3: #3d3d3d;
+  --surface-1: #161b22;
+  --surface-2: #21262d;
+  --surface-3: #30363d;
 
   // Text colors
-  --text-primary: rgba(255, 255, 255, 0.95);
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-tertiary: rgba(255, 255, 255, 0.5);
-  --text-disabled: rgba(255, 255, 255, 0.3);
+  --text-primary: #e6edf3;
+  --text-secondary: #7d8590;
+  --text-tertiary: #6e7681;
+  --text-disabled: #484f58;
 
-  // Primary colors (Material Indigo)
-  --primary-main: #5c6bc0;
-  --primary-light: #8e99f3;
-  --primary-dark: #26418f;
-  --primary-contrast: #ffffff;
+  // Brand: npm red. Fills only -- see the rule at the top of this file.
+  --brand-main: #cb3837;
+  --brand-hover: #e04846;
+  --brand-active: #a72c2b;
+  --brand-contrast: #ffffff;
+  // Channels, so translucent brand tints can be composed without hardcoding
+  // the hex a second time: rgba(var(--brand-rgb), 0.12).
+  --brand-rgb: 203, 56, 55;
 
-  // Accent colors
-  --accent-main: #7e57c2;
-  --accent-light: #b085f5;
-  --accent-dark: #4d2c91;
+  // `--primary-*` / `--accent-*` are the names the components already use.
+  // They all resolve to the one brand red now; there is no second hue.
+  // `--accent-color` was referenced in 8 places and never defined, which left
+  // the sign-in button and the calendar's selected-day highlight unpainted.
+  --primary-main: var(--brand-main);
+  --primary-light: var(--brand-hover);
+  --primary-dark: var(--brand-active);
+  --primary-contrast: var(--brand-contrast);
+  --accent-main: var(--brand-main);
+  --accent-light: var(--brand-hover);
+  --accent-dark: var(--brand-active);
+  --accent-color: var(--brand-main);
+
+  // Status. Distinct from brand red by role and by hue.
+  --error-main: #f85149;
+  --error-bg: rgba(248, 81, 73, 0.1);
+  --success-main: #3fb950;
+  --success-bg: rgba(63, 185, 80, 0.1);
+  --warning-main: #d29922;
+  --warning-bg: rgba(210, 153, 34, 0.1);
+
+  // Code syntax (the raw-JSON viewer in the health report). Primer's
+  // "prettylights" set, so a payload here is tinted the way the same JSON
+  // would be on GitHub. The purple is a syntax color, not a brand color --
+  // it carries no relationship to the palette above.
+  --syntax-key: #79c0ff;
+  --syntax-string: #a5d6ff;
+  --syntax-number: #ffa657;
+  --syntax-boolean: #d2a8ff;
 
   // Border colors
-  --border-color: rgba(255, 255, 255, 0.12);
-  --border-hover: rgba(255, 255, 255, 0.24);
-  --divider: rgba(255, 255, 255, 0.08);
+  --border-color: #30363d;
+  --border-hover: #484f58;
+  --divider: #21262d;
 
   // Interactive states
-  --hover-overlay: rgba(255, 255, 255, 0.08);
-  --active-overlay: rgba(255, 255, 255, 0.12);
-  --focus-ring: rgba(92, 107, 192, 0.5);
+  --hover-overlay: rgba(255, 255, 255, 0.06);
+  --active-overlay: rgba(255, 255, 255, 0.1);
+  --focus-ring: rgba(203, 56, 55, 0.55);
 
-  // Shadows (Material Design elevation)
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
-  --shadow-lg: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 6px 10px 4px rgba(0, 0, 0, 0.15),
-    0 2px 3px 0 rgba(0, 0, 0, 0.3);
+  // Shadows. Kept light on purpose: this palette separates surfaces with
+  // borders, the way Primer does, so shadows stay a hint rather than elevation.
+  --shadow-sm: 0 1px 0 rgba(1, 4, 9, 0.5);
+  --shadow-md: 0 3px 6px rgba(1, 4, 9, 0.6);
+  --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.7);
+  --shadow-xl: 0 12px 48px rgba(1, 4, 9, 0.8);
 
   // Input colors
-  --input-bg: rgba(255, 255, 255, 0.05);
-  --input-border: rgba(255, 255, 255, 0.2);
-  --input-hover-border: rgba(255, 255, 255, 0.3);
-  --input-focus-border: var(--primary-main);
+  --input-bg: #0d1117;
+  --input-border: #30363d;
+  --input-hover-border: #484f58;
+  --input-focus-border: var(--brand-main);
 
   // Table colors
   --table-header-bg: var(--surface-2);
   --table-row-even: rgba(255, 255, 255, 0.02);
-  --table-row-hover: rgba(255, 255, 255, 0.1);
+  --table-row-hover: rgba(255, 255, 255, 0.06);
   --table-border: var(--border-color);
 
-  --card-bg: var(--surface-3);
+  --card-bg: var(--surface-2);
 }
 
 // Light Theme
 [data-theme='light'] {
   // Background colors
-  --bg-primary: #fafafa;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f5f5f5;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-tertiary: #eaeef2;
   --bg-elevated: #ffffff;
   --bg-nav: #ffffff;
 
   // Surface colors
   --surface-1: #ffffff;
-  --surface-2: #f5f5f5;
-  --surface-3: #eeeeee;
+  --surface-2: #f6f8fa;
+  --surface-3: #eaeef2;
 
   // Text colors
-  --text-primary: rgba(0, 0, 0, 0.87);
-  --text-secondary: rgba(0, 0, 0, 0.6);
-  --text-tertiary: rgba(0, 0, 0, 0.38);
-  --text-disabled: rgba(0, 0, 0, 0.26);
+  --text-primary: #1f2328;
+  --text-secondary: #656d76;
+  --text-tertiary: #8c959f;
+  --text-disabled: #afb8c1;
 
-  // Primary colors
-  --primary-main: #3f51b5;
-  --primary-light: #7986cb;
-  --primary-dark: #303f9f;
-  --primary-contrast: #ffffff;
+  // Brand: npm red, darkened slightly so white-on-red clears AA on light.
+  --brand-main: #cb3837;
+  --brand-hover: #a72c2b;
+  --brand-active: #8b2423;
+  --brand-contrast: #ffffff;
+  --brand-rgb: 203, 56, 55;
 
-  // Accent colors
-  --accent-main: #673ab7;
-  --accent-light: #9575cd;
-  --accent-dark: #512da8;
+  --primary-main: var(--brand-main);
+  --primary-light: var(--brand-hover);
+  --primary-dark: var(--brand-active);
+  --primary-contrast: var(--brand-contrast);
+  --accent-main: var(--brand-main);
+  --accent-light: var(--brand-hover);
+  --accent-dark: var(--brand-active);
+  --accent-color: var(--brand-main);
+
+  // Status
+  --error-main: #cf222e;
+  --error-bg: rgba(207, 34, 46, 0.08);
+  --success-main: #1a7f37;
+  --success-bg: rgba(26, 127, 55, 0.08);
+  --warning-main: #9a6700;
+  --warning-bg: rgba(154, 103, 0, 0.08);
+
+  // Code syntax -- Primer prettylights, light variants.
+  --syntax-key: #0550ae;
+  --syntax-string: #0a3069;
+  --syntax-number: #953800;
+  --syntax-boolean: #8250df;
 
   // Border colors
-  --border-color: rgba(0, 0, 0, 0.12);
-  --border-hover: rgba(0, 0, 0, 0.24);
-  --divider: rgba(0, 0, 0, 0.08);
+  --border-color: #d0d7de;
+  --border-hover: #afb8c1;
+  --divider: #eaeef2;
 
   // Interactive states
-  --hover-overlay: rgba(0, 0, 0, 0.04);
-  --active-overlay: rgba(0, 0, 0, 0.08);
-  --focus-ring: rgba(63, 81, 181, 0.3);
+  --hover-overlay: rgba(31, 35, 40, 0.05);
+  --active-overlay: rgba(31, 35, 40, 0.09);
+  --focus-ring: rgba(203, 56, 55, 0.4);
 
-  // Shadows (Material Design elevation)
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05),
-    0 1px 3px 1px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 2px 8px 2px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 4px 8px 3px rgba(0, 0, 0, 0.08), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 6px 10px 4px rgba(0, 0, 0, 0.08),
-    0 2px 3px 0 rgba(0, 0, 0, 0.1);
+  // Shadows. As in dark: borders do the separating, shadows only hint.
+  --shadow-sm: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --shadow-md: 0 3px 6px rgba(31, 35, 40, 0.08);
+  --shadow-lg: 0 8px 24px rgba(31, 35, 40, 0.12);
+  --shadow-xl: 0 12px 48px rgba(31, 35, 40, 0.16);
 
   // Input colors
   --input-bg: #ffffff;
-  --input-border: rgba(0, 0, 0, 0.23);
-  --input-hover-border: rgba(0, 0, 0, 0.4);
-  --input-focus-border: var(--primary-main);
+  --input-border: #d0d7de;
+  --input-hover-border: #afb8c1;
+  --input-focus-border: var(--brand-main);
 
   // Table colors
   --table-header-bg: var(--surface-2);
-  --table-row-even: rgba(0, 0, 0, 0.02);
-  --table-row-hover: rgba(0, 0, 0, 0.08);
+  --table-row-even: rgba(31, 35, 40, 0.02);
+  --table-row-hover: rgba(31, 35, 40, 0.06);
   --table-border: var(--border-color);
 
-  --card-bg: var(--surface-3);
+  --card-bg: var(--surface-2);
 }
 
 // Base styles
@@ -188,10 +261,14 @@ body {
 }
 
 // Typography
+// Archivo is drawn tight; at display sizes it needs negative tracking to stop
+// looking loose, which is most of what makes it read as chosen rather than
+// stock. The default UI sans gets none of this treatment.
 h1 {
   font-size: var(--font-size-3xl);
-  font-weight: 600;
-  line-height: 1.2;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.021em;
   margin: 0 0 var(--spacing-lg) 0;
   color: var(--text-primary);
 }
@@ -199,7 +276,8 @@ h1 {
 h2 {
   font-size: var(--font-size-2xl);
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.25;
+  letter-spacing: -0.014em;
   margin: 0 0 var(--spacing-md) 0;
   color: var(--text-primary);
 }
@@ -210,9 +288,10 @@ table {
   min-width: 400px;
   border-collapse: separate;
   border-spacing: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: var(--shadow-md);
+  // Border, not shadow -- surfaces separate by edge in this system.
+  border: 1px solid var(--border-color);
   background-color: var(--surface-1);
   font-size: var(--font-size-sm);
 
@@ -326,8 +405,10 @@ div#chart {
   }
 }
 
+// Numeric cells in the data tables. This previously declared a sans-serif
+// stack despite the name, so nothing in the app was ever actually monospaced.
 .monospace {
-  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-  font-variant: tabular-nums;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }

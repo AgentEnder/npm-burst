@@ -1,5 +1,18 @@
 import * as d3 from 'd3';
 
+/**
+ * Categorical arc colors for the version charts.
+ *
+ * unslop-ignore -- the wide hue spread here is deliberate and must stay wide.
+ * These are qualitative colors identifying *which version* an arc is, and a
+ * package under inspection can easily show a large version range at once. A
+ * narrow brand-derived ramp would collapse neighbouring versions into
+ * indistinguishable neighbours, which is the opposite of what the chart is for.
+ * Maximum mutual distinguishability beats palette harmony in this one place.
+ *
+ * The surrounding chart chrome (center, tooltips, labels) does follow the app
+ * palette -- see `getThemeChartColors` below.
+ */
 export function generateThemeColorPalette(
   count: number,
   theme: 'light' | 'dark'
@@ -74,21 +87,21 @@ export function getThemeChartColors(theme: 'light' | 'dark') {
     return {
       centerFill: '#4ecdc4',
       centerHover: '#95e1d3',
-      labelColor: 'rgba(255, 255, 255, 0.95)',
-      tooltipBg: '#242424',
-      tooltipBorder: 'rgba(255, 255, 255, 0.12)',
-      tooltipText: 'rgba(255, 255, 255, 0.95)',
-      tooltipTextSecondary: 'rgba(255, 255, 255, 0.5)',
+      labelColor: '#e6edf3',
+      tooltipBg: '#161b22',
+      tooltipBorder: '#30363d',
+      tooltipText: '#e6edf3',
+      tooltipTextSecondary: '#7d8590',
     };
   } else {
     return {
       centerFill: '#2a9d8f',
       centerHover: '#457b9d',
-      labelColor: 'rgba(0, 0, 0, 0.87)',
+      labelColor: '#1f2328',
       tooltipBg: '#ffffff',
-      tooltipBorder: 'rgba(0, 0, 0, 0.12)',
-      tooltipText: 'rgba(0, 0, 0, 0.87)',
-      tooltipTextSecondary: 'rgba(0, 0, 0, 0.5)',
+      tooltipBorder: '#d0d7de',
+      tooltipText: '#1f2328',
+      tooltipTextSecondary: '#656d76',
     };
   }
 }

@@ -144,21 +144,21 @@ export function sunburst({
     .attr('fill', colors?.tooltipText || '#fff')
     .attr('font-size', '11px')
     .attr('font-weight', '600')
-    .attr('font-family', 'Inter, system-ui, sans-serif');
+    .style('font-family', 'var(--font-mono)');
 
   const tooltipDownloads = tooltipGroup
     .append('text')
     .attr('class', 'tooltip-downloads')
     .attr('fill', colors?.tooltipTextSecondary || 'rgba(255, 255, 255, 0.5)')
     .attr('font-size', '9.5px')
-    .attr('font-family', 'Inter, system-ui, sans-serif');
+    .style('font-family', 'var(--font-mono)');
 
   const tooltipPercentage = tooltipGroup
     .append('text')
     .attr('class', 'tooltip-percentage')
     .attr('fill', colors?.tooltipTextSecondary || 'rgba(255, 255, 255, 0.5)')
     .attr('font-size', '9.5px')
-    .attr('font-family', 'Inter, system-ui, sans-serif');
+    .style('font-family', 'var(--font-mono)');
 
   // Container groups for path and label — we use enter/update/exit joins
   const pathGroup = g.append('g');

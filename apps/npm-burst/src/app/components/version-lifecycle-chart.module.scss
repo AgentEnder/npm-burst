@@ -18,7 +18,7 @@
   gap: var(--spacing-xs);
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 20px;
+  border-radius: var(--radius-sm);
   padding: 3px 12px;
 }
 
@@ -62,7 +62,7 @@
   padding: 4px 10px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 20px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   font-weight: 500;
   transition: border-color var(--transition-fast);
