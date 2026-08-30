@@ -4,6 +4,19 @@ import { SITE_NAME } from '../app/utils/package-seo';
 import { absoluteUrl } from '../app/utils/site';
 
 /**
+ * Runs synchronously in <head>, before the stylesheet applies, so the first
+ * paint is already in the right theme. The HTML itself can't carry the theme:
+ * it is prerendered / edge-cached and shared between visitors. Priority:
+ * saved choice, then the OS preference. Key must match `THEME_STORAGE_KEY`
+ * in `app/context/theme-context.tsx`.
+ */
+const THEME_BOOTSTRAP = `(function(){try{
+var d=document.documentElement;
+var s=localStorage.getItem('npm-burst-theme');
+d.dataset.theme=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+}catch(e){}})();`;
+
+/**
  * Document head shared by every page.
  *
  * `title` / `description` / `og:*` are emitted by vike-react from the `title`
@@ -17,6 +30,7 @@ import { absoluteUrl } from '../app/utils/site';
  * - **Fonts.** Here rather than a CSS `@import`, which is render-blocking and
  *   cannot be preloaded. Preconnect opens the connection in parallel with the
  *   stylesheet.
+ * - **Theme bootstrap.** See `THEME_BOOTSTRAP` above.
  */
 export default function Head() {
   const pageContext = usePageContext();
@@ -24,6 +38,7 @@ export default function Head() {
 
   return (
     <>
+      <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       <link rel="canonical" href={canonical} />
       <meta property="og:url" content={canonical} />
       <meta property="og:site_name" content={SITE_NAME} />

@@ -22,9 +22,7 @@
     "deploy": {
       "command": "wrangler deploy",
       "dependsOn": ["build"],
-      "options": {
-        "cwd": "apps/npm-burst/dist/server"
-      }
+      "options": { "cwd": "apps/npm-burst" }
     },
     "db:migrate": {
       "command": "wrangler d1 migrations apply npm-burst-db --local",

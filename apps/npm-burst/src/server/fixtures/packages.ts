@@ -8,29 +8,14 @@
  * The "current" date is March 17, 2026.
  */
 
+import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
+
 export interface FixturePackage {
   downloads: Record<string, number>;
   package: string;
 }
 
-export interface FixtureHealthMetricPoint {
-  snapshotDate: string;
-  issuesOpened30d: number;
-  issuesClosed30d: number;
-  prsOpened30d: number;
-  prsMerged30d: number;
-  prsClosedUnmerged30d: number;
-  medianIssueFirstResponseHours: number | null;
-  medianIssueCloseHours: number | null;
-  medianPrFirstReviewHours: number | null;
-  medianPrMergeHours: number | null;
-  activeContributors30d: number;
-  staleIssuesCount: number;
-  stalePrsCount: number;
-  openIssuesCount: number;
-  openPullRequestsCount: number;
-  starsCount: number;
-}
+export type FixtureHealthMetricPoint = HealthMetricSeriesPoint;
 
 /**
  * "Live" data — current week's downloads by version.
@@ -223,6 +208,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 642,
       openPullRequestsCount: 88,
       starsCount: 24180,
+      avgIssueCloseHours: 220.0,
+      p95IssueCloseHours: 1100.0,
+      avgPrMergeHours: 90.0,
+      p95PrMergeHours: 420.0,
+      avgIssueAgeHours: 2400.0,
+      p95IssueAgeHours: 9500.0,
+      avgPrAgeHours: 600.0,
+      p95PrAgeHours: 3000.0,
     },
     {
       snapshotDate: '2026-01-26',
@@ -241,6 +234,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 646,
       openPullRequestsCount: 91,
       starsCount: 24315,
+      avgIssueCloseHours: 215.6,
+      p95IssueCloseHours: 1069.2,
+      avgPrMergeHours: 91.3,
+      p95PrMergeHours: 428.8,
+      avgIssueAgeHours: 2424.0,
+      p95IssueAgeHours: 9633.0,
+      avgPrAgeHours: 592.8,
+      p95PrAgeHours: 2949.6,
     },
     {
       snapshotDate: '2026-02-09',
@@ -259,6 +260,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 650,
       openPullRequestsCount: 93,
       starsCount: 24462,
+      avgIssueCloseHours: 211.2,
+      p95IssueCloseHours: 1038.4,
+      avgPrMergeHours: 92.7,
+      p95PrMergeHours: 437.6,
+      avgIssueAgeHours: 2448.0,
+      p95IssueAgeHours: 9766.0,
+      avgPrAgeHours: 585.6,
+      p95PrAgeHours: 2899.2,
     },
     {
       snapshotDate: '2026-02-23',
@@ -277,6 +286,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 657,
       openPullRequestsCount: 95,
       starsCount: 24598,
+      avgIssueCloseHours: 206.8,
+      p95IssueCloseHours: 1007.6,
+      avgPrMergeHours: 94.0,
+      p95PrMergeHours: 446.5,
+      avgIssueAgeHours: 2472.0,
+      p95IssueAgeHours: 9899.0,
+      avgPrAgeHours: 578.4,
+      p95PrAgeHours: 2848.8,
     },
     {
       snapshotDate: '2026-03-09',
@@ -295,6 +312,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 651,
       openPullRequestsCount: 97,
       starsCount: 24744,
+      avgIssueCloseHours: 202.4,
+      p95IssueCloseHours: 976.8,
+      avgPrMergeHours: 95.4,
+      p95PrMergeHours: 455.3,
+      avgIssueAgeHours: 2496.0,
+      p95IssueAgeHours: 10032.0,
+      avgPrAgeHours: 571.2,
+      p95PrAgeHours: 2798.4,
     },
   ],
   react: [
@@ -315,6 +340,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 1042,
       openPullRequestsCount: 268,
       starsCount: 226140,
+      avgIssueCloseHours: 410.0,
+      p95IssueCloseHours: 2600.0,
+      avgPrMergeHours: 150.0,
+      p95PrMergeHours: 900.0,
+      avgIssueAgeHours: 5200.0,
+      p95IssueAgeHours: 21000.0,
+      avgPrAgeHours: 1400.0,
+      p95PrAgeHours: 8000.0,
     },
     {
       snapshotDate: '2026-01-26',
@@ -333,6 +366,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 1054,
       openPullRequestsCount: 274,
       starsCount: 226395,
+      avgIssueCloseHours: 401.8,
+      p95IssueCloseHours: 2527.2,
+      avgPrMergeHours: 152.2,
+      p95PrMergeHours: 918.9,
+      avgIssueAgeHours: 5252.0,
+      p95IssueAgeHours: 21294.0,
+      avgPrAgeHours: 1383.2,
+      p95PrAgeHours: 7865.6,
     },
     {
       snapshotDate: '2026-02-09',
@@ -351,6 +392,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 1068,
       openPullRequestsCount: 277,
       starsCount: 226682,
+      avgIssueCloseHours: 393.6,
+      p95IssueCloseHours: 2454.4,
+      avgPrMergeHours: 154.5,
+      p95PrMergeHours: 937.8,
+      avgIssueAgeHours: 5304.0,
+      p95IssueAgeHours: 21588.0,
+      avgPrAgeHours: 1366.4,
+      p95PrAgeHours: 7731.2,
     },
     {
       snapshotDate: '2026-02-23',
@@ -369,6 +418,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 1075,
       openPullRequestsCount: 282,
       starsCount: 226958,
+      avgIssueCloseHours: 385.4,
+      p95IssueCloseHours: 2381.6,
+      avgPrMergeHours: 156.8,
+      p95PrMergeHours: 956.7,
+      avgIssueAgeHours: 5356.0,
+      p95IssueAgeHours: 21882.0,
+      avgPrAgeHours: 1349.6,
+      p95PrAgeHours: 7596.8,
     },
     {
       snapshotDate: '2026-03-09',
@@ -387,6 +444,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 1070,
       openPullRequestsCount: 286,
       starsCount: 227241,
+      avgIssueCloseHours: 377.2,
+      p95IssueCloseHours: 2308.8,
+      avgPrMergeHours: 159.0,
+      p95PrMergeHours: 975.6,
+      avgIssueAgeHours: 5408.0,
+      p95IssueAgeHours: 22176.0,
+      avgPrAgeHours: 1332.8,
+      p95PrAgeHours: 7462.4,
     },
   ],
   lodash: [
@@ -407,6 +472,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 308,
       openPullRequestsCount: 84,
       starsCount: 59820,
+      avgIssueCloseHours: 700.0,
+      p95IssueCloseHours: 4300.0,
+      avgPrMergeHours: 310.0,
+      p95PrMergeHours: 1900.0,
+      avgIssueAgeHours: 9800.0,
+      p95IssueAgeHours: 38000.0,
+      avgPrAgeHours: 3100.0,
+      p95PrAgeHours: 15000.0,
     },
     {
       snapshotDate: '2026-01-26',
@@ -425,6 +498,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 311,
       openPullRequestsCount: 85,
       starsCount: 59874,
+      avgIssueCloseHours: 686.0,
+      p95IssueCloseHours: 4179.6,
+      avgPrMergeHours: 314.6,
+      p95PrMergeHours: 1939.9,
+      avgIssueAgeHours: 9898.0,
+      p95IssueAgeHours: 38532.0,
+      avgPrAgeHours: 3062.8,
+      p95PrAgeHours: 14748.0,
     },
     {
       snapshotDate: '2026-02-09',
@@ -443,6 +524,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 310,
       openPullRequestsCount: 85,
       starsCount: 59921,
+      avgIssueCloseHours: 672.0,
+      p95IssueCloseHours: 4059.2,
+      avgPrMergeHours: 319.3,
+      p95PrMergeHours: 1979.8,
+      avgIssueAgeHours: 9996.0,
+      p95IssueAgeHours: 39064.0,
+      avgPrAgeHours: 3025.6,
+      p95PrAgeHours: 14496.0,
     },
     {
       snapshotDate: '2026-02-23',
@@ -461,6 +550,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 309,
       openPullRequestsCount: 86,
       starsCount: 59970,
+      avgIssueCloseHours: 658.0,
+      p95IssueCloseHours: 3938.8,
+      avgPrMergeHours: 323.9,
+      p95PrMergeHours: 2019.7,
+      avgIssueAgeHours: 10094.0,
+      p95IssueAgeHours: 39596.0,
+      avgPrAgeHours: 2988.4,
+      p95PrAgeHours: 14244.0,
     },
     {
       snapshotDate: '2026-03-09',
@@ -479,6 +576,14 @@ const fixtureHealthMetrics: Record<string, FixtureHealthMetricPoint[]> = {
       openIssuesCount: 305,
       openPullRequestsCount: 86,
       starsCount: 60018,
+      avgIssueCloseHours: 644.0,
+      p95IssueCloseHours: 3818.4,
+      avgPrMergeHours: 328.6,
+      p95PrMergeHours: 2059.6,
+      avgIssueAgeHours: 10192.0,
+      p95IssueAgeHours: 40128.0,
+      avgPrAgeHours: 2951.2,
+      p95PrAgeHours: 13992.0,
     },
   ],
 };

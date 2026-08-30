@@ -158,6 +158,13 @@
   --table-border: var(--border-color);
 
   --card-bg: var(--surface-2);
+
+  // Health chart series. Colour follows the statistic (avg / median / p95),
+  // never the slot, so a two-line chart and a three-line chart agree. Steps
+  // chosen per theme and validated as a categorical set (CVD ΔE ≥ 23).
+  --chart-series-avg: var(--brand-hover);
+  --chart-series-median: #388bfd;
+  --chart-series-p95: #bb8009;
 }
 
 // Light Theme
@@ -239,11 +246,23 @@
   --table-border: var(--border-color);
 
   --card-bg: var(--surface-2);
+
+  --chart-series-avg: var(--brand-main);
+  --chart-series-median: #0969da;
+  --chart-series-p95: #9a6700;
 }
 
 // Base styles
 html {
   font-size: 16px;
+}
+
+// The theme flip animates only when the user asks for it. `ThemeProvider`
+// adds this class around a toggle; a page load never carries it, so the first
+// paint (already themed by the bootstrap in `+Head.tsx`) never tweens.
+html.theme-transition body {
+  transition: background-color var(--transition-base),
+    color var(--transition-base);
 }
 
 body {
@@ -254,8 +273,6 @@ body {
   line-height: 1.5;
   color: var(--text-primary);
   background-color: var(--bg-primary);
-  transition: background-color var(--transition-base),
-    color var(--transition-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

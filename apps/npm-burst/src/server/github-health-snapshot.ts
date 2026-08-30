@@ -8,6 +8,7 @@ import {
   fetchGitHubStaleIssueCount,
   fetchGitHubStalePullRequestCount,
   FULL_FETCH_WINDOW_MS,
+  isCurrentRawHealthData,
   mergeRawHealthData,
   parseFilterConfig,
   type BotPattern,
@@ -230,9 +231,12 @@ export async function snapshotGitHubHealthForRepo(
     .limit(1)
     .executeTakeFirst();
 
-  const previousData = previousSnapshot?.raw_data
+  // A snapshot written by an older collection shape can't seed a delta —
+  // its items would be missing comments/reviews for up to 91 days.
+  const storedData = previousSnapshot?.raw_data
     ? await decompressJson<RawGitHubHealthData>(previousSnapshot.raw_data)
     : null;
+  const previousData = isCurrentRawHealthData(storedData) ? storedData : null;
 
   // Incremental: fetch only items updated since last fetch; full: 91-day window
   const since =
@@ -260,7 +264,7 @@ export async function snapshotGitHubHealthForRepo(
     : delta;
 
   const isToday = previousSnapshot?.snapshot_date === snapshotDate;
-  const [, filterConfigs, repoSnapshotCounts] = await Promise.all([
+  const [botPatterns, filterConfigs, repoSnapshotCounts] = await Promise.all([
     loadBotPatterns(db),
     getRepoFilterConfigs(db, repo.id),
     fetchGitHubRepoSnapshotCounts(token, repo.owner, repo.name, {
@@ -312,7 +316,7 @@ export async function snapshotGitHubHealthForRepo(
 
   for (const rawFilterConfig of filterConfigs) {
     const filterConfig = parseFilterConfig(rawFilterConfig);
-    const metrics = computeHealthMetrics(rawData, filterConfig, []);
+    const metrics = computeHealthMetrics(rawData, filterConfig, botPatterns);
     const staleIssuesCount = await fetchGitHubStaleIssueCount(
       token,
       repo.owner,
@@ -352,6 +356,14 @@ export async function snapshotGitHubHealthForRepo(
         open_issues_count: repoSnapshotCounts.openIssuesCount,
         open_pull_requests_count: repoSnapshotCounts.openPullRequestsCount,
         stars_count: repoSnapshotCounts.starsCount,
+        avg_issue_close_hours: metrics.avgIssueCloseHours,
+        p95_issue_close_hours: metrics.p95IssueCloseHours,
+        avg_pr_merge_hours: metrics.avgPrMergeHours,
+        p95_pr_merge_hours: metrics.p95PrMergeHours,
+        avg_issue_age_hours: metrics.avgIssueAgeHours,
+        p95_issue_age_hours: metrics.p95IssueAgeHours,
+        avg_pr_age_hours: metrics.avgPrAgeHours,
+        p95_pr_age_hours: metrics.p95PrAgeHours,
       })
       .execute();
   }

@@ -1,12 +1,20 @@
 import {
   canonicalizeFilterConfig,
+  computeOpenItemAges,
+  findFirstHumanResponse,
+  hoursBetween,
+  isBotActor,
+  matchesLabelFilter,
   parseFilterConfig,
   parseGitHubRepositoryUrl,
   parseNonGitHubRepository,
+  summarizeDurations,
+  type BotPattern,
   type ExternalRepository,
   type FilterConfig,
   type HealthMetricSeriesPoint,
   type RawGitHubHealthData,
+  type RawOpenItemCollection,
 } from '@npm-burst/github-data-access';
 import type { Kysely } from 'kysely';
 import { decompressJson } from '@npm-burst/shared';
@@ -46,23 +54,26 @@ export interface PackageHealthData {
   lastRefreshedAt: string | null;
 }
 
+/** One per accordion row on the Health tab; also the key for "view source data". */
 export type HealthMetricKey =
   | 'issuesOpened30d'
   | 'issuesClosed30d'
   | 'openCloseRatio'
-  | 'medianIssueFirstResponseHours'
-  | 'medianIssueCloseHours'
+  | 'openIssuesCount'
+  | 'staleIssuesCount'
+  | 'issueBacklogAge'
+  | 'issueResolutionTime'
+  | 'issueFirstResponse'
   | 'prsOpened30d'
   | 'prsMerged30d'
   | 'prsClosedUnmerged30d'
-  | 'medianPrFirstReviewHours'
-  | 'medianPrMergeHours'
-  | 'activeContributors30d'
-  | 'staleIssuesCount'
-  | 'stalePrsCount'
-  | 'openIssuesCount'
   | 'openPullRequestsCount'
-  | 'starsCount';
+  | 'stalePrsCount'
+  | 'prBacklogAge'
+  | 'prMergeTime'
+  | 'prFirstReview'
+  | 'starsCount'
+  | 'activeContributors30d';
 
 export interface MetricSourceData {
   metricKey: HealthMetricKey;
@@ -91,6 +102,14 @@ function toMetricPoint(row: {
   open_issues_count: number;
   open_pull_requests_count: number;
   stars_count: number;
+  avg_issue_close_hours: number | null;
+  p95_issue_close_hours: number | null;
+  avg_pr_merge_hours: number | null;
+  p95_pr_merge_hours: number | null;
+  avg_issue_age_hours: number | null;
+  p95_issue_age_hours: number | null;
+  avg_pr_age_hours: number | null;
+  p95_pr_age_hours: number | null;
 }): HealthMetricSeriesPoint {
   return {
     snapshotDate: row.snapshot_date,
@@ -109,20 +128,53 @@ function toMetricPoint(row: {
     openIssuesCount: row.open_issues_count,
     openPullRequestsCount: row.open_pull_requests_count,
     starsCount: row.stars_count,
+    avgIssueCloseHours: row.avg_issue_close_hours,
+    p95IssueCloseHours: row.p95_issue_close_hours,
+    avgPrMergeHours: row.avg_pr_merge_hours,
+    p95PrMergeHours: row.p95_pr_merge_hours,
+    avgIssueAgeHours: row.avg_issue_age_hours,
+    p95IssueAgeHours: row.p95_issue_age_hours,
+    avgPrAgeHours: row.avg_pr_age_hours,
+    p95PrAgeHours: row.p95_pr_age_hours,
   };
-}
-
-function matchesFilter(
-  labels: string[],
-  filterConfig: FilterConfig | null
-): boolean {
-  const wantedLabels = filterConfig?.labels;
-  if (!wantedLabels || wantedLabels.length === 0) return true;
-  return wantedLabels.every((label) => labels.includes(label));
 }
 
 function getSourceNow(snapshotDate: string): Date {
   return new Date(`${snapshotDate}T23:59:59.000Z`);
+}
+
+function buildOpenItemSource(
+  metricKey: HealthMetricKey,
+  snapshotDate: string,
+  repo: { owner: string; name: string },
+  collection: RawOpenItemCollection | undefined,
+  filterConfig: FilterConfig | null,
+  now: Date,
+  itemPath: 'issues' | 'pull'
+): MetricSourceData {
+  const repoUrl = `https://github.com/${repo.owner}/${repo.name}`;
+  const nowIso = now.toISOString();
+  const items = (collection?.items ?? []).filter((item) =>
+    matchesLabelFilter(item.labels, filterConfig)
+  );
+  const ages = computeOpenItemAges(collection, filterConfig, now);
+  return {
+    metricKey,
+    snapshotDate,
+    repo,
+    summary: {
+      count: items.length,
+      totalCount: collection?.totalCount ?? 0,
+      truncated: collection?.truncated ?? false,
+      avgHours: ages.avgHours,
+      p95Hours: ages.p95Hours,
+    },
+    entries: items.map((item) => ({
+      ...item,
+      ageHours: Math.round(hoursBetween(item.createdAt, nowIso) * 100) / 100,
+      url: `${repoUrl}/${itemPath}/${item.number}`,
+    })),
+  };
 }
 
 function buildMetricSourceData(
@@ -130,18 +182,20 @@ function buildMetricSourceData(
   snapshotDate: string,
   repo: { owner: string; name: string },
   rawData: RawGitHubHealthData,
-  filterConfig: FilterConfig | null
+  filterConfig: FilterConfig | null,
+  patterns: BotPattern[]
 ): MetricSourceData {
   const now = getSourceNow(snapshotDate);
   const sinceMs = now.getTime() - 30 * DAY_IN_MS;
   const staleCutoff = now.getTime() - 90 * DAY_IN_MS;
   const repoUrl = `https://github.com/${repo.owner}/${repo.name}`;
   const issues = rawData.repository.issues.filter((issue) =>
-    matchesFilter(issue.labels, filterConfig)
+    matchesLabelFilter(issue.labels, filterConfig)
   );
   const prs = rawData.repository.pullRequests.filter((pr) =>
-    matchesFilter(pr.labels, filterConfig)
+    matchesLabelFilter(pr.labels, filterConfig)
   );
+  const round2 = (value: number) => Math.round(value * 100) / 100;
 
   switch (metricKey) {
     case 'issuesOpened30d': {
@@ -301,14 +355,166 @@ function buildMetricSourceData(
         entries,
       };
     }
-    default:
+    case 'issueBacklogAge':
+      return buildOpenItemSource(
+        metricKey,
+        snapshotDate,
+        repo,
+        rawData.repository.openIssues,
+        filterConfig,
+        now,
+        'issues'
+      );
+    case 'prBacklogAge':
+      return buildOpenItemSource(
+        metricKey,
+        snapshotDate,
+        repo,
+        rawData.repository.openPullRequests,
+        filterConfig,
+        now,
+        'pull'
+      );
+    case 'issueResolutionTime': {
+      const entries = issues
+        .filter(
+          (issue) =>
+            issue.closedAt && new Date(issue.closedAt).getTime() >= sinceMs
+        )
+        .map((issue) => ({
+          ...issue,
+          hours: round2(
+            hoursBetween(issue.createdAt, issue.closedAt as string)
+          ),
+          url: `${repoUrl}/issues/${issue.number}`,
+        }));
       return {
         metricKey,
         snapshotDate,
         repo,
-        summary: {},
-        entries: [],
+        summary: {
+          count: entries.length,
+          ...summarizeDurations(entries.map((entry) => entry.hours)),
+        },
+        entries,
       };
+    }
+    case 'prMergeTime': {
+      const entries = prs
+        .filter(
+          (pr) => pr.mergedAt && new Date(pr.mergedAt).getTime() >= sinceMs
+        )
+        .map((pr) => ({
+          ...pr,
+          hours: round2(hoursBetween(pr.createdAt, pr.mergedAt as string)),
+          url: `${repoUrl}/pull/${pr.number}`,
+        }));
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: {
+          count: entries.length,
+          ...summarizeDurations(entries.map((entry) => entry.hours)),
+        },
+        entries,
+      };
+    }
+    case 'issueFirstResponse': {
+      const entries = issues
+        .filter((issue) => new Date(issue.createdAt).getTime() >= sinceMs)
+        .map((issue) => {
+          const response = findFirstHumanResponse(
+            issue,
+            issue.comments,
+            patterns
+          );
+          return {
+            ...issue,
+            responder: response?.author?.login ?? null,
+            respondedAt: response?.createdAt ?? null,
+            hours: response
+              ? round2(hoursBetween(issue.createdAt, response.createdAt))
+              : null,
+            url: `${repoUrl}/issues/${issue.number}`,
+          };
+        });
+      const responded = entries.filter(
+        (entry): entry is typeof entry & { hours: number } =>
+          entry.hours !== null
+      );
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: {
+          count: entries.length,
+          responded: responded.length,
+          medianHours: summarizeDurations(responded.map((entry) => entry.hours))
+            .medianHours,
+        },
+        entries,
+      };
+    }
+    case 'prFirstReview': {
+      const entries = prs
+        .filter((pr) => new Date(pr.createdAt).getTime() >= sinceMs)
+        .map((pr) => {
+          const review = findFirstHumanResponse(pr, pr.reviews, patterns);
+          return {
+            ...pr,
+            responder: review?.author?.login ?? null,
+            respondedAt: review?.createdAt ?? null,
+            hours: review
+              ? round2(hoursBetween(pr.createdAt, review.createdAt))
+              : null,
+            url: `${repoUrl}/pull/${pr.number}`,
+          };
+        });
+      const responded = entries.filter(
+        (entry): entry is typeof entry & { hours: number } =>
+          entry.hours !== null
+      );
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: {
+          count: entries.length,
+          responded: responded.length,
+          medianHours: summarizeDurations(responded.map((entry) => entry.hours))
+            .medianHours,
+        },
+        entries,
+      };
+    }
+    case 'activeContributors30d': {
+      const mergedPrs = new Map<string, number>();
+      for (const pr of prs) {
+        if (!pr.mergedAt || new Date(pr.mergedAt).getTime() < sinceMs) continue;
+        if (isBotActor(pr.author, patterns)) continue;
+        const login = pr.author?.login as string;
+        mergedPrs.set(login, (mergedPrs.get(login) ?? 0) + 1);
+      }
+      const entries = Array.from(mergedPrs, ([login, count]) => ({
+        login,
+        mergedPrs: count,
+        url: `https://github.com/${login}`,
+      })).sort((a, b) => b.mergedPrs - a.mergedPrs);
+      return {
+        metricKey,
+        snapshotDate,
+        repo,
+        summary: { count: entries.length },
+        entries,
+      };
+    }
+    case 'openIssuesCount':
+    case 'openPullRequestsCount':
+    case 'starsCount':
+      // Served from the metrics row by getPackageMetricSource; raw_data
+      // carries nothing for them.
+      return { metricKey, snapshotDate, repo, summary: {}, entries: [] };
   }
 }
 
@@ -501,6 +707,14 @@ export async function getPackageHealthData(
       'ghm.open_issues_count as open_issues_count',
       'ghm.open_pull_requests_count as open_pull_requests_count',
       'ghm.stars_count as stars_count',
+      'ghm.avg_issue_close_hours as avg_issue_close_hours',
+      'ghm.p95_issue_close_hours as p95_issue_close_hours',
+      'ghm.avg_pr_merge_hours as avg_pr_merge_hours',
+      'ghm.p95_pr_merge_hours as p95_pr_merge_hours',
+      'ghm.avg_issue_age_hours as avg_issue_age_hours',
+      'ghm.p95_issue_age_hours as p95_issue_age_hours',
+      'ghm.avg_pr_age_hours as avg_pr_age_hours',
+      'ghm.p95_pr_age_hours as p95_pr_age_hours',
     ])
     .where('ghm.repo_id', '=', repo.id)
     .orderBy('ghs.snapshot_date', 'asc')
@@ -656,16 +870,25 @@ export async function getPackageMetricSource(
     };
   }
 
-  const rawData = (await decompressJson<RawGitHubHealthData>(
-    latestSnapshot.raw_data
-  ))!;
+  const [rawData, patternRows] = await Promise.all([
+    decompressJson<RawGitHubHealthData>(latestSnapshot.raw_data),
+    db
+      .selectFrom('github_bot_patterns')
+      .select(['pattern_type', 'pattern_value'])
+      .execute(),
+  ]);
+  const patterns = patternRows.map((row) => ({
+    pattern_type: row.pattern_type as BotPattern['pattern_type'],
+    pattern_value: row.pattern_value,
+  }));
 
   return buildMetricSourceData(
     metricKey,
     latestSnapshot.snapshot_date,
     { owner: repo.owner, name: repo.name },
-    rawData,
-    repo.filterConfig
+    rawData!,
+    repo.filterConfig,
+    patterns
   );
 }
 
@@ -715,14 +938,14 @@ export function getFixtureMetricSource(
         ? `${latest.snapshotDate}T1${index + 1}:00:00.000Z`
         : null,
     mergedAt:
-      metricKey === 'prsMerged30d' || metricKey === 'medianPrMergeHours'
+      metricKey === 'prsMerged30d' || metricKey === 'prMergeTime'
         ? `${latest.snapshotDate}T1${index + 1}:30:00.000Z`
         : null,
     updatedAt: `${latest.snapshotDate}T1${index + 1}:45:00.000Z`,
     labels: ['fixture', metricKey],
+    author: { login: 'fixture-user' },
     comments: [],
     reviews: [],
-    author: null,
   }));
 
   return {

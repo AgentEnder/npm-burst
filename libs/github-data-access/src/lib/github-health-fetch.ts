@@ -1,12 +1,26 @@
-import type {
-  RawGitHubHealthData,
-  RawIssueNode,
-  RawPullRequestNode,
+import {
+  RAW_HEALTH_DATA_VERSION,
+  type GitHubActor,
+  type RawGitHubHealthData,
+  type RawIssueNode,
+  type RawOpenItem,
+  type RawOpenItemCollection,
+  type RawPullRequestNode,
 } from './types';
 
 interface GitHubGraphqlPageInfo {
   endCursor: string | null;
   hasNextPage: boolean;
+}
+
+interface GraphqlActor {
+  login: string;
+  __typename: string;
+}
+
+interface GraphqlInteraction {
+  createdAt: string;
+  author: GraphqlActor | null;
 }
 
 interface GitHubIssueConnection {
@@ -19,6 +33,8 @@ interface GitHubIssueConnection {
     closedAt: string | null;
     updatedAt: string;
     labels: { nodes: Array<{ name: string }> };
+    author: GraphqlActor | null;
+    comments: { nodes: GraphqlInteraction[] };
   }>;
 }
 
@@ -33,6 +49,8 @@ interface GitHubPullRequestConnection {
     mergedAt: string | null;
     updatedAt: string;
     labels: { nodes: Array<{ name: string }> };
+    author: GraphqlActor | null;
+    reviews: { nodes: GraphqlInteraction[] };
   }>;
 }
 
@@ -73,6 +91,12 @@ interface GitHubIssueCountResponse {
 type GraphqlIssueNode = GitHubIssueConnection['nodes'][number];
 type GraphqlPullRequestNode = GitHubPullRequestConnection['nodes'][number];
 
+/**
+ * How many comments / reviews to pull per item. Only the first human,
+ * non-author one matters, and it is almost always in the first handful.
+ */
+const INTERACTIONS_PER_ITEM = 10;
+
 const RECENT_ISSUES_QUERY = `
   query RecentIssues(
     $owner: String!
@@ -98,6 +122,10 @@ const RECENT_ISSUES_QUERY = `
           closedAt
           updatedAt
           labels(first: 20) { nodes { name } }
+          author { login __typename }
+          comments(first: ${INTERACTIONS_PER_ITEM}) {
+            nodes { createdAt author { login __typename } }
+          }
         }
       }
       createdIssues: issues(
@@ -115,6 +143,10 @@ const RECENT_ISSUES_QUERY = `
           closedAt
           updatedAt
           labels(first: 20) { nodes { name } }
+          author { login __typename }
+          comments(first: ${INTERACTIONS_PER_ITEM}) {
+            nodes { createdAt author { login __typename } }
+          }
         }
       }
     }
@@ -145,6 +177,10 @@ const RECENT_PULL_REQUESTS_QUERY = `
           mergedAt
           updatedAt
           labels(first: 20) { nodes { name } }
+          author { login __typename }
+          reviews(first: ${INTERACTIONS_PER_ITEM}) {
+            nodes { createdAt author { login __typename } }
+          }
         }
       }
       createdPullRequests: pullRequests(
@@ -163,6 +199,10 @@ const RECENT_PULL_REQUESTS_QUERY = `
           mergedAt
           updatedAt
           labels(first: 20) { nodes { name } }
+          author { login __typename }
+          reviews(first: ${INTERACTIONS_PER_ITEM}) {
+            nodes { createdAt author { login __typename } }
+          }
         }
       }
     }
@@ -363,6 +403,17 @@ async function githubGraphql<T>(
   throw new Error('GitHub GraphQL request failed after retries');
 }
 
+function toActor(actor: GraphqlActor | null): GitHubActor | null {
+  return actor ? { login: actor.login, __typename: actor.__typename } : null;
+}
+
+function toInteraction(interaction: GraphqlInteraction) {
+  return {
+    createdAt: interaction.createdAt,
+    author: toActor(interaction.author),
+  };
+}
+
 function toRawIssueNode(issue: GraphqlIssueNode): RawIssueNode {
   return {
     id: issue.id,
@@ -372,7 +423,8 @@ function toRawIssueNode(issue: GraphqlIssueNode): RawIssueNode {
     closedAt: issue.closedAt,
     updatedAt: issue.updatedAt,
     labels: issue.labels.nodes.map((label) => label.name),
-    comments: [],
+    author: toActor(issue.author),
+    comments: issue.comments.nodes.map(toInteraction),
   };
 }
 
@@ -386,9 +438,8 @@ function toRawPullRequestNode(pr: GraphqlPullRequestNode): RawPullRequestNode {
     mergedAt: pr.mergedAt,
     updatedAt: pr.updatedAt,
     labels: pr.labels.nodes.map((label) => label.name),
-    comments: [],
-    reviews: [],
-    author: null,
+    author: toActor(pr.author),
+    reviews: pr.reviews.nodes.map(toInteraction),
   };
 }
 
@@ -548,6 +599,170 @@ async function fetchRecentPullRequests(
   return Array.from(new Map(pullRequests.map((pr) => [pr.id, pr])).values());
 }
 
+/**
+ * Pages of open items fetched per kind before giving up. The sort is
+ * oldest-first, so a truncated fetch still holds the oldest items — see
+ * `computeOpenItemAges` for what stays computable.
+ */
+export const OPEN_ITEMS_PAGE_CAP = 30;
+
+const OPEN_ITEMS_QUERY = `
+  query OpenItems(
+    $owner: String!
+    $name: String!
+    $issueCursor: String
+    $prCursor: String
+    $fetchIssues: Boolean!
+    $fetchPrs: Boolean!
+  ) {
+    repository(owner: $owner, name: $name) {
+      openIssues: issues(
+        first: 100
+        after: $issueCursor
+        states: [OPEN]
+        orderBy: { field: CREATED_AT, direction: ASC }
+      ) @include(if: $fetchIssues) {
+        totalCount
+        pageInfo { hasNextPage endCursor }
+        nodes { number createdAt labels(first: 20) { nodes { name } } }
+      }
+      openPullRequests: pullRequests(
+        first: 100
+        after: $prCursor
+        states: [OPEN]
+        orderBy: { field: CREATED_AT, direction: ASC }
+      ) @include(if: $fetchPrs) {
+        totalCount
+        pageInfo { hasNextPage endCursor }
+        nodes { number createdAt labels(first: 20) { nodes { name } } }
+      }
+    }
+  }
+`;
+
+interface GitHubOpenItemConnection {
+  totalCount: number;
+  pageInfo: GitHubGraphqlPageInfo;
+  nodes: Array<{
+    number: number;
+    createdAt: string;
+    labels: { nodes: Array<{ name: string }> };
+  }>;
+}
+
+interface GitHubOpenItemsResponse {
+  data?: {
+    repository: {
+      openIssues?: GitHubOpenItemConnection;
+      openPullRequests?: GitHubOpenItemConnection;
+    } | null;
+  };
+  errors?: Array<{ message: string }>;
+}
+
+export interface GitHubOpenItems {
+  openIssues: RawOpenItemCollection;
+  openPullRequests: RawOpenItemCollection;
+}
+
+function emptyOpenItems(): RawOpenItemCollection {
+  return { items: [], totalCount: 0, truncated: false };
+}
+
+/**
+ * Every open issue and pull request, oldest first, with only what backlog
+ * age needs. Both kinds page in lock-step through one query so a repo costs
+ * max(issuePages, prPages) requests rather than the sum.
+ */
+export async function fetchGitHubOpenItems(
+  token: string,
+  owner: string,
+  name: string,
+  options?: {
+    userAgent?: string;
+    stats?: GitHubFetchStats;
+  }
+): Promise<GitHubOpenItems> {
+  const result: GitHubOpenItems = {
+    openIssues: emptyOpenItems(),
+    openPullRequests: emptyOpenItems(),
+  };
+  let issueCursor: string | null = null;
+  let prCursor: string | null = null;
+  let fetchIssues = true;
+  let fetchPrs = true;
+
+  const collect = (
+    target: RawOpenItemCollection,
+    connection: GitHubOpenItemConnection
+  ): { hasNextPage: boolean; endCursor: string | null } => {
+    target.totalCount = connection.totalCount;
+    target.items.push(
+      ...connection.nodes.map(
+        (node): RawOpenItem => ({
+          number: node.number,
+          createdAt: node.createdAt,
+          labels: node.labels.nodes.map((label) => label.name),
+        })
+      )
+    );
+    return connection.pageInfo;
+  };
+
+  for (let page = 0; fetchIssues || fetchPrs; page += 1) {
+    if (page >= OPEN_ITEMS_PAGE_CAP) {
+      if (fetchIssues) result.openIssues.truncated = true;
+      if (fetchPrs) result.openPullRequests.truncated = true;
+      break;
+    }
+
+    const response: GitHubOpenItemsResponse =
+      await githubGraphql<GitHubOpenItemsResponse>(
+        token,
+        OPEN_ITEMS_QUERY,
+        { owner, name, issueCursor, prCursor, fetchIssues, fetchPrs },
+        options?.userAgent ?? 'npm-burst',
+        options?.stats
+      );
+
+    if (response.errors?.length) {
+      const message = response.errors
+        .map((error: { message: string }) => error.message)
+        .join('; ');
+      console.error(
+        `GitHub open-items query errors for ${owner}/${name}: ${message}`
+      );
+      throw new Error(message);
+    }
+
+    const repository = response.data?.repository;
+    if (!repository) {
+      return result;
+    }
+
+    if (fetchIssues && repository.openIssues) {
+      const pageInfo = collect(result.openIssues, repository.openIssues);
+      fetchIssues = pageInfo.hasNextPage;
+      issueCursor = pageInfo.endCursor;
+    } else {
+      fetchIssues = false;
+    }
+
+    if (fetchPrs && repository.openPullRequests) {
+      const pageInfo = collect(
+        result.openPullRequests,
+        repository.openPullRequests
+      );
+      fetchPrs = pageInfo.hasNextPage;
+      prCursor = pageInfo.endCursor;
+    } else {
+      fetchPrs = false;
+    }
+  }
+
+  return result;
+}
+
 export async function fetchGitHubStaleIssueCount(
   token: string,
   owner: string,
@@ -657,7 +872,7 @@ export async function fetchGitHubHealthData(
   const startedAt = Date.now();
   const userAgent = fetchOptions?.userAgent ?? 'npm-burst';
 
-  const [issues, pullRequests] = await Promise.all([
+  const [issues, pullRequests, openItems] = await Promise.all([
     fetchRecentIssues(
       token,
       owner,
@@ -674,17 +889,33 @@ export async function fetchGitHubHealthData(
       userAgent,
       fetchOptions?.stats
     ),
+    fetchGitHubOpenItems(token, owner, name, {
+      userAgent,
+      stats: fetchOptions?.stats,
+    }),
   ]);
 
   console.info(`Fetched GitHub health data for ${owner}/${name}`, {
     since,
     recentIssueCount: issues.length,
     recentPullRequestCount: pullRequests.length,
+    openIssueCount: openItems.openIssues.totalCount,
+    openPullRequestCount: openItems.openPullRequests.totalCount,
+    openItemsTruncated:
+      openItems.openIssues.truncated || openItems.openPullRequests.truncated,
     durationMs: Date.now() - startedAt,
   });
 
   return {
-    repository: { owner, name, issues, pullRequests },
+    version: RAW_HEALTH_DATA_VERSION,
+    repository: {
+      owner,
+      name,
+      issues,
+      pullRequests,
+      openIssues: openItems.openIssues,
+      openPullRequests: openItems.openPullRequests,
+    },
     fetchedAt: new Date().toISOString(),
   };
 }

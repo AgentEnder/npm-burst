@@ -75,6 +75,12 @@ function summarize(
     githubRateLimitResetAt: stats.lastRateLimitResetAt,
     issuesFetched: issues.length,
     pullRequestsFetched: pullRequests.length,
+    openIssuesFetched: rawData.repository.openIssues?.items.length ?? 0,
+    openPullRequestsFetched:
+      rawData.repository.openPullRequests?.items.length ?? 0,
+    openItemsTruncated:
+      (rawData.repository.openIssues?.truncated ?? false) ||
+      (rawData.repository.openPullRequests?.truncated ?? false),
     issuesOpened30d: metrics.issuesOpened30d,
     issuesClosed30d: metrics.issuesClosed30d,
     prsOpened30d: metrics.prsOpened30d,
@@ -82,6 +88,19 @@ function summarize(
     prsClosedUnmerged30d: metrics.prsClosedUnmerged30d,
     staleIssuesCount,
     stalePrsCount,
+    medianIssueFirstResponseHours: metrics.medianIssueFirstResponseHours,
+    medianPrFirstReviewHours: metrics.medianPrFirstReviewHours,
+    activeContributors30d: metrics.activeContributors30d,
+    avgIssueCloseHours: metrics.avgIssueCloseHours,
+    medianIssueCloseHours: metrics.medianIssueCloseHours,
+    p95IssueCloseHours: metrics.p95IssueCloseHours,
+    avgPrMergeHours: metrics.avgPrMergeHours,
+    medianPrMergeHours: metrics.medianPrMergeHours,
+    p95PrMergeHours: metrics.p95PrMergeHours,
+    avgIssueAgeHours: metrics.avgIssueAgeHours,
+    p95IssueAgeHours: metrics.p95IssueAgeHours,
+    avgPrAgeHours: metrics.avgPrAgeHours,
+    p95PrAgeHours: metrics.p95PrAgeHours,
     oldestFetchedIssueCreatedAt:
       issues.map((issue) => issue.createdAt).sort()[0] ?? null,
     oldestFetchedPullRequestCreatedAt:

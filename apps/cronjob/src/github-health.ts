@@ -4,12 +4,15 @@ import {
   decryptToken,
   encryptToken,
   fetchGitHubHealthData,
+  fetchGitHubRepoSnapshotCounts,
   fetchGitHubStaleIssueCount,
   fetchGitHubStalePullRequestCount,
   FULL_FETCH_WINDOW_MS,
+  isCurrentRawHealthData,
   mergeRawHealthData,
   parseFilterConfig,
   parseGitHubRepositoryUrl,
+  type BotPattern,
   type RawGitHubHealthData,
 } from '@npm-burst/github-data-access';
 import type { Kysely } from 'kysely';
@@ -188,6 +191,18 @@ export async function getInstallationTokenForRepo(
   );
 }
 
+async function loadBotPatterns(db: Kysely<DB>): Promise<BotPattern[]> {
+  const rows = await db
+    .selectFrom('github_bot_patterns')
+    .select(['pattern_type', 'pattern_value'])
+    .execute();
+
+  return rows.map((row) => ({
+    pattern_type: row.pattern_type as BotPattern['pattern_type'],
+    pattern_value: row.pattern_value,
+  }));
+}
+
 async function ensureGitHubRepoForPackage(
   db: Kysely<DB>,
   packageName: string
@@ -350,9 +365,12 @@ export async function snapshotSingleRepo(
     .limit(1)
     .executeTakeFirst();
 
-  const previousData = previousSnapshot?.raw_data
+  // A snapshot written by an older collection shape can't seed a delta —
+  // its items would be missing comments/reviews for up to 91 days.
+  const storedData = previousSnapshot?.raw_data
     ? await decompressJson<RawGitHubHealthData>(previousSnapshot.raw_data)
     : null;
+  const previousData = isCurrentRawHealthData(storedData) ? storedData : null;
 
   const since =
     previousData?.fetchedAt ??
@@ -414,11 +432,17 @@ export async function snapshotSingleRepo(
 
   if (!snapshotId) return false;
 
-  const filterRows = await db
-    .selectFrom('github_repo_packages')
-    .select('filter_config')
-    .where('repo_id', '=', repo.id)
-    .execute();
+  const [filterRows, botPatterns, repoSnapshotCounts] = await Promise.all([
+    db
+      .selectFrom('github_repo_packages')
+      .select('filter_config')
+      .where('repo_id', '=', repo.id)
+      .execute(),
+    loadBotPatterns(db),
+    fetchGitHubRepoSnapshotCounts(token, repo.owner, repo.name, {
+      userAgent: 'npm-burst-cron',
+    }),
+  ]);
 
   const seen = new Set<string | null>([null]);
   const filterConfigs = [null as string | null];
@@ -434,7 +458,7 @@ export async function snapshotSingleRepo(
 
   for (const rawFilterConfig of filterConfigs) {
     const filterConfig = parseFilterConfig(rawFilterConfig);
-    const metrics = computeHealthMetrics(rawData, filterConfig, []);
+    const metrics = computeHealthMetrics(rawData, filterConfig, botPatterns);
     const staleIssuesCount = await fetchGitHubStaleIssueCount(
       token,
       repo.owner,
@@ -471,6 +495,17 @@ export async function snapshotSingleRepo(
         active_contributors_30d: metrics.activeContributors30d,
         stale_issues_count: staleIssuesCount,
         stale_prs_count: stalePrsCount,
+        open_issues_count: repoSnapshotCounts.openIssuesCount,
+        open_pull_requests_count: repoSnapshotCounts.openPullRequestsCount,
+        stars_count: repoSnapshotCounts.starsCount,
+        avg_issue_close_hours: metrics.avgIssueCloseHours,
+        p95_issue_close_hours: metrics.p95IssueCloseHours,
+        avg_pr_merge_hours: metrics.avgPrMergeHours,
+        p95_pr_merge_hours: metrics.p95PrMergeHours,
+        avg_issue_age_hours: metrics.avgIssueAgeHours,
+        p95_issue_age_hours: metrics.p95IssueAgeHours,
+        avg_pr_age_hours: metrics.avgPrAgeHours,
+        p95_pr_age_hours: metrics.p95PrAgeHours,
       })
       .execute();
   }

@@ -5,4 +5,5 @@ export * from './lib/github-health-fetch';
 export * from './lib/merge';
 export * from './lib/metrics';
 export * from './lib/repo';
+export * from './lib/stats';
 export * from './lib/types';

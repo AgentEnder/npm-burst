@@ -194,6 +194,23 @@
   color: var(--error-main);
 }
 
+.section {
+  display: grid;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.sectionTitle {
+  margin: 0;
+  padding: 0 var(--spacing-xs);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
 .accordion {
   display: grid;
   gap: var(--spacing-md);
@@ -407,8 +424,8 @@
 }
 
 .chart {
+  position: relative;
   width: 100%;
-  overflow-x: auto;
 }
 
 .chart svg {
@@ -422,19 +439,127 @@
   font-size: 11px;
 }
 
+/* Each series group sets `color` to its own token; marks inherit it, so the
+   same stat is the same colour on every row and in the legend swatch. */
+.series,
+.seriesSelected {
+  color: var(--accent-main);
+}
+
 .line {
   fill: none;
-  stroke: var(--accent-main);
+  stroke: currentColor;
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+}
+
+.seriesSelected .line {
   stroke-width: 2.5px;
 }
 
+.marker {
+  fill: currentColor;
+  /* 2px surface ring so overlapping series stay separable. */
+  stroke: var(--surface-1);
+  stroke-width: 2px;
+}
+
 .area {
-  fill: rgba(var(--brand-rgb), 0.16);
+  fill: currentColor;
+  fill-opacity: 0.14;
 }
 
 .gridLine {
   stroke: var(--divider);
   stroke-width: 1;
+}
+
+.crosshair {
+  stroke: var(--text-tertiary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  display: grid;
+  gap: 2px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.tooltipDate {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tooltipValue {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+/* Series identity below the plot; also the second place to pick the headline
+   stat, so a reader looking at the lines can switch without scrolling up. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-xs) var(--spacing-md);
+  margin-top: var(--spacing-xs);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 2px 8px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.legendItem:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.legendItemActive {
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  border-radius: 1.5px;
+  flex-shrink: 0;
+}
+
+.legendValue {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
 }
 
 .summaryGrid {

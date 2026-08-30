@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeRawHealthData } from './merge';
+import { isCurrentRawHealthData, mergeRawHealthData } from './merge';
 import type { RawGitHubHealthData } from './types';
 
 function makeIssue(
@@ -15,6 +15,7 @@ function makeIssue(
     closedAt: null,
     updatedAt,
     labels: [],
+    author: null,
     comments: [],
     ...overrides,
   };
@@ -36,9 +37,8 @@ function makePr(
     mergedAt: null,
     updatedAt,
     labels: [],
-    comments: [],
-    reviews: [],
     author: null,
+    reviews: [],
     ...overrides,
   };
 }
@@ -133,5 +133,52 @@ describe('mergeRawHealthData', () => {
       now
     );
     expect(result.fetchedAt).toBe('2026-03-18T00:00:00.000Z');
+  });
+
+  it('replaces open-item collections wholesale and keeps the previous one when the delta has none', () => {
+    const previousOpen = {
+      items: [{ number: 1, createdAt: '2025-01-01T00:00:00.000Z', labels: [] }],
+      totalCount: 1,
+      truncated: false,
+    };
+    const nextOpen = {
+      items: [{ number: 2, createdAt: '2025-06-01T00:00:00.000Z', labels: [] }],
+      totalCount: 1,
+      truncated: false,
+    };
+    const previous: RawGitHubHealthData = {
+      version: 2,
+      repository: {
+        owner: 'org',
+        name: 'repo',
+        issues: [],
+        pullRequests: [],
+        openIssues: previousOpen,
+        openPullRequests: previousOpen,
+      },
+      fetchedAt: '2026-03-17T00:00:00.000Z',
+    };
+
+    const result = mergeRawHealthData(
+      previous,
+      { issues: [], pullRequests: [], openIssues: nextOpen },
+      now
+    );
+
+    expect(result.repository.openIssues).toBe(nextOpen);
+    expect(result.repository.openPullRequests).toBe(previousOpen);
+    expect(result.version).toBe(2);
+  });
+});
+
+describe('isCurrentRawHealthData', () => {
+  it('rejects snapshots written before the version field existed', () => {
+    const legacy = {
+      repository: { owner: 'org', name: 'repo', issues: [], pullRequests: [] },
+      fetchedAt: '2026-03-17T00:00:00.000Z',
+    } as RawGitHubHealthData;
+    expect(isCurrentRawHealthData(legacy)).toBe(false);
+    expect(isCurrentRawHealthData(null)).toBe(false);
+    expect(isCurrentRawHealthData({ ...legacy, version: 2 })).toBe(true);
   });
 });

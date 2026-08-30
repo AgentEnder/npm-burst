@@ -6,45 +6,61 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { SiGithub } from '@icons-pack/react-simple-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
 import type { PackageHealthResponse } from '../../server/functions/health.telefunc';
 import {
   onGetHealthMetricSource,
+  type HealthMetricKey,
   type MetricSourceData,
 } from '../../server/functions/health-source.telefunc';
 import { useSafeAuth } from '../context/auth-context';
 import { useHealthRefresh } from '../hooks/use-health-refresh';
 import { useWarningToast } from '../hooks/use-warning-toast';
+import { axisLabelAnchor, pickAxisLabelIndexes } from './health-chart-utils';
 import { HealthEmptyState } from './health-empty-state';
 import { HealthEmptyShell } from './health-empty-shell';
 import { Popover } from './popover';
 import styles from './health-report.module.scss';
 
-type ChartMode = 'value' | 'derivative';
-
-interface MetricDefinition {
-  key: MetricKey;
+interface MetricVariant {
+  id: string;
+  /** Toggle label. */
   label: string;
+  /** Shown in the expanded chart meta for this variant. */
   hint: string;
   getValue: (point: HealthMetricSeriesPoint) => number | null;
   formatValue: (value: number | null) => string;
-  cumulative?: boolean;
+  /**
+   * Line colour. Follows the statistic, never the slot, so the same stat is
+   * the same colour on every row it appears on.
+   */
+  color: string;
+  /** Series is the change from the prior snapshot rather than the value itself. */
+  delta?: boolean;
 }
 
-type MetricKey =
-  | 'issuesOpened30d'
-  | 'issuesClosed30d'
-  | 'openCloseRatio'
-  | 'prsOpened30d'
-  | 'prsMerged30d'
-  | 'prsClosedUnmerged30d'
-  | 'staleIssuesCount'
-  | 'stalePrsCount'
-  | 'openIssuesCount'
-  | 'openPullRequestsCount'
-  | 'starsCount';
+const ACCENT_COLOR = 'var(--accent-main)';
+const STAT_COLORS = {
+  avg: 'var(--chart-series-avg)',
+  median: 'var(--chart-series-median)',
+  p95: 'var(--chart-series-p95)',
+} as const;
+
+interface MetricDefinition {
+  key: HealthMetricKey;
+  label: string;
+  /** Row subtitle. */
+  hint: string;
+  /** First is the default; a toggle renders when there is more than one. */
+  variants: MetricVariant[];
+}
+
+interface MetricSection {
+  title: string;
+  metrics: MetricDefinition[];
+}
 
 function formatCount(value: number | null): string {
   if (value === null) return 'n/a';
@@ -59,89 +75,249 @@ function formatSignedDelta(value: number | null): string {
   return `${value > 0 ? '+' : '−'}${formatted}`;
 }
 
-const METRICS: MetricDefinition[] = [
+function formatHours(value: number | null): string {
+  if (value === null) return 'n/a';
+  if (value < 1) return `${Math.round(value * 60)}m`;
+  if (value < 48) return `${value.toFixed(value < 10 ? 1 : 0)}h`;
+  const days = value / 24;
+  return `${days.toFixed(days < 10 ? 1 : 0)}d`;
+}
+
+function countMetric(
+  key: HealthMetricKey,
+  label: string,
+  hint: string,
+  getValue: (point: HealthMetricSeriesPoint) => number | null,
+  formatValue: (value: number | null) => string = (value) => `${value ?? 0}`
+): MetricDefinition {
+  return {
+    key,
+    label,
+    hint,
+    variants: [
+      { id: 'value', label, hint, getValue, formatValue, color: ACCENT_COLOR },
+    ],
+  };
+}
+
+/** A running total: shown as-is, or as the change since the prior snapshot. */
+function cumulativeMetric(
+  key: HealthMetricKey,
+  label: string,
+  hint: string,
+  getValue: (point: HealthMetricSeriesPoint) => number | null
+): MetricDefinition {
+  return {
+    key,
+    label,
+    hint,
+    variants: [
+      {
+        id: 'total',
+        label: 'Total',
+        hint,
+        getValue,
+        formatValue: formatCount,
+        color: ACCENT_COLOR,
+      },
+      {
+        id: 'delta',
+        label: 'Δ',
+        hint: `Change from prior snapshot — ${hint.toLowerCase()}`,
+        getValue,
+        formatValue: formatSignedDelta,
+        color: ACCENT_COLOR,
+        delta: true,
+      },
+    ],
+  };
+}
+
+function durationMetric(
+  key: HealthMetricKey,
+  label: string,
+  hint: string,
+  stats: {
+    avg?: (point: HealthMetricSeriesPoint) => number | null;
+    median?: (point: HealthMetricSeriesPoint) => number | null;
+    p95?: (point: HealthMetricSeriesPoint) => number | null;
+  }
+): MetricDefinition {
+  const variants: MetricVariant[] = [];
+  if (stats.avg) {
+    variants.push({
+      id: 'avg',
+      label: 'Avg',
+      hint: `Average — ${hint.toLowerCase()}`,
+      getValue: stats.avg,
+      formatValue: formatHours,
+      color: STAT_COLORS.avg,
+    });
+  }
+  if (stats.median) {
+    variants.push({
+      id: 'median',
+      label: 'Median',
+      hint: `Median — ${hint.toLowerCase()}`,
+      getValue: stats.median,
+      formatValue: formatHours,
+      color: STAT_COLORS.median,
+    });
+  }
+  if (stats.p95) {
+    variants.push({
+      id: 'p95',
+      label: 'P95',
+      hint: `95th percentile — ${hint.toLowerCase()}`,
+      getValue: stats.p95,
+      formatValue: formatHours,
+      color: STAT_COLORS.p95,
+    });
+  }
+  return { key, label, hint, variants };
+}
+
+const SECTIONS: MetricSection[] = [
   {
-    key: 'issuesOpened30d',
-    label: 'Issues Opened',
-    hint: 'Created in the trailing 30-day window',
-    getValue: (point) => point.issuesOpened30d,
-    formatValue: (value) => `${value ?? 0}`,
+    title: 'Issues',
+    metrics: [
+      countMetric(
+        'issuesOpened30d',
+        'Issues Opened',
+        'Created in the trailing 30-day window',
+        (point) => point.issuesOpened30d
+      ),
+      countMetric(
+        'issuesClosed30d',
+        'Issues Closed',
+        'Closed in the trailing 30-day window',
+        (point) => point.issuesClosed30d
+      ),
+      countMetric(
+        'openCloseRatio',
+        'Close/Open Ratio',
+        'Above 1.0 means open issues went down; below 1.0 means more were opened than closed',
+        (point) =>
+          point.issuesOpened30d > 0
+            ? point.issuesClosed30d / point.issuesOpened30d
+            : null,
+        (value) => (value === null ? 'n/a' : `${value.toFixed(2)}x`)
+      ),
+      cumulativeMetric(
+        'openIssuesCount',
+        'Open Issues',
+        'Total open issues on the repository',
+        (point) => point.openIssuesCount
+      ),
+      countMetric(
+        'staleIssuesCount',
+        'Stale Issues',
+        'Open issues inactive for more than 90 days',
+        (point) => point.staleIssuesCount
+      ),
+      durationMetric(
+        'issueBacklogAge',
+        'Issue Backlog Age',
+        'How long currently-open issues have been open',
+        {
+          avg: (point) => point.avgIssueAgeHours,
+          p95: (point) => point.p95IssueAgeHours,
+        }
+      ),
+      durationMetric(
+        'issueResolutionTime',
+        'Issue Resolution Time',
+        'Time from opening to closing, for issues closed in the trailing 30 days',
+        {
+          avg: (point) => point.avgIssueCloseHours,
+          median: (point) => point.medianIssueCloseHours,
+          p95: (point) => point.p95IssueCloseHours,
+        }
+      ),
+      durationMetric(
+        'issueFirstResponse',
+        'Issue First Response',
+        'Median time to the first comment from someone other than the author, for issues opened in the trailing 30 days',
+        { median: (point) => point.medianIssueFirstResponseHours }
+      ),
+    ],
   },
   {
-    key: 'issuesClosed30d',
-    label: 'Issues Closed',
-    hint: 'Closed in the trailing 30-day window',
-    getValue: (point) => point.issuesClosed30d,
-    formatValue: (value) => `${value ?? 0}`,
+    title: 'Pull Requests',
+    metrics: [
+      countMetric(
+        'prsOpened30d',
+        'PRs Opened',
+        'Opened in the trailing 30-day window',
+        (point) => point.prsOpened30d
+      ),
+      countMetric(
+        'prsMerged30d',
+        'PRs Merged',
+        'Merged in the trailing 30-day window',
+        (point) => point.prsMerged30d
+      ),
+      countMetric(
+        'prsClosedUnmerged30d',
+        'PRs Closed Unmerged',
+        'Closed without merge in the trailing 30-day window',
+        (point) => point.prsClosedUnmerged30d
+      ),
+      cumulativeMetric(
+        'openPullRequestsCount',
+        'Open PRs',
+        'Total open pull requests on the repository',
+        (point) => point.openPullRequestsCount
+      ),
+      countMetric(
+        'stalePrsCount',
+        'Stale PRs',
+        'Open pull requests inactive for more than 90 days',
+        (point) => point.stalePrsCount
+      ),
+      durationMetric(
+        'prBacklogAge',
+        'PR Backlog Age',
+        'How long currently-open pull requests have been open',
+        {
+          avg: (point) => point.avgPrAgeHours,
+          p95: (point) => point.p95PrAgeHours,
+        }
+      ),
+      durationMetric(
+        'prMergeTime',
+        'PR Merge Time',
+        'Time from opening to merging, for pull requests merged in the trailing 30 days',
+        {
+          avg: (point) => point.avgPrMergeHours,
+          median: (point) => point.medianPrMergeHours,
+          p95: (point) => point.p95PrMergeHours,
+        }
+      ),
+      durationMetric(
+        'prFirstReview',
+        'PR First Review',
+        'Median time to the first review from someone other than the author, for pull requests opened in the trailing 30 days',
+        { median: (point) => point.medianPrFirstReviewHours }
+      ),
+    ],
   },
   {
-    key: 'openCloseRatio',
-    label: 'Close/Open Ratio',
-    hint: 'Above 1.0 means open issues went down; below 1.0 means more were opened than closed',
-    getValue: (point) =>
-      point.issuesOpened30d > 0
-        ? point.issuesClosed30d / point.issuesOpened30d
-        : null,
-    formatValue: (value) => (value === null ? 'n/a' : `${value.toFixed(2)}x`),
-  },
-  {
-    key: 'prsOpened30d',
-    label: 'PRs Opened',
-    hint: 'Opened in the trailing 30-day window',
-    getValue: (point) => point.prsOpened30d,
-    formatValue: (value) => `${value ?? 0}`,
-  },
-  {
-    key: 'prsMerged30d',
-    label: 'PRs Merged',
-    hint: 'Merged in the trailing 30-day window',
-    getValue: (point) => point.prsMerged30d,
-    formatValue: (value) => `${value ?? 0}`,
-  },
-  {
-    key: 'prsClosedUnmerged30d',
-    label: 'PRs Closed Unmerged',
-    hint: 'Closed without merge in the trailing 30-day window',
-    getValue: (point) => point.prsClosedUnmerged30d,
-    formatValue: (value) => `${value ?? 0}`,
-  },
-  {
-    key: 'staleIssuesCount',
-    label: 'Stale Issues',
-    hint: 'Open issues inactive for more than 90 days',
-    getValue: (point) => point.staleIssuesCount,
-    formatValue: (value) => `${value ?? 0}`,
-  },
-  {
-    key: 'stalePrsCount',
-    label: 'Stale PRs',
-    hint: 'Open pull requests inactive for more than 90 days',
-    getValue: (point) => point.stalePrsCount,
-    formatValue: (value) => `${value ?? 0}`,
-  },
-  {
-    key: 'openIssuesCount',
-    label: 'Open Issues',
-    hint: 'Total open issues on the repository',
-    getValue: (point) => point.openIssuesCount,
-    formatValue: formatCount,
-    cumulative: true,
-  },
-  {
-    key: 'openPullRequestsCount',
-    label: 'Open PRs',
-    hint: 'Total open pull requests on the repository',
-    getValue: (point) => point.openPullRequestsCount,
-    formatValue: formatCount,
-    cumulative: true,
-  },
-  {
-    key: 'starsCount',
-    label: 'Stars',
-    hint: 'Total stargazers on the repository',
-    getValue: (point) => point.starsCount,
-    formatValue: formatCount,
-    cumulative: true,
+    title: 'Other',
+    metrics: [
+      cumulativeMetric(
+        'starsCount',
+        'Stars',
+        'Total stargazers on the repository',
+        (point) => point.starsCount
+      ),
+      countMetric(
+        'activeContributors30d',
+        'Active Contributors',
+        'Distinct people whose PRs merged in the trailing 30 days',
+        (point) => point.activeContributors30d
+      ),
+    ],
   },
 ];
 
@@ -153,39 +329,57 @@ function formatDate(value: string): string {
   });
 }
 
-function getSeriesValues(
+interface SeriesPoint {
+  point: HealthMetricSeriesPoint;
+  value: number;
+}
+
+/**
+ * Null values are gaps, not zeros: a metric that did not exist yet (or could
+ * not be computed) for a snapshot is left out rather than drawn as a cliff.
+ */
+function getSeries(
   points: HealthMetricSeriesPoint[],
-  metric: MetricDefinition,
-  mode: ChartMode
-): { points: HealthMetricSeriesPoint[]; values: number[] } {
-  if (mode === 'derivative') {
-    const seriesPoints: HealthMetricSeriesPoint[] = [];
-    const values: number[] = [];
-    for (let i = 1; i < points.length; i += 1) {
-      const prev = metric.getValue(points[i - 1]) ?? 0;
-      const curr = metric.getValue(points[i]) ?? 0;
-      seriesPoints.push(points[i]);
-      values.push(curr - prev);
-    }
-    return { points: seriesPoints, values };
+  variant: MetricVariant
+): SeriesPoint[] {
+  const present: SeriesPoint[] = [];
+  for (const point of points) {
+    const value = variant.getValue(point);
+    if (value !== null) present.push({ point, value });
   }
-  return {
-    points,
-    values: points.map((point) => metric.getValue(point) ?? 0),
-  };
+  if (!variant.delta) return present;
+
+  const deltas: SeriesPoint[] = [];
+  for (let i = 1; i < present.length; i += 1) {
+    deltas.push({
+      point: present[i].point,
+      value: present[i].value - present[i - 1].value,
+    });
+  }
+  return deltas;
+}
+
+function getHeadlineValue(
+  points: HealthMetricSeriesPoint[],
+  variant: MetricVariant
+): number | null {
+  const latest = points[points.length - 1];
+  if (!latest) return null;
+  if (!variant.delta) return variant.getValue(latest);
+  const series = getSeries(points, variant);
+  const last = series[series.length - 1];
+  return last && last.point === latest ? last.value : null;
 }
 
 function Sparkline({
   points,
-  metric,
-  mode = 'value',
+  variant,
 }: {
   points: HealthMetricSeriesPoint[];
-  metric: MetricDefinition;
-  mode?: ChartMode;
+  variant: MetricVariant;
 }) {
-  const series = getSeriesValues(points, metric, mode);
-  if (series.values.length === 0) {
+  const values = getSeries(points, variant).map(({ value }) => value);
+  if (values.length === 0) {
     return (
       <svg
         className={styles.sparkline}
@@ -194,15 +388,15 @@ function Sparkline({
       />
     );
   }
-  const yMin = Math.min(0, ...series.values);
-  const yMax = Math.max(0, ...series.values, yMin === 0 ? 1 : 0);
+  const yMin = Math.min(0, ...values);
+  const yMax = Math.max(0, ...values, yMin === 0 ? 1 : 0);
   const x = scalePoint<number>()
-    .domain(series.values.map((_, index) => index))
+    .domain(values.map((_, index) => index))
     .range([0, 150]);
   const y = scaleLinear().domain([yMin, yMax]).range([32, 4]);
   const path = line<number>()
     .x((_, index) => x(index) ?? 0)
-    .y((value) => y(value))(series.values);
+    .y((value) => y(value))(values);
   const zeroY = y(0);
   const showZeroLine = yMin < 0;
 
@@ -226,54 +420,102 @@ function Sparkline({
   );
 }
 
+/**
+ * Every variant of the row on one plot, the selected one emphasised. Rows with
+ * a Δ variant are the exception: a total and its change are different units,
+ * so those draw only the selected series.
+ */
+function chartedVariants(
+  metric: MetricDefinition,
+  selected: MetricVariant
+): MetricVariant[] {
+  return metric.variants.some((variant) => variant.delta)
+    ? [selected]
+    : metric.variants;
+}
+
+const CHART_WIDTH = 700;
+const CHART_HEIGHT = 260;
+const CHART_MARGIN = { top: 10, right: 16, bottom: 34, left: 48 };
+/** Roughly the width of "Mar 19, 2026" in the axis font, plus breathing room. */
+const AXIS_LABEL_WIDTH = 96;
+
 function FullChart({
   points,
   metric,
-  mode = 'value',
+  selected,
+  onSelect,
 }: {
   points: HealthMetricSeriesPoint[];
   metric: MetricDefinition;
-  mode?: ChartMode;
+  selected: MetricVariant;
+  onSelect: (variantId: string) => void;
 }) {
-  const width = 700;
-  const height = 260;
-  const margin = { top: 10, right: 12, bottom: 34, left: 44 };
-  const chartWidth = width - margin.left - margin.right;
-  const chartHeight = height - margin.top - margin.bottom;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const chartWidth = CHART_WIDTH - CHART_MARGIN.left - CHART_MARGIN.right;
+  const chartHeight = CHART_HEIGHT - CHART_MARGIN.top - CHART_MARGIN.bottom;
 
-  const series = getSeriesValues(points, metric, mode);
-  const yMin = Math.min(0, ...series.values);
-  const yMax = Math.max(0, ...series.values, yMin === 0 ? 1 : 0);
-  const x = scalePoint<string>()
-    .domain(series.points.map((point) => point.snapshotDate))
-    .range([0, chartWidth]);
+  const variants = chartedVariants(metric, selected);
+  const charted = variants.map((variant) => ({
+    variant,
+    series: getSeries(points, variant),
+  }));
+  // Snapshots any drawn series has a value for, in order.
+  const dates = points
+    .map((point) => point.snapshotDate)
+    .filter((date) =>
+      charted.some(({ series }) =>
+        series.some(({ point }) => point.snapshotDate === date)
+      )
+    );
+  const values = charted.flatMap(({ series }) =>
+    series.map(({ value }) => value)
+  );
+  const yMin = Math.min(0, ...values);
+  const yMax = Math.max(0, ...values, yMin === 0 ? 1 : 0);
+  const x = scalePoint<string>().domain(dates).range([0, chartWidth]);
   const y = scaleLinear().domain([yMin, yMax]).nice().range([chartHeight, 0]);
   const zeroY = y(0);
-
-  const seriesWithIndex = series.points.map((point, index) => ({
-    point,
-    value: series.values[index],
-  }));
-
-  const linePath = line<{ point: HealthMetricSeriesPoint; value: number }>()
-    .x(({ point }) => x(point.snapshotDate) ?? 0)
-    .y(({ value }) => y(value))(seriesWithIndex);
-
-  const areaPath = area<{ point: HealthMetricSeriesPoint; value: number }>()
-    .x(({ point }) => x(point.snapshotDate) ?? 0)
-    .y0(zeroY)
-    .y1(({ value }) => y(value))(seriesWithIndex);
-
   const ticks = y.ticks(4);
+  const labelled = pickAxisLabelIndexes(
+    dates.length,
+    Math.max(2, Math.floor(chartWidth / AXIS_LABEL_WIDTH))
+  );
+
+  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg || dates.length === 0) return;
+    const rect = svg.getBoundingClientRect();
+    const plotX =
+      ((event.clientX - rect.left) / rect.width) * CHART_WIDTH -
+      CHART_MARGIN.left;
+    let nearest = 0;
+    let nearestDistance = Infinity;
+    dates.forEach((date, index) => {
+      const distance = Math.abs((x(date) ?? 0) - plotX);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = index;
+      }
+    });
+    setHoverIndex(nearest);
+  };
+
+  const hoverDate = hoverIndex === null ? null : dates[hoverIndex];
+  const hoverX = hoverDate === null ? null : x(hoverDate) ?? 0;
 
   return (
     <div className={styles.chart}>
       <svg
-        viewBox={`0 0 ${width} ${height}`}
+        ref={svgRef}
+        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
         role="img"
         aria-label={metric.label}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverIndex(null)}
       >
-        <g transform={`translate(${margin.left}, ${margin.top})`}>
+        <g transform={`translate(${CHART_MARGIN.left}, ${CHART_MARGIN.top})`}>
           {ticks.map((tick) => (
             <g key={tick} transform={`translate(0, ${y(tick)})`}>
               <line
@@ -284,29 +526,127 @@ function FullChart({
                 y2={0}
               />
               <text className={styles.axisLabel} x={-8} y={4} textAnchor="end">
-                {tick}
+                {selected.formatValue(tick)}
               </text>
             </g>
           ))}
-          <path className={styles.area} d={areaPath ?? ''} />
-          <path className={styles.line} d={linePath ?? ''} />
-          {seriesWithIndex.map(({ point, value }) => (
-            <g
-              key={point.snapshotDate}
-              transform={`translate(${x(point.snapshotDate) ?? 0}, 0)`}
-            >
-              <circle cy={y(value)} r={3.5} fill="var(--accent-main)" />
+          {dates.map((date, index) =>
+            labelled.has(index) ? (
               <text
+                key={date}
                 className={styles.axisLabel}
+                x={x(date) ?? 0}
                 y={chartHeight + 18}
-                textAnchor="middle"
+                textAnchor={axisLabelAnchor(index, dates.length)}
               >
-                {formatDate(point.snapshotDate)}
+                {formatDate(date)}
               </text>
-            </g>
-          ))}
+            ) : null
+          )}
+          {hoverX !== null ? (
+            <line
+              className={styles.crosshair}
+              x1={hoverX}
+              x2={hoverX}
+              y1={0}
+              y2={chartHeight}
+            />
+          ) : null}
+          {/* Unselected series first so the selected one paints on top. */}
+          {[...charted]
+            .sort((a) => (a.variant.id === selected.id ? 1 : -1))
+            .map(({ variant, series }) => {
+              const isSelected = variant.id === selected.id;
+              const linePath = line<SeriesPoint>()
+                .x(({ point }) => x(point.snapshotDate) ?? 0)
+                .y(({ value }) => y(value))(series);
+              const areaPath = area<SeriesPoint>()
+                .x(({ point }) => x(point.snapshotDate) ?? 0)
+                .y0(zeroY)
+                .y1(({ value }) => y(value))(series);
+              return (
+                <g
+                  key={variant.id}
+                  className={isSelected ? styles.seriesSelected : styles.series}
+                  style={{ color: variant.color }}
+                  data-series={variant.id}
+                >
+                  {isSelected ? (
+                    <path className={styles.area} d={areaPath ?? ''} />
+                  ) : null}
+                  <path className={styles.line} d={linePath ?? ''} />
+                  {series.map(({ point, value }) => (
+                    <circle
+                      key={point.snapshotDate}
+                      className={styles.marker}
+                      cx={x(point.snapshotDate) ?? 0}
+                      cy={y(value)}
+                      r={
+                        point.snapshotDate === hoverDate
+                          ? 5
+                          : isSelected
+                          ? 3.5
+                          : 2.5
+                      }
+                    />
+                  ))}
+                </g>
+              );
+            })}
         </g>
       </svg>
+      {hoverDate !== null && hoverX !== null ? (
+        <div
+          className={styles.tooltip}
+          style={{
+            left: `${((CHART_MARGIN.left + hoverX) / CHART_WIDTH) * 100}%`,
+          }}
+          role="status"
+        >
+          <div className={styles.tooltipDate}>{formatDate(hoverDate)}</div>
+          {charted.map(({ variant, series }) => {
+            const hit = series.find(
+              ({ point }) => point.snapshotDate === hoverDate
+            );
+            return (
+              <div key={variant.id} className={styles.tooltipRow}>
+                <span
+                  className={styles.legendSwatch}
+                  style={{ background: variant.color }}
+                />
+                <span>{variant.label}</span>
+                <span className={styles.tooltipValue}>
+                  {variant.formatValue(hit ? hit.value : null)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      {variants.length > 1 ? (
+        <div className={styles.legend} role="group" aria-label="Series">
+          {charted.map(({ variant }) => (
+            <button
+              key={variant.id}
+              type="button"
+              className={`${styles.legendItem} ${
+                variant.id === selected.id ? styles.legendItemActive : ''
+              }`}
+              aria-pressed={variant.id === selected.id}
+              onClick={() => onSelect(variant.id)}
+            >
+              <span
+                className={styles.legendSwatch}
+                style={{ background: variant.color }}
+              />
+              <span>{variant.label}</span>
+              <span className={styles.legendValue}>
+                {variant.formatValue(getHeadlineValue(points, variant))}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -487,23 +827,17 @@ function MetricRow({
   packageName: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [chartMode, setChartMode] = useState<ChartMode>('value');
+  const [variantId, setVariantId] = useState(metric.variants[0].id);
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceLoading, setSourceLoading] = useState(false);
   const [sourceData, setSourceData] = useState<MetricSourceData | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const latest = points[points.length - 1];
-  const value = latest ? metric.getValue(latest) : null;
-  const latestDelta =
-    points.length >= 2
-      ? (metric.getValue(points[points.length - 1]) ?? 0) -
-        (metric.getValue(points[points.length - 2]) ?? 0)
-      : null;
-  const showToggle = metric.cumulative === true && points.length >= 2;
-  const headlineValue =
-    showToggle && chartMode === 'derivative'
-      ? formatSignedDelta(latestDelta)
-      : metric.formatValue(value);
+  const variant =
+    metric.variants.find((candidate) => candidate.id === variantId) ??
+    metric.variants[0];
+  const showToggle = metric.variants.length > 1;
+  const headlineValue = variant.formatValue(getHeadlineValue(points, variant));
 
   useEffect(() => {
     if (!showSourceModal) return;
@@ -579,31 +913,24 @@ function MetricRow({
               className={styles.modeToggle}
               onClick={(event) => event.stopPropagation()}
             >
-              <button
-                type="button"
-                className={`${styles.modeToggleButton} ${
-                  chartMode === 'value' ? styles.modeToggleButtonActive : ''
-                }`}
-                onClick={() => setChartMode('value')}
-                aria-pressed={chartMode === 'value'}
-              >
-                Total
-              </button>
-              <button
-                type="button"
-                className={`${styles.modeToggleButton} ${
-                  chartMode === 'derivative'
-                    ? styles.modeToggleButtonActive
-                    : ''
-                }`}
-                onClick={() => setChartMode('derivative')}
-                aria-pressed={chartMode === 'derivative'}
-              >
-                Δ
-              </button>
+              {metric.variants.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  className={`${styles.modeToggleButton} ${
+                    candidate.id === variant.id
+                      ? styles.modeToggleButtonActive
+                      : ''
+                  }`}
+                  onClick={() => setVariantId(candidate.id)}
+                  aria-pressed={candidate.id === variant.id}
+                >
+                  {candidate.label}
+                </button>
+              ))}
             </div>
           ) : null}
-          <Sparkline points={points} metric={metric} mode={chartMode} />
+          <Sparkline points={points} variant={variant} />
         </div>
         <div className={styles.expandIcon}>
           {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
@@ -616,13 +943,14 @@ function MetricRow({
               Latest snapshot:{' '}
               {latest ? formatDate(latest.snapshotDate) : 'n/a'}
             </span>
-            <span>
-              {showToggle && chartMode === 'derivative'
-                ? `Change from prior snapshot — ${metric.hint.toLowerCase()}`
-                : metric.hint}
-            </span>
+            <span>{variant.hint}</span>
           </div>
-          <FullChart points={points} metric={metric} mode={chartMode} />
+          <FullChart
+            points={points}
+            metric={metric}
+            selected={variant}
+            onSelect={setVariantId}
+          />
           <div className={styles.actions}>
             <button
               className={styles.sourceButton}
@@ -906,16 +1234,21 @@ export function HealthReport({
           </span>
         </div>
       </div>
-      <div className={styles.accordion}>
-        {METRICS.map((metric) => (
-          <MetricRow
-            key={metric.key}
-            metric={metric}
-            points={health.snapshots}
-            packageName={health.packageName}
-          />
-        ))}
-      </div>
+      {SECTIONS.map((section) => (
+        <section key={section.title} className={styles.section}>
+          <h3 className={styles.sectionTitle}>{section.title}</h3>
+          <div className={styles.accordion}>
+            {section.metrics.map((metric) => (
+              <MetricRow
+                key={metric.key}
+                metric={metric}
+                points={health.snapshots}
+                packageName={health.packageName}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

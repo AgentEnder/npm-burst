@@ -203,7 +203,7 @@ Each metric gets an expandable accordion row:
 
 Multiple rows can be expanded simultaneously.
 
-**Metric rows (12 total):**
+**Metric rows (12 total):** *(Superseded 2026-08-29 — the rows are now grouped into Issues / Pull Requests / Other sections and include backlog-age, resolution-time and first-response durations; see `2026-08-29-health-tab-sections-and-durations.md`.)*
 1. Issues Opened (30d)
 2. Issues Closed (30d)
 3. Open/Close Ratio

@@ -19,6 +19,10 @@ export interface GithubBotPatterns {
 
 export interface GithubHealthMetrics {
   active_contributors_30d: Generated<number>;
+  avg_issue_age_hours: number | null;
+  avg_issue_close_hours: number | null;
+  avg_pr_age_hours: number | null;
+  avg_pr_merge_hours: number | null;
   created_at: Generated<string>;
   filter_config: string | null;
   id: Generated<number | null>;
@@ -30,6 +34,10 @@ export interface GithubHealthMetrics {
   median_pr_merge_hours: number | null;
   open_issues_count: Generated<number>;
   open_pull_requests_count: Generated<number>;
+  p95_issue_age_hours: number | null;
+  p95_issue_close_hours: number | null;
+  p95_pr_age_hours: number | null;
+  p95_pr_merge_hours: number | null;
   prs_closed_unmerged_30d: Generated<number>;
   prs_merged_30d: Generated<number>;
   prs_opened_30d: Generated<number>;
@@ -94,7 +102,11 @@ export interface Snapshots {
 
 export interface TrackedPackages {
   created_at: Generated<string>;
+  github_owner: string | null;
+  github_repo_name: string | null;
   id: Generated<number | null>;
+  maintainers_json: string | null;
+  metadata_refreshed_at: string | null;
   package_name: string;
 }
 

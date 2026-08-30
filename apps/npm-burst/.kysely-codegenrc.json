@@ -1,0 +1,9 @@
+{
+  "overrides": {
+    "columns": {
+      "github_health_snapshots.raw_data": "Uint8Array | string",
+      "github_installations.encrypted_access_token": "Uint8Array | null",
+      "snapshots.downloads": "Uint8Array | string"
+    }
+  }
+}

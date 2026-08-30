@@ -27,6 +27,8 @@ export interface RawIssueNode {
   closedAt: string | null;
   updatedAt: string;
   labels: string[];
+  author: GitHubActor | null;
+  /** The first few comments in creation order — enough to find the first human response. */
   comments: IssueInteraction[];
 }
 
@@ -39,18 +41,45 @@ export interface RawPullRequestNode {
   mergedAt: string | null;
   updatedAt: string;
   labels: string[];
-  reviews: PullRequestReview[];
-  comments: IssueInteraction[];
   author: GitHubActor | null;
+  /** The first few reviews in creation order — enough to find the first human review. */
+  reviews: PullRequestReview[];
 }
 
+/** One currently-open issue or pull request, as much as backlog age needs. */
+export interface RawOpenItem {
+  number: number;
+  createdAt: string;
+  labels: string[];
+}
+
+/**
+ * Every open item of one kind, oldest first. `truncated` means the page cap
+ * was hit and `items` holds only the oldest `items.length` of `totalCount`.
+ */
+export interface RawOpenItemCollection {
+  items: RawOpenItem[];
+  totalCount: number;
+  truncated: boolean;
+}
+
+/**
+ * Bumped when the shape of what a fetch collects changes in a way a delta
+ * merge cannot repair. A stored snapshot with an older version is treated as
+ * absent so the next run does a full fetch instead of a delta.
+ */
+export const RAW_HEALTH_DATA_VERSION = 2;
+
 export interface RawGitHubHealthData {
+  version?: number;
   repository: {
     owner: string;
     name: string;
     issues: RawIssueNode[];
     pullRequests: RawPullRequestNode[];
     staleIssues?: RawIssueNode[];
+    openIssues?: RawOpenItemCollection;
+    openPullRequests?: RawOpenItemCollection;
   };
   fetchedAt: string;
 }
@@ -76,6 +105,14 @@ export interface ComputedHealthMetrics {
   openIssuesCount: number;
   openPullRequestsCount: number;
   starsCount: number;
+  avgIssueCloseHours: number | null;
+  p95IssueCloseHours: number | null;
+  avgPrMergeHours: number | null;
+  p95PrMergeHours: number | null;
+  avgIssueAgeHours: number | null;
+  p95IssueAgeHours: number | null;
+  avgPrAgeHours: number | null;
+  p95PrAgeHours: number | null;
 }
 
 export interface HealthMetricSeriesPoint extends ComputedHealthMetrics {
