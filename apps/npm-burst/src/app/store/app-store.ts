@@ -81,6 +81,11 @@ export interface AppState {
 
   setLiveData: (data: NpmDownloadsByVersion | null) => void;
   setSnapshots: (snapshots: Snapshot[]) => void;
+  /**
+   * Replace the history with a (larger) oldest-first list as pages arrive,
+   * keeping any selected snapshot pinned to its date rather than its index.
+   */
+  applySnapshotHistory: (snapshots: Snapshot[]) => void;
   setVersionReleases: (releases: VersionRelease[]) => void;
   setTotalDownloads: (downloads: DailyDownloadPoint[]) => void;
   setHealth: (health: PackageHealthResponse | null) => void;
@@ -197,6 +202,34 @@ export const appStore = createStore<AppState>((set, get) => ({
 
   setLiveData: (data) => set({ liveData: data }),
   setSnapshots: (snapshots) => set({ snapshots }),
+  applySnapshotHistory: (snapshots) => {
+    const {
+      snapshots: current,
+      snapshotIndex,
+      npmPackageName,
+      packageCache,
+    } = get();
+    const selectedDate =
+      snapshotIndex !== null ? current[snapshotIndex]?.date : undefined;
+    const nextIndex =
+      selectedDate !== undefined
+        ? snapshots.findIndex((s) => s.date === selectedDate)
+        : -1;
+    const cached = packageCache[npmPackageName];
+    set({
+      snapshots,
+      snapshotIndex: nextIndex === -1 ? null : nextIndex,
+      ...(cached
+        ? {
+            packageCache: {
+              ...packageCache,
+              [npmPackageName]: { ...cached, snapshots },
+            },
+          }
+        : {}),
+    });
+    get().recomputeChartData();
+  },
   setVersionReleases: (releases) => set({ versionReleases: releases }),
   setTotalDownloads: (downloads) => set({ totalDownloads: downloads }),
   setHealth: (health) => set({ health }),
