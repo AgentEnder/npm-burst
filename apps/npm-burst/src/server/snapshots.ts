@@ -58,25 +58,77 @@ export async function getLatestSnapshot(
   return row ? toSnapshot(row) : null;
 }
 
-/**
- * The full snapshot history. Loaded in the background by the client after the
- * shell has painted — never on the SSR critical path.
- */
-export async function getSnapshots(
-  db: Kysely<DB>,
-  pkg: string
-): Promise<Snapshot[]> {
-  const packageId = await getTrackedPackageId(db, pkg);
-  if (packageId === null) return [];
+export interface SnapshotPage {
+  /** Oldest first, matching the order the store keeps history in. */
+  snapshots: Snapshot[];
+  /** Whether snapshots older than this page exist. */
+  hasMore: boolean;
+}
 
-  const rows = await db
+export const SNAPSHOT_PAGE_SIZE = 25;
+const MAX_SNAPSHOT_PAGE_SIZE = 100;
+
+/**
+ * One page of snapshot history, walking from newest to oldest.
+ *
+ * Loaded in the background by the client after the shell has painted — never
+ * on the SSR critical path. Paging newest-first means the most useful history
+ * (the recent past) lands first, and the client can stop early once it reaches
+ * snapshots it already holds in its local cache.
+ *
+ * @param before only return snapshots strictly older than this date
+ */
+export async function getSnapshotPage(
+  db: Kysely<DB>,
+  pkg: string,
+  options: { before?: string; limit?: number } = {}
+): Promise<SnapshotPage> {
+  const packageId = await getTrackedPackageId(db, pkg);
+  if (packageId === null) return { snapshots: [], hasMore: false };
+
+  const limit = clampPageSize(options.limit);
+
+  let query = db
     .selectFrom('snapshots')
     .select(['snapshot_date', 'downloads'])
-    .where('package_id', '=', packageId)
-    .orderBy('snapshot_date', 'asc')
+    .where('package_id', '=', packageId);
+  if (options.before) {
+    query = query.where('snapshot_date', '<', options.before);
+  }
+
+  // Fetch one extra row to learn whether another page exists without a count.
+  const rows = await query
+    .orderBy('snapshot_date', 'desc')
+    .limit(limit + 1)
     .execute();
 
-  return Promise.all(rows.map(toSnapshot));
+  const hasMore = rows.length > limit;
+  const page = rows.slice(0, limit).reverse();
+
+  return { snapshots: await Promise.all(page.map(toSnapshot)), hasMore };
+}
+
+/**
+ * Pages an in-memory, oldest-first snapshot list the same way
+ * {@link getSnapshotPage} pages the database. Used for dev fixtures.
+ */
+export function pageSnapshots(
+  all: Snapshot[],
+  options: { before?: string; limit?: number } = {}
+): SnapshotPage {
+  const limit = clampPageSize(options.limit);
+  const eligible = options.before
+    ? all.filter((s) => s.date < options.before!)
+    : all;
+  return {
+    snapshots: eligible.slice(-limit),
+    hasMore: eligible.length > limit,
+  };
+}
+
+function clampPageSize(limit: number | undefined): number {
+  if (!limit || !Number.isFinite(limit)) return SNAPSHOT_PAGE_SIZE;
+  return Math.max(1, Math.min(MAX_SNAPSHOT_PAGE_SIZE, Math.floor(limit)));
 }
 
 export interface TrackedPackageSummary {

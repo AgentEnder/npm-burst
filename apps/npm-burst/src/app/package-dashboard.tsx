@@ -120,6 +120,7 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
             <div className={styles.historyPill} role="status">
               <span className={styles.historySpinner} aria-hidden="true" />
               Loading snapshot history…
+              {snapshots.length > 1 ? ` (${snapshots.length} loaded)` : null}
             </div>
           ) : null}
 

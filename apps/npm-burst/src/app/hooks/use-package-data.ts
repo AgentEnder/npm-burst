@@ -9,6 +9,13 @@ import { onGetHealthMetrics } from '../../server/functions/health.telefunc';
 import { onGetSnapshots } from '../../server/functions/snapshots.telefunc';
 import { onGetTotalDownloads } from '../../server/functions/total-downloads.telefunc';
 import { onGetVersionDates } from '../../server/functions/versions.telefunc';
+import {
+  loadSnapshotHistory,
+  mergeSnapshots,
+  SNAPSHOT_PAGE_SIZE,
+  readSnapshotCache,
+  writeSnapshotCache,
+} from '../utils/snapshot-cache';
 import { useWarningToast } from './use-warning-toast';
 import { useSafeAuth } from '../context/auth-context';
 import { appStore, useAppStore } from '../store';
@@ -67,16 +74,30 @@ export function usePackageData() {
     // paint needs it — `+data` already inlined the newest snapshot, which is
     // all the sunburst reads. So it loads alongside, on its own flag, instead
     // of inside the Promise.all that gates the loading skeleton.
+    //
+    // It is paged newest → oldest and mirrored into localStorage, so a repeat
+    // visit paints the cached history immediately and only fetches the pages
+    // newer than the cache (plus any tail an earlier visit didn't finish).
+    const pkg = npmPackageName;
+    const seeded = store.snapshots;
     store.setLoadingHistory(true);
-    onGetSnapshots(npmPackageName)
-      .then(({ snapshots }) => {
-        if (cancelled || snapshots.length === 0) return;
-        const s = appStore.getState();
-        s.setSnapshots(snapshots);
-        s.recomputeChartData();
-      })
+    loadSnapshotHistory({
+      cached: readSnapshotCache(pkg),
+      pageSize: SNAPSHOT_PAGE_SIZE,
+      fetchPage: (options) => onGetSnapshots(pkg, options),
+      shouldContinue: () => !cancelled,
+      onProgress: ({ snapshots, complete, contiguous }) => {
+        if (cancelled) return;
+        if (contiguous && snapshots.length > 0) {
+          writeSnapshotCache(pkg, { snapshots, complete });
+        }
+        appStore
+          .getState()
+          .applySnapshotHistory(mergeSnapshots(seeded, snapshots));
+      },
+    })
       .catch(() => {
-        /* history is additive — the seeded snapshot still renders */
+        /* history is additive — the seeded/cached snapshots still render */
       })
       .finally(() => {
         if (!cancelled) appStore.getState().setLoadingHistory(false);
