@@ -49,6 +49,7 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
   const sunburstChartData = useAppStore((s) => s.sunburstChartData);
   const isLoading = useAppStore((s) => s.isLoading);
   const isLoadingHistory = useAppStore((s) => s.isLoadingHistory);
+  const isRevalidating = useAppStore((s) => s.isRevalidating);
   const error = useAppStore((s) => s.error);
   const selectedVersion = useAppStore((s) => s.selectedVersion);
   const expandedNodes = useAppStore((s) => s.expandedNodes);
@@ -110,7 +111,9 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
     <Card>
       <DashboardHeader />
 
-      {isLoading ? (
+      {/* The health report can paint from the server-inlined copy while the
+          rest of the package loads, so it skips the skeleton. */}
+      {isLoading && !(viewMode === 'health' && health) ? (
         <LoadingSkeleton />
       ) : error ? (
         <ErrorMessage message={error} onRetry={invalidateCache} />
@@ -121,6 +124,11 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
               <span className={styles.historySpinner} aria-hidden="true" />
               Loading snapshot history…
               {snapshots.length > 1 ? ` (${snapshots.length} loaded)` : null}
+            </div>
+          ) : isRevalidating && viewMode !== 'health' ? (
+            <div className={styles.historyPill} role="status">
+              <span className={styles.historySpinner} aria-hidden="true" />
+              Checking for updates…
             </div>
           ) : null}
 

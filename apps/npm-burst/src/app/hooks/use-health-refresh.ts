@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { onRefreshHealthMetricsWithGitHubUserAccess } from '../../server/functions/health.telefunc';
 import { useSafeAuth, useSafeClerkActions } from '../context/auth-context';
-import { appStore } from '../store';
+import { appStore, useAppStore } from '../store';
 
 /**
  * What a click on "refresh" should actually do, given who the visitor is.
@@ -21,6 +21,9 @@ export function useHealthRefresh(githubLinked: boolean) {
   const { openSignIn, linkGitHubAccount } = useSafeClerkActions();
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The report on screen may be a cached copy still being revalidated; a
+  // manual refresh would race it (and its GitHub-linked flag may be stale).
+  const revalidating = useAppStore((s) => s.isRevalidatingHealth);
 
   const action: HealthRefreshAction =
     isSignedIn && githubLinked
@@ -43,7 +46,7 @@ export function useHealthRefresh(githubLinked: boolean) {
   }
 
   async function refresh(packageName: string) {
-    if (syncing) return;
+    if (syncing || revalidating) return;
     setSyncing(true);
     setError(null);
     try {
@@ -77,6 +80,8 @@ export function useHealthRefresh(githubLinked: boolean) {
     error,
     /** Clerk hasn't resolved auth yet, so don't let a click guess. */
     authPending: isLoaded === false,
+    /** The initial background revalidation of health data is in flight. */
+    revalidating,
     activate,
     refresh,
     connectGitHub,

@@ -13,13 +13,17 @@ import {
 } from '../utils/chart-data';
 import { buildPackagePath, type PackageTab } from '../utils/package-route';
 import {
+  readPackageDataCache,
+  writePackageDataCache,
+} from '../utils/package-data-cache';
+import {
   listenForURLChanges,
   readInitialStateFromURL,
   subscribeToURLSync,
 } from './url-sync';
 
 interface PackageCache {
-  liveData: NpmDownloadsByVersion;
+  liveData: NpmDownloadsByVersion | null;
   snapshots: Snapshot[];
   versionReleases: VersionRelease[];
   totalDownloads: DailyDownloadPoint[];
@@ -57,6 +61,17 @@ export interface AppState {
    * gets its own flag — it must never gate the main loading skeleton.
    */
   isLoadingHistory: boolean;
+  /**
+   * Cached data is on screen and a background re-fetch is replacing it.
+   * Never gates rendering — only hints that newer numbers may land.
+   */
+  isRevalidating: boolean;
+  /**
+   * The health report shown may be a stale cached copy (and its
+   * `githubUserAuthAvailable` may predate a sign-in change), so manual
+   * refreshes wait for this to clear.
+   */
+  isRevalidatingHealth: boolean;
   error: string | null;
   showDataTable: boolean;
   /** Active tab, mirrored from the route by `seedPackageStore` */
@@ -102,6 +117,8 @@ export interface AppState {
 
   setLoading: (v: boolean) => void;
   setLoadingHistory: (v: boolean) => void;
+  setRevalidating: (v: boolean) => void;
+  setRevalidatingHealth: (v: boolean) => void;
   setError: (v: string | null) => void;
   setShowDataTable: (v: boolean) => void;
   setViewMode: (v: PackageTab) => void;
@@ -113,7 +130,12 @@ export interface AppState {
   setLifecycleMinPeak: (v: number) => void;
 
   recomputeChartData: () => void;
+  /** Save the current package's data to the in-memory and local caches. */
   cacheCurrentPackageData: () => void;
+  /**
+   * Paint `pkg` from the in-memory cache, falling back to localStorage.
+   * Returns whether anything was restored. Callers still revalidate.
+   */
   restoreFromCache: (pkg: string) => boolean;
   /** Clear cache for current package to force a re-fetch */
   invalidateCache: () => void;
@@ -144,6 +166,22 @@ function getSourceData(state: {
   return null;
 }
 
+/**
+ * The seeded (server-rendered) report and a cached one can both be on hand;
+ * keep whichever was refreshed more recently. On a tie the cached copy wins,
+ * since only it can carry the user-specific `githubUserAuthAvailable`.
+ */
+function pickFresherHealth(
+  seeded: PackageHealthResponse | null,
+  cached: PackageHealthResponse | null
+): PackageHealthResponse | null {
+  if (!seeded) return cached;
+  if (!cached) return seeded;
+  const seededAt = seeded.lastRefreshedAt ?? '';
+  const cachedAt = cached.lastRefreshedAt ?? '';
+  return seededAt > cachedAt ? seeded : cached;
+}
+
 const initialURL = readInitialStateFromURL();
 
 export const appStore = createStore<AppState>((set, get) => ({
@@ -172,6 +210,8 @@ export const appStore = createStore<AppState>((set, get) => ({
   // UI
   isLoading: false,
   isLoadingHistory: false,
+  isRevalidating: false,
+  isRevalidatingHealth: false,
   error: null,
   fetchGeneration: 0,
   showDataTable: true,
@@ -307,6 +347,8 @@ export const appStore = createStore<AppState>((set, get) => ({
 
   setLoading: (v) => set({ isLoading: v }),
   setLoadingHistory: (v) => set({ isLoadingHistory: v }),
+  setRevalidating: (v) => set({ isRevalidating: v }),
+  setRevalidatingHealth: (v) => set({ isRevalidatingHealth: v }),
   setError: (v) => set({ error: v }),
   setShowDataTable: (v) => set({ showDataTable: v }),
   setViewMode: (v) => {
@@ -365,7 +407,6 @@ export const appStore = createStore<AppState>((set, get) => ({
       health,
       packageCache,
     } = get();
-    if (!liveData) return;
     set({
       packageCache: {
         ...packageCache,
@@ -378,18 +419,29 @@ export const appStore = createStore<AppState>((set, get) => ({
         },
       },
     });
+    // Snapshots are left out: they have their own incremental cache.
+    writePackageDataCache(npmPackageName, {
+      liveData,
+      versionReleases,
+      totalDownloads,
+      health: health?.packageName === npmPackageName ? health : null,
+    });
   },
 
   restoreFromCache: (pkg) => {
-    const { packageCache } = get();
-    const cached = packageCache[pkg];
+    const { packageCache, health: current } = get();
+    const memory = packageCache[pkg];
+    const cached = memory ?? readPackageDataCache(pkg);
     if (!cached) return false;
     set({
       liveData: cached.liveData,
-      snapshots: cached.snapshots,
+      ...(memory ? { snapshots: memory.snapshots } : {}),
       versionReleases: cached.versionReleases,
       totalDownloads: cached.totalDownloads,
-      health: cached.health,
+      health: pickFresherHealth(
+        current?.packageName === pkg ? current : null,
+        cached.health
+      ),
       snapshotIndex: null,
     });
     return true;

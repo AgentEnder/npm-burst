@@ -28,6 +28,8 @@ vi.mock('../hooks/use-warning-toast', () => ({
 }));
 
 vi.mock('../store', () => ({
+  useAppStore: (selector: (s: unknown) => unknown) =>
+    selector({ isRevalidatingHealth: false }),
   appStore: {
     getState: () => ({
       setHealth: vi.fn(),

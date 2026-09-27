@@ -17,6 +17,7 @@ let authState: { isSignedIn?: boolean; isLoaded?: boolean; isAdmin: boolean } =
     isAdmin: false,
   };
 let storeHealth: PackageHealthResponse | null = null;
+let storeRevalidating = false;
 
 vi.mock('../context/auth-context', () => ({
   useSafeAuth: () => authState,
@@ -29,7 +30,11 @@ vi.mock('../../server/functions/health.telefunc', () => ({
 
 vi.mock('../store', () => ({
   useAppStore: (selector: (s: unknown) => unknown) =>
-    selector({ health: storeHealth, npmPackageName: 'nx' }),
+    selector({
+      health: storeHealth,
+      npmPackageName: 'nx',
+      isRevalidatingHealth: storeRevalidating,
+    }),
   appStore: {
     getState: () => ({ setHealth, cacheCurrentPackageData }),
   },
@@ -84,6 +89,7 @@ describe('HealthRefreshControl', () => {
     vi.clearAllMocks();
     authState = { isSignedIn: true, isLoaded: true, isAdmin: false };
     storeHealth = buildHealth();
+    storeRevalidating = false;
   });
 
   it('shows when the report was last refreshed', () => {
@@ -127,6 +133,20 @@ describe('HealthRefreshControl', () => {
 
     fireEvent.click(button);
     expect(linkGitHubAccount).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('stays disabled while cached health data is being revalidated', () => {
+    storeRevalidating = true;
+    const { getByRole, getByText } = render(<HealthRefreshControl />);
+
+    const button = getByRole('button', {
+      name: /Refresh with GitHub/,
+    }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(getByText('Checking for updates…')).toBeTruthy();
+
+    fireEvent.click(button);
     expect(refresh).not.toHaveBeenCalled();
   });
 
