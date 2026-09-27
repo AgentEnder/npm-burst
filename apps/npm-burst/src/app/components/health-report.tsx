@@ -1039,6 +1039,7 @@ export function HealthReport({
     syncing,
     error: syncError,
     authPending,
+    revalidating,
     refresh,
     connectGitHub,
     signIn,
@@ -1097,6 +1098,7 @@ export function HealthReport({
           githubLinked={health.githubUserAuthAvailable === true}
           authPending={authPending}
           syncing={syncing}
+          revalidating={revalidating}
           syncError={syncError}
           onSnapshot={() => refresh(health.packageName)}
           onSignIn={signIn}
@@ -1114,6 +1116,7 @@ export function HealthReport({
         githubLinked={health.githubUserAuthAvailable === true}
         authPending={authPending}
         syncing={syncing}
+        revalidating={revalidating}
         syncError={syncError}
         onSnapshot={() => refresh(health.packageName)}
         onSignIn={signIn}

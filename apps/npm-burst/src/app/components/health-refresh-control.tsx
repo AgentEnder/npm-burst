@@ -22,9 +22,8 @@ const BLOCKED_REASON: Record<'signIn' | 'linkGitHub', string> = {
 export function HealthRefreshControl() {
   const health = useAppStore((s) => s.health);
   const packageName = useAppStore((s) => s.npmPackageName);
-  const { action, syncing, error, authPending, activate } = useHealthRefresh(
-    health?.githubUserAuthAvailable === true
-  );
+  const { action, syncing, error, authPending, revalidating, activate } =
+    useHealthRefresh(health?.githubUserAuthAvailable === true);
 
   if (!health || health.snapshots.length === 0) return null;
 
@@ -39,7 +38,7 @@ export function HealthRefreshControl() {
         blockedReason ? styles.buttonBlocked : ''
       } ${syncing ? styles.syncing : ''}`}
       onClick={() => activate(packageName)}
-      disabled={syncing || authPending}
+      disabled={syncing || authPending || revalidating}
       aria-disabled={blockedReason !== null}
       aria-label={
         blockedReason
@@ -48,7 +47,13 @@ export function HealthRefreshControl() {
       }
     >
       <RefreshCw size={13} className={styles.icon} aria-hidden="true" />
-      {syncing ? 'Refreshing…' : relative ? `Updated ${relative}` : 'Refresh'}
+      {syncing
+        ? 'Refreshing…'
+        : revalidating
+        ? 'Checking for updates…'
+        : relative
+        ? `Updated ${relative}`
+        : 'Refresh'}
     </button>
   );
 
