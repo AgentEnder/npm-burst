@@ -18,6 +18,8 @@ export interface HealthEmptyStateProps {
   githubLinked: boolean;
   authPending: boolean;
   syncing: boolean;
+  /** Health data is still being revalidated, so a snapshot would race it. */
+  revalidating?: boolean;
   syncError: string | null;
   onSnapshot: () => void;
   onSignIn: () => void;
@@ -57,6 +59,7 @@ export function HealthEmptyState({
   githubLinked,
   authPending,
   syncing,
+  revalidating = false,
   syncError,
   onSnapshot,
   onSignIn,
@@ -104,7 +107,7 @@ export function HealthEmptyState({
   };
 
   const isBusy = (action: HealthEmptyAction | null) =>
-    authPending || (action === 'snapshot' && syncing);
+    authPending || (action === 'snapshot' && (syncing || revalidating));
 
   const primaryLabel =
     plan.primary === 'snapshot' && syncing

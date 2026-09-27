@@ -1,13 +1,17 @@
 import {
   getDownloadsByVersion,
   getTotalDownloadsRange,
+  type NpmDownloadsByVersion,
 } from '@npm-burst/npm-data-access';
 import type { ExternalDataWarning } from '../../server/external-data';
 import { useEffect, useRef, useState } from 'react';
 import { onGetDownloads } from '../../server/functions/downloads.telefunc';
 import { onGetHealthMetrics } from '../../server/functions/health.telefunc';
 import { onGetSnapshots } from '../../server/functions/snapshots.telefunc';
-import { onGetTotalDownloads } from '../../server/functions/total-downloads.telefunc';
+import {
+  onGetTotalDownloads,
+  type DailyDownloadPoint,
+} from '../../server/functions/total-downloads.telefunc';
 import { onGetVersionDates } from '../../server/functions/versions.telefunc';
 import {
   loadSnapshotHistory,
@@ -21,8 +25,23 @@ import { useSafeAuth } from '../context/auth-context';
 import { appStore, useAppStore } from '../store';
 
 /**
- * Orchestrates data fetching when the package name changes.
- * Checks the store's packageCache first to avoid redundant API calls.
+ * The server falls back to an empty list plus a warning when an upstream call
+ * fails. That is fine to show with nothing cached, but it must not replace a
+ * cached list during revalidation.
+ */
+function isDegraded(
+  list: unknown[],
+  result: { warnings: ExternalDataWarning[] }
+): boolean {
+  return list.length === 0 && result.warnings.length > 0;
+}
+
+/**
+ * Orchestrates data fetching when the package name changes, using
+ * stale-while-revalidate: whatever was loaded last time (in memory for this
+ * session, else from localStorage) paints immediately, then every data point is
+ * re-fetched in the background and swapped in as soon as it arrives. The
+ * loading skeleton only shows when there is nothing cached at all.
  */
 export function usePackageData() {
   const { isSignedIn } = useSafeAuth();
@@ -41,33 +60,43 @@ export function usePackageData() {
     cancelRef.current?.();
     cancelRef.current = null;
 
+    const pkg = npmPackageName;
     const store = appStore.getState();
+    const hasCache = store.restoreFromCache(pkg);
 
-    // Check cache first
-    if (store.restoreFromCache(npmPackageName)) {
-      store.recomputeChartData();
-      return;
-    }
-
-    // Cache miss — fetch everything in parallel
-    store.setLoading(true);
     store.setError(null);
-    store.setHealth(null);
     setWarnings([]);
+    if (!hasCache) {
+      // Nothing to show stale, so clear the previous package's data rather
+      // than let it stand in for this one. Seeded snapshots and health (from
+      // `+data`) already belong to this package and stay.
+      store.setLiveData(null);
+      store.setVersionReleases([]);
+      store.setTotalDownloads([]);
+      if (appStore.getState().health?.packageName !== pkg) {
+        store.setHealth(null);
+      }
+      store.setLoading(true);
+    }
+    store.recomputeChartData();
+    store.setRevalidating(true);
+    store.setRevalidatingHealth(true);
 
     let cancelled = false;
 
-    const fetchLive = isSignedIn
-      ? onGetDownloads(npmPackageName).catch(() => ({
-          data: null,
-          warnings: [],
-        }))
+    // Each fetch resolves to `null` on failure, so a failed revalidation
+    // leaves the cached value on screen instead of blanking it.
+    const fetchLive: Promise<{
+      data: NpmDownloadsByVersion | null;
+      warnings: ExternalDataWarning[];
+    } | null> = isSignedIn
+      ? onGetDownloads(pkg).catch(() => null)
       : (() => {
-          const { get, cancel } = getDownloadsByVersion(npmPackageName);
+          const { get, cancel } = getDownloadsByVersion(pkg);
           cancelRef.current = cancel;
           return get()
             .then((data) => ({ data, warnings: [] }))
-            .catch(() => ({ data: null, warnings: [] }));
+            .catch(() => null);
         })();
 
     // The snapshot history is the heaviest payload and nothing on the first
@@ -78,8 +107,7 @@ export function usePackageData() {
     // It is paged newest → oldest and mirrored into localStorage, so a repeat
     // visit paints the cached history immediately and only fetches the pages
     // newer than the cache (plus any tail an earlier visit didn't finish).
-    const pkg = npmPackageName;
-    const seeded = store.snapshots;
+    const seeded = appStore.getState().snapshots;
     store.setLoadingHistory(true);
     loadSnapshotHistory({
       cached: readSnapshotCache(pkg),
@@ -103,10 +131,7 @@ export function usePackageData() {
         if (!cancelled) appStore.getState().setLoadingHistory(false);
       });
 
-    const fetchVersions = onGetVersionDates(npmPackageName).catch(() => ({
-      versions: [],
-      warnings: [],
-    }));
+    const fetchVersions = onGetVersionDates(pkg).catch(() => null);
 
     // Fetch total downloads for last 18 months (npm API max range)
     const end = new Date().toISOString().slice(0, 10);
@@ -114,50 +139,89 @@ export function usePackageData() {
     startDate.setMonth(startDate.getMonth() - 18);
     const start = startDate.toISOString().slice(0, 10);
 
-    const fetchTotalDownloads = isSignedIn
-      ? onGetTotalDownloads(npmPackageName, start, end).catch(() => ({
-          downloads: [],
-          warnings: [],
-        }))
+    const fetchTotalDownloads: Promise<{
+      downloads: DailyDownloadPoint[];
+      warnings: ExternalDataWarning[];
+    } | null> = isSignedIn
+      ? onGetTotalDownloads(pkg, start, end).catch(() => null)
       : (() => {
-          const { get } = getTotalDownloadsRange(npmPackageName, start, end);
+          const { get } = getTotalDownloadsRange(pkg, start, end);
           return get()
             .then((data) => ({ downloads: data.downloads, warnings: [] }))
-            .catch(() => ({ downloads: [], warnings: [] }));
+            .catch(() => null);
         })();
 
-    const fetchHealth = onGetHealthMetrics(npmPackageName).catch(() => null);
+    const fetchHealth = onGetHealthMetrics(pkg).catch(() => null);
 
-    Promise.all([fetchLive, fetchVersions, fetchTotalDownloads, fetchHealth])
+    // Swap each data point in the moment it lands rather than waiting on the
+    // slowest one.
+    const applied = [
+      fetchLive.then((result) => {
+        if (cancelled || !result?.data) return result;
+        const s = appStore.getState();
+        s.setLiveData(result.data);
+        s.recomputeChartData();
+        return result;
+      }),
+      fetchVersions.then((result) => {
+        if (!cancelled && result && !isDegraded(result.versions, result)) {
+          appStore.getState().setVersionReleases(result.versions);
+        }
+        return result;
+      }),
+      fetchTotalDownloads.then((result) => {
+        if (!cancelled && result && !isDegraded(result.downloads, result)) {
+          appStore.getState().setTotalDownloads(result.downloads);
+        }
+        return result;
+      }),
+      fetchHealth
+        .then((health) => {
+          if (!cancelled && health) {
+            const current = appStore.getState().health;
+            // The server answers a failed load with an empty report plus a
+            // warning; don't let that replace a real one already on screen.
+            const lostData =
+              health.warnings.length > 0 &&
+              health.snapshots.length === 0 &&
+              current?.packageName === pkg &&
+              current.snapshots.length > 0;
+            if (!lostData) appStore.getState().setHealth(health);
+          }
+          return health;
+        })
+        .finally(() => {
+          if (!cancelled) appStore.getState().setRevalidatingHealth(false);
+        }),
+    ] as const;
+
+    Promise.all(applied)
       .then(([liveResult, versionsResult, totalDownloadsResult, health]) => {
         if (cancelled) return;
-        const s = appStore.getState();
-        s.setLiveData(liveResult.data);
-        s.setVersionReleases(versionsResult.versions);
-        s.setTotalDownloads(totalDownloadsResult.downloads);
-        s.setHealth(health);
-        s.setSnapshotIndex(null);
-        s.cacheCurrentPackageData();
-        s.recomputeChartData();
-        const warnings = [
-          ...liveResult.warnings,
-          ...versionsResult.warnings,
-          ...totalDownloadsResult.warnings,
+        appStore.getState().cacheCurrentPackageData();
+        setWarnings([
+          ...(liveResult?.warnings ?? []),
+          ...(versionsResult?.warnings ?? []),
+          ...(totalDownloadsResult?.warnings ?? []),
           ...(health?.warnings ?? []),
-        ];
-        setWarnings(warnings);
+        ]);
       })
       .catch((e) => {
         if (cancelled || e?.name === 'AbortError') return;
+        // With cached data on screen, a failed revalidation is not worth
+        // replacing the page over.
+        if (hasCache) return;
         appStore
           .getState()
           .setError(
-            `Failed to load data for "${npmPackageName}". The package may not exist or there was a network error.`
+            `Failed to load data for "${pkg}". The package may not exist or there was a network error.`
           );
       })
       .finally(() => {
         if (!cancelled) {
-          appStore.getState().setLoading(false);
+          const s = appStore.getState();
+          s.setLoading(false);
+          s.setRevalidating(false);
         }
       });
 

@@ -1,4 +1,5 @@
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
+import { readCacheEntry, writeCacheEntry } from './local-cache';
 
 /**
  * A local (per-browser) cache of a package's snapshot history.
@@ -28,74 +29,21 @@ function keyFor(pkg: string): string {
   return KEY_PREFIX + pkg;
 }
 
-function getStorage(): Storage | null {
-  try {
-    return typeof window !== 'undefined' ? window.localStorage : null;
-  } catch {
-    // Accessing localStorage throws when storage is blocked.
-    return null;
-  }
-}
-
 export function readSnapshotCache(pkg: string): CachedSnapshotHistory | null {
-  const storage = getStorage();
-  if (!storage) return null;
-  try {
-    const raw = storage.getItem(keyFor(pkg));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedSnapshotHistory;
-    if (!Array.isArray(parsed?.snapshots)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  const parsed = readCacheEntry<CachedSnapshotHistory>(keyFor(pkg));
+  if (!Array.isArray(parsed?.snapshots)) return null;
+  return parsed;
 }
 
+/**
+ * Each package's history can be sizeable, so a quota error evicts the
+ * least-recently-saved other cache entries and retries.
+ */
 export function writeSnapshotCache(
   pkg: string,
   history: Omit<CachedSnapshotHistory, 'savedAt'>
 ): void {
-  const storage = getStorage();
-  if (!storage) return;
-  const value = JSON.stringify({ ...history, savedAt: Date.now() });
-
-  // Each package's history can be sizeable, so on a quota error evict the
-  // least-recently-saved other packages one at a time and retry.
-  for (;;) {
-    try {
-      storage.setItem(keyFor(pkg), value);
-      return;
-    } catch {
-      if (!evictOldestOther(storage, keyFor(pkg))) return;
-    }
-  }
-}
-
-function evictOldestOther(storage: Storage, keep: string): boolean {
-  let oldestKey: string | null = null;
-  let oldestAt = Infinity;
-  for (let i = 0; i < storage.length; i++) {
-    const key = storage.key(i);
-    if (!key || key === keep || !key.startsWith(KEY_PREFIX)) continue;
-    let savedAt = 0;
-    try {
-      savedAt =
-        (
-          JSON.parse(
-            storage.getItem(key) ?? '{}'
-          ) as Partial<CachedSnapshotHistory> | null
-        )?.savedAt ?? 0;
-    } catch {
-      // Unreadable entries are the first to go.
-    }
-    if (savedAt < oldestAt) {
-      oldestAt = savedAt;
-      oldestKey = key;
-    }
-  }
-  if (oldestKey === null) return false;
-  storage.removeItem(oldestKey);
-  return true;
+  writeCacheEntry(keyFor(pkg), history);
 }
 
 /**
