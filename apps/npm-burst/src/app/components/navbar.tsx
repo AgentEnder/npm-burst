@@ -2,12 +2,7 @@ import { memo } from 'react';
 import { Moon, Sun, BarChart3 } from 'lucide-react';
 import { SiGithub } from '@icons-pack/react-simple-icons';
 import { useTheme } from '../context/theme-context';
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-} from '@clerk/clerk-react';
+import { Show, SignInButton, UserButton } from '@clerk/react';
 import { BrandMark } from './brand-mark';
 import { PackageSearch } from './package-search';
 import styles from './navbar.module.scss';
@@ -54,12 +49,12 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
       </a>
       {CLERK_AVAILABLE && (
         <div className={styles.authSection}>
-          <SignedOut>
+          <Show when="signed-out">
             <SignInButton mode="modal">
               <button className={styles.signInButton}>Sign In</button>
             </SignInButton>
-          </SignedOut>
-          <SignedIn>
+          </Show>
+          <Show when="signed-in">
             <UserButton
               appearance={{
                 elements: {
@@ -75,7 +70,7 @@ export const Navbar = memo(function Navbar({ onSelectPackage }: NavbarProps) {
                 />
               </UserButton.MenuItems>
             </UserButton>
-          </SignedIn>
+          </Show>
         </div>
       )}
     </nav>

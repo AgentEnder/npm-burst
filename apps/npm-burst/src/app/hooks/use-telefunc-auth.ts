@@ -1,4 +1,4 @@
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth } from '@clerk/react';
 import { config } from 'telefunc/client';
 import { DEV_AUTH_HEADER, readDevAuthOverride } from '../../dev-auth';
 

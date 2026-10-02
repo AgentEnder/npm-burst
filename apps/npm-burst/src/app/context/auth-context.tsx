@@ -3,7 +3,7 @@ import {
   useAuth as useClerkAuth,
   useClerk,
   useUser,
-} from '@clerk/clerk-react';
+} from '@clerk/react';
 import { PropsWithChildren } from 'react';
 import { useIsDevMode } from './dev-mode-context';
 import { useDevAuthOverride } from './dev-auth-override-context';
