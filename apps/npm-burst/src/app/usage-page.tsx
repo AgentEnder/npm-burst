@@ -15,7 +15,7 @@ import type {
   UsageInfo,
   TrackedPackageInfo,
 } from '../server/functions/usage.telefunc';
-import { useClerk } from '@clerk/clerk-react';
+import { useClerk } from '@clerk/react';
 import { useSafeAuth } from './context/auth-context';
 import { useWarningToast } from './hooks/use-warning-toast';
 import { buildPackagePath } from './utils/package-route';
