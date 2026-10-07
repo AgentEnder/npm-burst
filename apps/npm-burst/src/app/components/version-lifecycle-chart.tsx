@@ -14,7 +14,10 @@ import { useAppStore } from '../store';
 import { formatDay, formatMonth, parseDay } from '../utils/chart-kit';
 import { generateThemeColorPalette } from '../utils/theme-colors';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
-import { getVersionLifecycleData } from '../utils/version-lifecycle';
+import {
+  getVersionLifecycleData,
+  lifecycleEndDate,
+} from '../utils/version-lifecycle';
 import type { LifecycleMilestone } from '../utils/version-lifecycle';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
@@ -54,6 +57,8 @@ interface RowLabel {
 
 interface Layout {
   bars: LifecycleBar[];
+  /** Rows whose release falls inside the visible range. */
+  releases: LifecycleMilestone[];
   ongoing: RowLabel[];
   nextMajor: RowLabel[];
   neverReached: RowLabel[];
@@ -69,11 +74,21 @@ function formatDate(day: string | null): string {
   return day ? formatDay(parseDay(day)) : '—';
 }
 
-function buildLayout(milestones: LifecycleMilestone[]): Layout {
-  const today = parseDay(new Date().toISOString().slice(0, 10));
+/**
+ * Bars and annotations for the visible rows. With a `windowStart` day, bars
+ * are clipped to the window and points before it are dropped.
+ */
+function buildLayout(
+  milestones: LifecycleMilestone[],
+  windowStart: string | null
+): Layout {
+  const todayDay = new Date().toISOString().slice(0, 10);
+  const today = parseDay(todayDay);
   const todayMs = today.getTime();
+  const startMs = windowStart ? parseDay(windowStart).getTime() : -Infinity;
   const layout: Layout = {
     bars: [],
+    releases: [],
     ongoing: [],
     nextMajor: [],
     neverReached: [],
@@ -83,75 +98,81 @@ function buildLayout(milestones: LifecycleMilestone[]): Layout {
 
   let minMs = todayMs;
   let maxMs = todayMs;
-  const track = (day: string | null) => {
-    if (!day) return;
-    const ms = parseDay(day).getTime();
+  const track = (ms: number) => {
     minMs = Math.min(minMs, ms);
     maxMs = Math.max(maxMs, ms);
   };
 
-  for (const m of milestones) {
-    track(m.releaseDate);
-    track(m.reachedThresholdDate);
-    track(m.nextMajorReleaseDate);
-    track(m.droppedBelowDate);
+  /** Adds the visible part of a bar and returns its extent, if any. */
+  const bar = (
+    milestone: LifecycleMilestone,
+    phase: Phase,
+    start: number,
+    end: number
+  ): [number, number] | null => {
+    if (end < startMs) return null;
+    const visibleStart = Math.max(start, startMs);
+    layout.bars.push({ milestone, phase, start: visibleStart, end });
+    track(visibleStart);
+    track(end);
+    return [visibleStart, end];
+  };
 
+  for (const m of milestones) {
     const releaseMs = parseDay(m.releaseDate).getTime();
-    const bar = (phase: Phase, start: number, end: number) =>
-      layout.bars.push({ milestone: m, phase, start, end });
+    const endMs = parseDay(lifecycleEndDate(m, todayDay)).getTime();
+
+    if (releaseMs >= startMs) {
+      layout.releases.push(m);
+      track(releaseMs);
+    }
 
     if (m.reachedThresholdDate) {
       const thresholdMs = parseDay(m.reachedThresholdDate).getTime();
-      bar('ramp', releaseMs, thresholdMs);
-      if (m.daysToReachThreshold !== null) {
+      const ramp = bar(m, 'ramp', releaseMs, thresholdMs);
+      if (ramp && m.daysToReachThreshold !== null) {
         layout.rampLabels.push({
           label: m.label,
-          x: new Date((releaseMs + thresholdMs) / 2),
+          x: new Date((ramp[0] + ramp[1]) / 2),
           text: `${m.daysToReachThreshold}d ↑`,
-          width: thresholdMs - releaseMs,
+          width: ramp[1] - ramp[0],
         });
       }
 
-      const endMs = m.droppedBelowDate
-        ? parseDay(m.droppedBelowDate).getTime()
-        : m.stillAboveThreshold
-        ? todayMs
-        : thresholdMs;
       if (endMs > thresholdMs) {
-        bar('above', thresholdMs, endMs);
+        bar(m, 'above', thresholdMs, endMs);
         if (m.stillAboveThreshold && !m.droppedBelowDate) {
           layout.ongoing.push({ label: m.label, x: today, text: '→' });
         }
       }
 
       if (m.nextMajorReleaseDate) {
-        layout.nextMajor.push({
-          label: m.label,
-          x: parseDay(m.nextMajorReleaseDate),
-          text:
-            m.daysPersistingAfterNext === null
-              ? ''
-              : `+${m.daysPersistingAfterNext}d`,
-        });
+        const nextMs = parseDay(m.nextMajorReleaseDate).getTime();
+        if (nextMs >= startMs) {
+          track(nextMs);
+          layout.nextMajor.push({
+            label: m.label,
+            x: new Date(nextMs),
+            text:
+              m.daysPersistingAfterNext === null
+                ? ''
+                : `+${m.daysPersistingAfterNext}d`,
+          });
+        }
       }
     } else {
-      // Concluded versions end at the next major; pending ones run to today.
-      const endMs =
-        m.neverReached && m.nextMajorReleaseDate
-          ? parseDay(m.nextMajorReleaseDate).getTime()
-          : todayMs;
-      bar('never', releaseMs, endMs);
-      if (m.neverReached) {
+      const never = bar(m, 'never', releaseMs, endMs);
+      if (never && m.neverReached) {
         layout.neverReached.push({
           label: m.label,
-          x: new Date((releaseMs + endMs) / 2),
+          x: new Date((never[0] + never[1]) / 2),
           text: `peak ${percent(m.peakPercent)}`,
         });
       }
     }
   }
 
-  layout.domain = [new Date(minMs), new Date(maxMs)];
+  layout.domain = [new Date(windowStart ? startMs : minMs), new Date(maxMs)];
   return layout;
 }
 
@@ -189,20 +210,18 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     [snapshots, liveData, versionReleases, threshold]
   );
 
+  const windowStart = useMemo(
+    () => getTimeWindowCutoff(timeWindow)?.toISOString().slice(0, 10) ?? null,
+    [timeWindow]
+  );
+
   const filteredMilestones = useMemo(() => {
     let result = milestones;
 
-    // Filter by time window
-    const cutoff = getTimeWindowCutoff(timeWindow);
-    if (cutoff) {
-      const cutoffStr = cutoff.toISOString().slice(0, 10);
-      result = result.filter((m) => {
-        return (
-          m.releaseDate >= cutoffStr ||
-          m.stillAboveThreshold ||
-          (m.droppedBelowDate && m.droppedBelowDate >= cutoffStr)
-        );
-      });
+    // Keep rows whose lifecycle overlaps the window
+    if (windowStart) {
+      const today = new Date().toISOString().slice(0, 10);
+      result = result.filter((m) => lifecycleEndDate(m, today) >= windowStart);
     }
 
     // Filter pre-snapshot versions
@@ -217,7 +236,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     }
 
     return result;
-  }, [milestones, timeWindow, showOnlySnapshotted, snapshots, minPeak]);
+  }, [milestones, windowStart, showOnlySnapshotted, snapshots, minPeak]);
 
   const palette = useMemo(
     () => generateThemeColorPalette(filteredMilestones.length + 1, theme),
@@ -226,7 +245,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
 
   const definition = useMemo(() => {
     const labels = filteredMilestones.map((m) => m.label);
-    const layout = buildLayout(filteredMilestones);
+    const layout = buildLayout(filteredMilestones, windowStart);
     const [minDate, maxDate] = layout.domain;
     const spanMs = Math.max(1, maxDate.getTime() - minDate.getTime());
 
@@ -316,7 +335,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
               })
             ),
             decorative(
-              dot(filteredMilestones, {
+              dot(layout.releases, {
                 id: 'release-dots',
                 x: (m) => parseDay(m.releaseDate),
                 y: 'label',
@@ -407,7 +426,7 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         },
       },
     });
-  }, [filteredMilestones, palette, threshold]);
+  }, [filteredMilestones, palette, threshold, windowStart]);
 
   return (
     <div className={styles.container}>
@@ -463,10 +482,15 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
         </label>
       </div>
 
-      {filteredMilestones.length === 0 ? (
+      {milestones.length === 0 ? (
         <div className={styles.noData}>
           No historical snapshot data or version release information available.
           Track this package to start collecting lifecycle data.
+        </div>
+      ) : filteredMilestones.length === 0 ? (
+        <div className={styles.noData}>
+          No major versions match the current filters. Widen the window, lower
+          the minimum peak, or include untracked versions.
         </div>
       ) : (
         <>

@@ -30,6 +30,21 @@ export interface LifecycleMilestone {
 }
 
 /**
+ * The day a version's lifecycle row ends: where it dropped below the
+ * threshold, where a newer major concluded it, or `today` while it is still
+ * running.
+ */
+export function lifecycleEndDate(m: LifecycleMilestone, today: string): string {
+  if (m.reachedThresholdDate) {
+    if (m.droppedBelowDate) return m.droppedBelowDate;
+    return m.stillAboveThreshold ? today : m.reachedThresholdDate;
+  }
+  return m.neverReached && m.nextMajorReleaseDate
+    ? m.nextMajorReleaseDate
+    : today;
+}
+
+/**
  * Groups download counts by major version.
  */
 function groupByMajor(
