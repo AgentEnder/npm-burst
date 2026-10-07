@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { areaY, defineChart, lineY } from '@tanstack/charts';
 import { crosshair } from '@tanstack/charts/crosshair';
 import { Chart } from '@tanstack/charts/react';
@@ -9,6 +9,8 @@ import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import { useTheme } from '../context/theme-context';
+import { useHiddenSeries } from '../hooks/use-hidden-series';
+import { useAppStore } from '../store';
 import {
   buildColorMap,
   generateThemeColorPalette,
@@ -30,7 +32,6 @@ import {
 } from '../utils/release-ticks';
 import type { ReleaseTickLevel } from '../utils/release-ticks';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
-import type { TimeWindow } from '../utils/time-window';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
 import { matchVersionFilter, VersionFilterBar } from './version-filter-bar';
@@ -73,26 +74,29 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   versionReleases,
   lowPassFilter,
   totalDownloads,
-  timeWindow,
-  onTimeWindowChange,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
   lowPassFilter: number;
   totalDownloads: DailyDownloadPoint[];
-  timeWindow: TimeWindow;
-  onTimeWindowChange: (v: TimeWindow) => void;
 }) {
   const { theme } = useTheme();
-  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
-  const [versionFilter, setVersionFilter] = useState('');
-  const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
-  const [yAxisMode, setYAxisMode] = useState<YAxisMode>('percent');
-  const [chartMode, setChartMode] = useState<ChartMode>('stacked');
-  const [showReleaseTicks, setShowReleaseTicks] = useState(true);
-  const [releaseTickLevel, setReleaseTickLevel] =
-    useState<ReleaseTickLevel | null>(null);
+  const [hiddenSeries, setHiddenSeries] = useHiddenSeries('adoptionHidden');
+  const versionFilter = useAppStore((s) => s.versionFilter);
+  const setVersionFilter = useAppStore((s) => s.setVersionFilter);
+  const timeWindow = useAppStore((s) => s.timeWindow);
+  const onTimeWindowChange = useAppStore((s) => s.setTimeWindow);
+  const grouping = useAppStore((s) => s.adoptionGrouping);
+  const setGrouping = useAppStore((s) => s.setAdoptionGrouping);
+  const yAxisMode = useAppStore((s) => s.adoptionYAxis);
+  const setYAxisMode = useAppStore((s) => s.setAdoptionYAxis);
+  const chartMode = useAppStore((s) => s.adoptionChartMode);
+  const setChartMode = useAppStore((s) => s.setAdoptionChartMode);
+  const showReleaseTicks = useAppStore((s) => s.adoptionShowReleases);
+  const setShowReleaseTicks = useAppStore((s) => s.setAdoptionShowReleases);
+  const releaseTickLevel = useAppStore((s) => s.adoptionTickLevel);
+  const setReleaseTickLevel = useAppStore((s) => s.setAdoptionTickLevel);
 
   const effectiveTickLevel: ReleaseTickLevel = releaseTickLevel ?? grouping;
 
@@ -144,31 +148,31 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     ]
   );
 
-  // Reset hidden series + filter when grouping changes
-  useEffect(() => {
-    setHiddenSeries(new Set());
-    setVersionFilter('');
-  }, [grouping]);
+  const toggleSeries = useCallback(
+    (label: string) => {
+      setHiddenSeries((prev) => {
+        const next = new Set(prev);
+        if (next.has(label)) {
+          next.delete(label);
+        } else {
+          next.add(label);
+        }
+        return next;
+      });
+    },
+    [setHiddenSeries]
+  );
 
-  const toggleSeries = useCallback((label: string) => {
-    setHiddenSeries((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
-      return next;
-    });
-  }, []);
-
-  const showAll = useCallback(() => setHiddenSeries(new Set()), []);
+  const showAll = useCallback(
+    () => setHiddenSeries(new Set()),
+    [setHiddenSeries]
+  );
 
   const showOnlyAboveThreshold = useCallback(() => {
     setHiddenSeries(
       new Set(series.filter((s) => s.belowThreshold).map((s) => s.label))
     );
-  }, [series]);
+  }, [series, setHiddenSeries]);
 
   // Exclude series that are always zero (no meaningful data points)
   const nonZeroSeries = useMemo(
@@ -212,7 +216,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       for (const s of filteredLegendSeries) next.delete(s.label);
       return next;
     });
-  }, [filteredLegendSeries]);
+  }, [filteredLegendSeries, setHiddenSeries]);
 
   const hideMatching = useCallback(() => {
     if (filteredLegendSeries.length === 0) return;
@@ -221,7 +225,7 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
       for (const s of filteredLegendSeries) next.add(s.label);
       return next;
     });
-  }, [filteredLegendSeries]);
+  }, [filteredLegendSeries, setHiddenSeries]);
 
   const palette = useMemo(
     () => generateThemeColorPalette(series.length + 1, theme),

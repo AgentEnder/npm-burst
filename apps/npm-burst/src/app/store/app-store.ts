@@ -16,11 +16,21 @@ import {
   readPackageDataCache,
   writePackageDataCache,
 } from '../utils/package-data-cache';
+import type { MigrationTimeWindow, TimeWindow } from '../utils/time-window';
 import {
   listenForURLChanges,
   readInitialStateFromURL,
   subscribeToURLSync,
 } from './url-sync';
+
+type VersionLevel = 'major' | 'minor' | 'patch';
+
+/** Index of the snapshot dated `date`, or `null` when absent. */
+function snapshotIndexFor(snapshots: Snapshot[], date: string | null) {
+  if (date === null) return null;
+  const index = snapshots.findIndex((s) => s.date === date);
+  return index === -1 ? null : index;
+}
 
 interface PackageCache {
   liveData: NpmDownloadsByVersion | null;
@@ -79,11 +89,24 @@ export interface AppState {
   /** Incremented to force re-fetch after cache invalidation */
   fetchGeneration: number;
 
+  /** Snapshot date from the URL, resolved once snapshot history loads. */
+  pendingSnapshotDate: string | null;
+
   // Chart controls
-  timeWindow: '30d' | '90d' | '6mo' | '1y' | 'all';
-  migrationTimeWindow: '90d' | '180d' | '1y' | 'all';
-  migrationGranularity: 'major' | 'minor' | 'patch';
-  sunburstVersionFilter: string;
+  /** Version filter shared by the Breakdown, Adoption and Migration tabs. */
+  versionFilter: string;
+  timeWindow: TimeWindow;
+  adoptionChartMode: 'stacked' | 'lines';
+  adoptionYAxis: 'percent' | 'count';
+  adoptionGrouping: VersionLevel;
+  adoptionShowReleases: boolean;
+  /** Release tick level; `null` follows the grouping. */
+  adoptionTickLevel: VersionLevel | null;
+  adoptionHidden: string[];
+  migrationTimeWindow: MigrationTimeWindow;
+  migrationGranularity: VersionLevel;
+  migrationHidden: string[];
+  lifecycleThreshold: number;
   lifecycleShowOnlySnapshotted: boolean;
   lifecycleMinPeak: number;
 
@@ -122,12 +145,23 @@ export interface AppState {
   setError: (v: string | null) => void;
   setShowDataTable: (v: boolean) => void;
   setViewMode: (v: PackageTab) => void;
-  setTimeWindow: (v: '30d' | '90d' | '6mo' | '1y' | 'all') => void;
-  setMigrationTimeWindow: (v: '90d' | '180d' | '1y' | 'all') => void;
-  setMigrationGranularity: (v: 'major' | 'minor' | 'patch') => void;
-  setSunburstVersionFilter: (v: string) => void;
+  setVersionFilter: (v: string) => void;
+  setTimeWindow: (v: TimeWindow) => void;
+  setAdoptionChartMode: (v: 'stacked' | 'lines') => void;
+  setAdoptionYAxis: (v: 'percent' | 'count') => void;
+  /** Also clears hidden adoption series, whose labels depend on grouping. */
+  setAdoptionGrouping: (v: VersionLevel) => void;
+  setAdoptionShowReleases: (v: boolean) => void;
+  setAdoptionTickLevel: (v: VersionLevel) => void;
+  setAdoptionHidden: (labels: string[]) => void;
+  setMigrationTimeWindow: (v: MigrationTimeWindow) => void;
+  setMigrationGranularity: (v: VersionLevel) => void;
+  setMigrationHidden: (labels: string[]) => void;
+  setLifecycleThreshold: (v: number) => void;
   setLifecycleShowOnlySnapshotted: (v: boolean) => void;
   setLifecycleMinPeak: (v: number) => void;
+  /** Apply state parsed from the query string, e.g. after back/forward. */
+  applyURLState: (state: Partial<AppState>) => void;
 
   recomputeChartData: () => void;
   /** Save the current package's data to the in-memory and local caches. */
@@ -188,10 +222,10 @@ export const appStore = createStore<AppState>((set, get) => ({
   // The package and tab come from the route (seeded via `seedPackageStore`),
   // not the query string — only view state is URL-synced here.
   npmPackageName: 'nx',
-  sortByVersion: (initialURL.sortByVersion as boolean) ?? true,
-  lowPassFilter: (initialURL.lowPassFilter as number) ?? 0.02,
-  selectedVersion: (initialURL.selectedVersion as string | null) ?? null,
-  expandedNodes: (initialURL.expandedNodes as string[]) ?? [],
+  sortByVersion: true,
+  lowPassFilter: 0.02,
+  selectedVersion: null,
+  expandedNodes: [],
 
   // Data
   liveData: null,
@@ -203,6 +237,7 @@ export const appStore = createStore<AppState>((set, get) => ({
 
   // Navigation
   snapshotIndex: null,
+  pendingSnapshotDate: null,
 
   // Derived
   sunburstChartData: null,
@@ -216,12 +251,23 @@ export const appStore = createStore<AppState>((set, get) => ({
   fetchGeneration: 0,
   showDataTable: true,
   viewMode: 'sunburst',
+  versionFilter: '',
   timeWindow: 'all',
+  adoptionChartMode: 'stacked',
+  adoptionYAxis: 'percent',
+  adoptionGrouping: 'major',
+  adoptionShowReleases: true,
+  adoptionTickLevel: null,
+  adoptionHidden: [],
   migrationTimeWindow: 'all',
   migrationGranularity: 'major',
-  sunburstVersionFilter: '',
+  migrationHidden: [],
+  lifecycleThreshold: 50,
   lifecycleShowOnlySnapshotted: false,
   lifecycleMinPeak: 0,
+
+  // Query-string state overrides the defaults above.
+  ...initialURL,
 
   // === Actions ===
 
@@ -246,19 +292,19 @@ export const appStore = createStore<AppState>((set, get) => ({
     const {
       snapshots: current,
       snapshotIndex,
+      pendingSnapshotDate,
       npmPackageName,
       packageCache,
     } = get();
     const selectedDate =
-      snapshotIndex !== null ? current[snapshotIndex]?.date : undefined;
-    const nextIndex =
-      selectedDate !== undefined
-        ? snapshots.findIndex((s) => s.date === selectedDate)
-        : -1;
+      snapshotIndex !== null
+        ? current[snapshotIndex]?.date ?? null
+        : pendingSnapshotDate;
     const cached = packageCache[npmPackageName];
     set({
       snapshots,
-      snapshotIndex: nextIndex === -1 ? null : nextIndex,
+      snapshotIndex: snapshotIndexFor(snapshots, selectedDate),
+      pendingSnapshotDate: null,
       ...(cached
         ? {
             packageCache: {
@@ -361,16 +407,38 @@ export const appStore = createStore<AppState>((set, get) => ({
       get().recomputeChartData();
     }
   },
-  setTimeWindow: (v) => set({ timeWindow: v }),
-  setMigrationTimeWindow: (v) => set({ migrationTimeWindow: v }),
-  setMigrationGranularity: (v) => set({ migrationGranularity: v }),
-  setSunburstVersionFilter: (v) => {
-    set({ sunburstVersionFilter: v });
+  setVersionFilter: (v) => {
+    set({ versionFilter: v });
     get().recomputeChartData();
   },
+  setTimeWindow: (v) => set({ timeWindow: v }),
+  setAdoptionChartMode: (v) => set({ adoptionChartMode: v }),
+  setAdoptionYAxis: (v) => set({ adoptionYAxis: v }),
+  setAdoptionGrouping: (v) => set({ adoptionGrouping: v, adoptionHidden: [] }),
+  setAdoptionShowReleases: (v) => set({ adoptionShowReleases: v }),
+  setAdoptionTickLevel: (v) => set({ adoptionTickLevel: v }),
+  setAdoptionHidden: (labels) => set({ adoptionHidden: labels }),
+  setMigrationTimeWindow: (v) => set({ migrationTimeWindow: v }),
+  setMigrationGranularity: (v) => set({ migrationGranularity: v }),
+  setMigrationHidden: (labels) => set({ migrationHidden: labels }),
+  setLifecycleThreshold: (v) => set({ lifecycleThreshold: v }),
   setLifecycleShowOnlySnapshotted: (v) =>
     set({ lifecycleShowOnlySnapshotted: v }),
   setLifecycleMinPeak: (v) => set({ lifecycleMinPeak: v }),
+
+  applyURLState: (state) => {
+    const { snapshots } = get();
+    const date = state.pendingSnapshotDate ?? null;
+    const snapshotIndex = snapshotIndexFor(snapshots, date);
+    set({
+      ...state,
+      snapshotIndex,
+      // Keep waiting only while history has not loaded yet.
+      pendingSnapshotDate:
+        snapshotIndex === null && snapshots.length === 0 ? date : null,
+    });
+    get().recomputeChartData();
+  },
 
   recomputeChartData: () => {
     const state = get();
@@ -385,7 +453,7 @@ export const appStore = createStore<AppState>((set, get) => ({
       sourceData,
       state.lowPassFilter,
       state.expandedNodes,
-      state.sunburstVersionFilter
+      state.versionFilter
     );
 
     // If selectedVersion doesn't exist in the new data, reset it

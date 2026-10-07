@@ -1,6 +1,5 @@
 import { renderToString } from 'react-dom/server';
 import type { ChartPoint } from '@tanstack/charts';
-import type { MigrationTimeWindow } from '../utils/time-window';
 import {
   groupWithinDays,
   MigrationVelocityChart,
@@ -21,16 +20,12 @@ const versionReleases = [
   { version: '2.0.0', date: '2025-12-20' },
 ];
 
-function render(migrationTimeWindow: MigrationTimeWindow = 'all') {
+function render() {
   return renderToString(
     <MigrationVelocityChart
       snapshots={snapshots}
       liveData={null}
       versionReleases={versionReleases}
-      migrationTimeWindow={migrationTimeWindow}
-      onMigrationTimeWindowChange={() => undefined}
-      migrationGranularity="major"
-      onMigrationGranularityChange={() => undefined}
     />
   );
 }
@@ -53,10 +48,6 @@ describe('MigrationVelocityChart', () => {
         snapshots={[]}
         liveData={null}
         versionReleases={[]}
-        migrationTimeWindow="all"
-        onMigrationTimeWindowChange={() => undefined}
-        migrationGranularity="major"
-        onMigrationGranularityChange={() => undefined}
       />
     );
     expect(html).toContain('No historical snapshot data');

@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo } from 'react';
 import { barX, defineChart, dot, text, tickX } from '@tanstack/charts';
 import type { ChartPoint } from '@tanstack/charts';
 import { decorative } from '@tanstack/charts/mark/decorative';
@@ -10,10 +10,10 @@ import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { useTheme } from '../context/theme-context';
+import { useAppStore } from '../store';
 import { formatDay, formatMonth, parseDay } from '../utils/chart-kit';
 import { generateThemeColorPalette } from '../utils/theme-colors';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
-import type { TimeWindow } from '../utils/time-window';
 import { getVersionLifecycleData } from '../utils/version-lifecycle';
 import type { LifecycleMilestone } from '../utils/version-lifecycle';
 import { ChartDescription } from './chart-description';
@@ -159,25 +159,24 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
   snapshots,
   liveData,
   versionReleases,
-  timeWindow,
-  onTimeWindowChange,
-  showOnlySnapshotted,
-  onShowOnlySnapshottedChange,
-  minPeak,
-  onMinPeakChange,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
-  timeWindow: TimeWindow;
-  onTimeWindowChange: (v: TimeWindow) => void;
-  showOnlySnapshotted: boolean;
-  onShowOnlySnapshottedChange: (v: boolean) => void;
-  minPeak: number;
-  onMinPeakChange: (v: number) => void;
 }) {
   const { theme } = useTheme();
-  const [threshold, setThreshold] = useState(50);
+  const threshold = useAppStore((s) => s.lifecycleThreshold);
+  const setThreshold = useAppStore((s) => s.setLifecycleThreshold);
+  const timeWindow = useAppStore((s) => s.timeWindow);
+  const onTimeWindowChange = useAppStore((s) => s.setTimeWindow);
+  const showOnlySnapshotted = useAppStore(
+    (s) => s.lifecycleShowOnlySnapshotted
+  );
+  const onShowOnlySnapshottedChange = useAppStore(
+    (s) => s.setLifecycleShowOnlySnapshotted
+  );
+  const minPeak = useAppStore((s) => s.lifecycleMinPeak);
+  const onMinPeakChange = useAppStore((s) => s.setLifecycleMinPeak);
 
   const milestones = useMemo(
     () =>
