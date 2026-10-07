@@ -5,6 +5,7 @@ import {
   PACKAGE_TABS,
   type PackageTab,
 } from '../utils/package-route';
+import { useCurrentSearch } from '../hooks/use-current-search';
 import { SegmentedControl } from './segmented-control';
 import styles from './dashboard-header.module.scss';
 
@@ -23,7 +24,9 @@ export const PACKAGE_TAB_OPTIONS = PACKAGE_TABS.map((value) => ({
 
 /**
  * Tab bar for a package. Store-free by design so the server can render it —
- * the active tab comes from the route, not from client state.
+ * the active tab comes from the route, not from client state. Links carry the
+ * current query so view state, like the shared version filter, follows the
+ * reader across tabs.
  */
 export const PackageTabs = memo(function PackageTabs({
   packageName,
@@ -32,16 +35,20 @@ export const PackageTabs = memo(function PackageTabs({
   packageName: string;
   activeTab: PackageTab;
 }) {
+  const search = useCurrentSearch();
   return (
     <SegmentedControl
       options={PACKAGE_TAB_OPTIONS}
       value={activeTab}
       ariaLabel="Package view"
-      hrefFor={(tab) => buildPackagePath(packageName, tab)}
+      hrefFor={(tab) => `${buildPackagePath(packageName, tab)}${search}`}
       // Only reached via the mobile <select>, which can't be an anchor.
       onChange={(tab) => {
         if (typeof window !== 'undefined') {
-          window.location.href = buildPackagePath(packageName, tab);
+          window.location.href = `${buildPackagePath(
+            packageName,
+            tab
+          )}${search}`;
         }
       }}
     />
