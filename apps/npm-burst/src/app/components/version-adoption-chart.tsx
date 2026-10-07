@@ -1,22 +1,31 @@
-import * as d3 from 'd3';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { areaY, defineChart, lineY } from '@tanstack/charts';
+import { crosshair } from '@tanstack/charts/crosshair';
+import { Chart } from '@tanstack/charts/react';
+import { tooltip } from '@tanstack/charts/tooltip';
+import { scaleLinear, scaleTime } from 'd3-scale';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import type { DailyDownloadPoint } from '../../server/functions/total-downloads.telefunc';
 import { useTheme } from '../context/theme-context';
 import {
+  buildColorMap,
   generateThemeColorPalette,
-  getThemeChartColors,
 } from '../utils/theme-colors';
+import {
+  formatDay,
+  formatDownloadCount,
+  monotoneCurve,
+  parseDay,
+} from '../utils/chart-kit';
 import {
   AdoptionGrouping,
   getVersionAdoptionData,
 } from '../utils/version-adoption';
-import { formatDownloadCount } from '../utils/download-volume';
 import {
   filterReleasesByLevel,
-  renderReleaseTicks,
+  releaseTickMarks,
   RELEASE_TICK_OPTIONS,
 } from '../utils/release-ticks';
 import type { ReleaseTickLevel } from '../utils/release-ticks';
@@ -27,7 +36,6 @@ import { SegmentedControl } from './segmented-control';
 import { matchVersionFilter, VersionFilterBar } from './version-filter-bar';
 import styles from './version-adoption-chart.module.scss';
 
-const MARGIN = { top: 20, right: 20, bottom: 60, left: 50 };
 const CHART_HEIGHT = 350;
 
 const GROUPING_OPTIONS = [
@@ -50,15 +58,13 @@ const CHART_MODE_OPTIONS = [
 
 type ChartMode = 'stacked' | 'lines';
 
-function buildColorMap(
-  labels: string[],
-  palette: string[]
-): Map<string, string> {
-  const map = new Map<string, string>();
-  for (let i = 0; i < labels.length; i++) {
-    map.set(labels[i], palette[i % palette.length]);
-  }
-  return map;
+interface AdoptionRow {
+  label: string;
+  day: string;
+  date: Date;
+  /** Plotted value: percent share or download count. */
+  value: number;
+  count: number;
 }
 
 export const VersionAdoptionChart = memo(function VersionAdoptionChart({
@@ -79,8 +85,6 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
   onTimeWindowChange: (v: TimeWindow) => void;
 }) {
   const { theme } = useTheme();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [versionFilter, setVersionFilter] = useState('');
   const [grouping, setGrouping] = useState<AdoptionGrouping>('major');
@@ -219,8 +223,10 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     });
   }, [filteredLegendSeries]);
 
-  const chartColors = getThemeChartColors(theme);
-  const palette = generateThemeColorPalette(series.length + 1, theme);
+  const palette = useMemo(
+    () => generateThemeColorPalette(series.length + 1, theme),
+    [series.length, theme]
+  );
   const colorMap = useMemo(
     () =>
       buildColorMap(
@@ -230,280 +236,126 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     [series, palette]
   );
 
-  // D3 chart rendering
-  useEffect(() => {
-    if (!svgRef.current || !containerRef.current || series.length === 0) return;
+  const definition = useMemo(() => {
+    const valueKey = yAxisMode === 'percent' ? 'percent' : 'count';
+    const colorOf = (row: AdoptionRow) => colorMap.get(row.label) ?? '#888';
 
-    const containerWidth = containerRef.current.clientWidth;
-    const width = containerWidth;
-    const height = CHART_HEIGHT;
-    const innerWidth = width - MARGIN.left - MARGIN.right;
-    const innerHeight = height - MARGIN.top - MARGIN.bottom;
+    // Newest version is first in `visibleSeries`; stack it on top.
+    const stackSeries =
+      chartMode === 'stacked' ? visibleSeries.slice().reverse() : visibleSeries;
+    const rows: AdoptionRow[] = stackSeries.flatMap((s) =>
+      s.points.map((p) => ({
+        label: s.label,
+        day: p.date,
+        date: parseDay(p.date),
+        value: p[valueKey],
+        count: p.count,
+      }))
+    );
 
-    // Collect all dates and build a time scale
-    const allDates = Array.from(
+    const days = Array.from(
       new Set(series.flatMap((s) => s.points.map((p) => p.date)))
     ).sort();
+    const domain: [Date, Date] = [
+      parseDay(days[0] ?? '1970-01-01'),
+      parseDay(days[days.length - 1] ?? '1970-01-01'),
+    ];
 
-    const parseDate = (d: string) => new Date(d + 'T00:00:00');
-    const dateParsed = allDates.map(parseDate);
-    const dateMap = new Map(allDates.map((d, i) => [d, dateParsed[i]]));
-
-    const xScale = d3
-      .scaleTime()
-      .domain(d3.extent(dateParsed) as [Date, Date])
-      .range([0, innerWidth]);
-
-    const xDate = (d: string) => xScale(dateMap.get(d)!);
-
-    const valueKey = yAxisMode === 'percent' ? 'percent' : 'count';
-    const maxCount =
-      yAxisMode === 'count'
-        ? d3.max(allDates, (date) => {
-            let sum = 0;
-            for (const s of visibleSeries) {
-              const pt = s.points.find((p) => p.date === date);
-              sum += pt?.count ?? 0;
-            }
-            return sum;
-          }) ?? 0
-        : 100;
-    const yScale = d3
-      .scaleLinear()
-      .domain([0, maxCount * (yAxisMode === 'count' ? 1.1 : 1)])
-      .range([innerHeight, 0]);
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-    svg.attr('viewBox', `0 0 ${width} ${height}`).attr('width', width);
-
-    const g = svg
-      .append('g')
-      .attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
-
-    // Grid lines
-    g.append('g')
-      .attr('class', 'grid')
-      .call(
-        d3
-          .axisLeft(yScale)
-          .ticks(5)
-          .tickSize(-innerWidth)
-          .tickFormat(() => '')
-      );
-
-    // X axis
-    g.append('g')
-      .attr('class', 'axis')
-      .attr('transform', `translate(0,${innerHeight})`)
-      .call(
-        d3
-          .axisBottom(xScale)
-          .ticks(8)
-          .tickFormat((d) => d3.timeFormat('%b %d, %Y')(d as Date))
-      )
-      .selectAll('text')
-      .attr('transform', 'rotate(-25)')
-      .style('text-anchor', 'end');
-
-    // Y axis
-    g.append('g')
-      .attr('class', 'axis')
-      .call(
-        d3
-          .axisLeft(yScale)
-          .ticks(5)
-          .tickFormat((d) =>
-            yAxisMode === 'percent' ? `${d}%` : formatDownloadCount(d as number)
-          )
-      );
-
-    if (chartMode === 'stacked') {
-      // Stacked area chart — most recent version on top
-      const stackSeries = visibleSeries.slice().reverse();
-
-      const tableData = allDates.map((date) => {
-        const row: Record<string, number> = {};
-        for (const s of stackSeries) {
-          const pt = s.points.find((p) => p.date === date);
-          row[s.label] = pt?.[valueKey] ?? 0;
-        }
-        return { date, ...row };
-      });
-
-      const keys = stackSeries.map((s) => s.label);
-      const stack = d3
-        .stack<Record<string, unknown>>()
-        .keys(keys)
-        .order(d3.stackOrderNone)
-        .offset(d3.stackOffsetNone);
-      const stacked = stack(
-        tableData as unknown as Array<Record<string, unknown>>
-      );
-
-      const areaGen = d3
-        .area<d3.SeriesPoint<Record<string, unknown>>>()
-        .x((d) => xDate((d.data as Record<string, string>).date))
-        .y0((d) => yScale(d[0]))
-        .y1((d) => yScale(d[1]))
-        .curve(d3.curveMonotoneX);
-
-      for (const layer of stacked) {
-        const color = colorMap.get(layer.key) ?? '#888';
-        g.append('path')
-          .datum(layer)
-          .attr('fill', color)
-          .attr('fill-opacity', 0.7)
-          .attr('stroke', color)
-          .attr('stroke-width', 0.5)
-          .attr('d', areaGen);
+    let yMax = 100;
+    if (yAxisMode === 'count') {
+      const totals = new Map<string, number>();
+      for (const row of rows) {
+        totals.set(row.day, (totals.get(row.day) ?? 0) + row.count);
       }
-    } else {
-      // Line chart mode
-      const lineGen = d3
-        .line<{ date: string; percent: number; count: number }>()
-        .x((d) => xDate(d.date))
-        .y((d) => yScale(d[valueKey]))
-        .curve(d3.curveMonotoneX);
-
-      for (const s of visibleSeries) {
-        const color = colorMap.get(s.label) ?? '#888';
-
-        g.append('path')
-          .datum(s.points)
-          .attr('fill', 'none')
-          .attr('stroke', color)
-          .attr('stroke-width', 2)
-          .attr('d', lineGen);
-
-        g.selectAll(null)
-          .data(s.points)
-          .join('circle')
-          .attr('cx', (d) => xDate(d.date))
-          .attr('cy', (d) => yScale(d[valueKey]))
-          .attr('r', 3)
-          .attr('fill', color)
-          .attr('stroke', theme === 'dark' ? '#1e1e1e' : '#ffffff')
-          .attr('stroke-width', 1.5);
-      }
+      yMax = Math.max(0, ...totals.values()) * 1.1 || 1;
     }
 
-    // Version release markers (vertical ticks)
-    if (showReleaseTicks && allDates.length >= 2) {
-      const [domainStart, domainEnd] = xScale.domain();
-      const filtered = filterReleasesByLevel(
-        versionReleases,
-        effectiveTickLevel
-      );
-      renderReleaseTicks(
-        g as unknown as d3.Selection<SVGGElement, unknown, null, undefined>,
-        filtered,
-        (date) => {
-          const vrDate = parseDate(date);
-          if (vrDate < domainStart || vrDate > domainEnd) return null;
-          return xScale(vrDate);
+    const formatValue = (value: number) =>
+      yAxisMode === 'percent'
+        ? `${value.toFixed(1)}%`
+        : formatDownloadCount(value);
+
+    return defineChart({
+      marks: [
+        chartMode === 'stacked'
+          ? areaY(rows, {
+              id: 'adoption',
+              x: 'date',
+              y: 'value',
+              z: 'label',
+              key: (row) => `${row.label}@${row.day}`,
+              fill: colorOf,
+              fillOpacity: 0.7,
+              stroke: colorOf,
+              strokeWidth: 0.5,
+              curve: monotoneCurve,
+            })
+          : lineY(rows, {
+              id: 'adoption',
+              x: 'date',
+              y: 'value',
+              z: 'label',
+              key: (row) => `${row.label}@${row.day}`,
+              stroke: colorOf,
+              strokeWidth: 2,
+              points: true,
+              curve: monotoneCurve,
+            }),
+        ...(showReleaseTicks && days.length >= 2
+          ? releaseTickMarks(
+              filterReleasesByLevel(versionReleases, effectiveTickLevel),
+              domain,
+              yMax
+            )
+          : []),
+        crosshair({ x: true, y: false }),
+      ],
+      scales: {
+        x: {
+          scale: scaleTime().domain(domain),
+          axis: {
+            ticks: { count: 8, format: formatDay },
+            tickLabels: { rotate: -25, anchor: 'end' },
+          },
         },
-        innerHeight,
-        theme
-      );
-    }
-
-    // Tooltip
-    const tooltip = d3
-      .select(containerRef.current)
-      .selectAll<HTMLDivElement, unknown>('.adoption-tooltip')
-      .data([null])
-      .join('div')
-      .attr('class', 'adoption-tooltip')
-      .style('position', 'absolute')
-      .style('pointer-events', 'none')
-      .style('background', chartColors.tooltipBg)
-      .style('border', `1px solid ${chartColors.tooltipBorder}`)
-      .style('border-radius', '6px')
-      .style('padding', '8px 12px')
-      .style('font-size', '12px')
-      .style('color', chartColors.tooltipText)
-      .style('box-shadow', '0 2px 8px rgba(0,0,0,0.15)')
-      .style('opacity', 0)
-      .style('z-index', 10);
-
-    // Invisible overlay for mouse tracking
-    g.append('rect')
-      .attr('width', innerWidth)
-      .attr('height', innerHeight)
-      .attr('fill', 'transparent')
-      .on('mousemove', (event: MouseEvent) => {
-        const [mx] = d3.pointer(event);
-        let closestDate = allDates[0];
-        let closestDist = Infinity;
-        for (const date of allDates) {
-          const dx = Math.abs(xDate(date) - mx);
-          if (dx < closestDist) {
-            closestDist = dx;
-            closestDate = date;
-          }
-        }
-
-        const lines = [`<strong>${closestDate}</strong>`];
-        // Sort tooltip entries by the active metric descending for this date
-        const entries = visibleSeries
-          .map((s) => ({
-            label: s.label,
-            point: s.points.find((p) => p.date === closestDate),
-            color: colorMap.get(s.label) ?? '#888',
-          }))
-          .filter((e) => e.point && (e.point.percent > 0 || e.point.count > 0))
-          .sort((a, b) =>
-            yAxisMode === 'percent'
-              ? (b.point?.percent ?? 0) - (a.point?.percent ?? 0)
-              : (b.point?.count ?? 0) - (a.point?.count ?? 0)
-          );
-
-        let total = 0;
-        for (const e of entries) {
-          const value =
-            yAxisMode === 'percent'
-              ? `${e.point!.percent.toFixed(1)}%`
-              : formatDownloadCount(e.point!.count);
-          total += e.point!.count;
-          lines.push(
-            `<span style="color:${e.color}">${e.label}</span>: ${value}`
-          );
-        }
-        if (yAxisMode === 'count') {
-          lines.push(`<strong>Total</strong>: ${formatDownloadCount(total)}`);
-        }
-
-        const containerRect = containerRef.current!.getBoundingClientRect();
-        const svgRect = svgRef.current!.getBoundingClientRect();
-        const tooltipX =
-          xDate(closestDate) +
-          MARGIN.left +
-          (svgRect.left - containerRect.left) +
-          15;
-        const tooltipY = event.clientY - containerRect.top - 10;
-
-        tooltip
-          .html(lines.join('<br/>'))
-          .style('left', `${tooltipX}px`)
-          .style('top', `${tooltipY}px`)
-          .style('opacity', 1);
-
-        g.selectAll('.hover-line').remove();
-        g.append('line')
-          .attr('class', 'hover-line')
-          .attr('x1', xDate(closestDate))
-          .attr('x2', xDate(closestDate))
-          .attr('y1', 0)
-          .attr('y2', innerHeight)
-          .attr('stroke', chartColors.tooltipBorder)
-          .attr('stroke-width', 1)
-          .attr('stroke-dasharray', '3,3');
-      })
-      .on('mouseleave', () => {
-        tooltip.style('opacity', 0);
-        g.selectAll('.hover-line').remove();
-      });
+        y: {
+          scale: scaleLinear().domain([0, yMax]),
+          grid: { strokeOpacity: 0.3 },
+          axis: {
+            ticks: {
+              count: 5,
+              format: (v: number) =>
+                yAxisMode === 'percent' ? `${v}%` : formatDownloadCount(v),
+            },
+          },
+        },
+      },
+      margin: { top: 20, right: 20 },
+      focus: 'group-x',
+      maxFocusDistance: Number.POSITIVE_INFINITY,
+      tooltip: {
+        use: tooltip,
+        content: (points) => {
+          const entries = points
+            .filter((p) => p.datum.value > 0)
+            .sort((a, b) => b.datum.value - a.datum.value);
+          const total = entries.reduce((sum, p) => sum + p.datum.count, 0);
+          return {
+            title: points[0]?.datum.day,
+            rows: [
+              ...entries.map((p) => ({
+                label: p.datum.label,
+                value: formatValue(p.datum.value),
+                color: colorOf(p.datum),
+              })),
+              ...(yAxisMode === 'count'
+                ? [{ label: 'Total', value: formatDownloadCount(total) }]
+                : []),
+            ],
+          };
+        },
+      },
+    });
   }, [
     series,
     visibleSeries,
@@ -512,20 +364,14 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
     showReleaseTicks,
     yAxisMode,
     chartMode,
-    theme,
     colorMap,
-    chartColors,
   ]);
 
   const hasHidden = hiddenSeries.size > 0;
   const hasBelowThreshold = nonZeroSeries.some((s) => s.belowThreshold);
 
   return (
-    <div
-      className={styles.container}
-      ref={containerRef}
-      style={{ position: 'relative' }}
-    >
+    <div className={styles.container}>
       {/* Controls — always visible so users can change filters */}
       <div className={styles.controls}>
         <SegmentedControl
@@ -602,9 +448,13 @@ export const VersionAdoptionChart = memo(function VersionAdoptionChart({
         </div>
       ) : (
         <>
-          <div className={styles.chart}>
-            <svg ref={svgRef} />
-          </div>
+          <Chart
+            className={styles.chart}
+            definition={definition}
+            height={CHART_HEIGHT}
+            initialWidth={900}
+            ariaLabel="Version adoption over time"
+          />
 
           {/* Legend with click-to-toggle */}
           <div className={styles.legend}>

@@ -165,6 +165,10 @@
   --chart-series-avg: var(--brand-hover);
   --chart-series-median: #388bfd;
   --chart-series-p95: #bb8009;
+
+  --sunburst-center: #4ecdc4;
+  --sunburst-center-hover: #95e1d3;
+  --sunburst-focus-filter: brightness(1.2) saturate(1.2);
 }
 
 // Light Theme
@@ -250,6 +254,25 @@
   --chart-series-avg: var(--brand-main);
   --chart-series-median: #0969da;
   --chart-series-p95: #9a6700;
+
+  --sunburst-center: #2a9d8f;
+  --sunburst-center-hover: #457b9d;
+  --sunburst-focus-filter: brightness(0.9) saturate(1.4);
+}
+
+// TanStack Charts
+.ts-chart-host {
+  --ts-chart-tooltip-background: var(--bg-elevated);
+  --ts-chart-tooltip-color: var(--text-primary);
+  --ts-chart-tooltip-border: 1px solid var(--border-color);
+  --ts-chart-tooltip-border-radius: var(--radius-md);
+  --ts-chart-tooltip-shadow: var(--shadow-md);
+  --ts-chart-tooltip-font: 12px var(--font-mono);
+
+  // Focus shows on the focused datum, not as a ring around the whole chart.
+  svg:focus {
+    outline: none;
+  }
 }
 
 // Base styles

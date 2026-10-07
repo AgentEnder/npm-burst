@@ -1,6 +1,8 @@
 import { parse } from 'semver';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
-import type { Selection } from 'd3';
+import { ruleX, text } from '@tanstack/charts';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { parseDay } from './chart-kit';
 
 export type ReleaseTickLevel = 'major' | 'minor' | 'patch';
 
@@ -32,41 +34,45 @@ export function filterReleasesByLevel(
 }
 
 /**
- * Renders vertical dashed release tick lines on a D3 chart group.
- * Accepts a mapping function that converts a date string to an x-coordinate,
- * returning null if the date is outside the visible range.
+ * Dashed vertical rules with version labels for releases inside `domain`.
+ * Labels sit at `labelY` in data space, normally the top of the y domain.
  */
-export function renderReleaseTicks(
-  g: Selection<SVGGElement, unknown, null, undefined>,
+export function releaseTickMarks(
   releases: VersionRelease[],
-  xMap: (date: string) => number | null,
-  innerHeight: number,
-  theme: string
-): void {
-  const stroke =
-    theme === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.25)';
-  const labelFill =
-    theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)';
+  domain: readonly [Date, Date],
+  labelY: number
+) {
+  const [start, end] = domain;
+  const visible = releases
+    .map((release) => ({
+      version: release.version,
+      date: parseDay(release.date),
+    }))
+    .filter(({ date }) => date >= start && date <= end);
 
-  for (const vr of releases) {
-    const x = xMap(vr.date);
-    if (x === null) continue;
-
-    g.append('line')
-      .attr('x1', x)
-      .attr('x2', x)
-      .attr('y1', 0)
-      .attr('y2', innerHeight)
-      .attr('stroke', stroke)
-      .attr('stroke-width', 1)
-      .attr('stroke-dasharray', '4,3');
-
-    // Version label at top of tick
-    g.append('text')
-      .attr('x', x + 4)
-      .attr('y', -4)
-      .attr('font-size', '9px')
-      .attr('fill', labelFill)
-      .text(vr.version);
-  }
+  return [
+    decorative(
+      ruleX(visible, {
+        id: 'release-ticks',
+        x: 'date',
+        stroke: 'currentColor',
+        strokeOpacity: 0.45,
+        strokeWidth: 1,
+        strokeDasharray: '4 3',
+      })
+    ),
+    decorative(
+      text(visible, {
+        id: 'release-labels',
+        x: 'date',
+        y: () => labelY,
+        text: 'version',
+        fill: 'currentColor',
+        fontSize: 9,
+        anchor: 'start',
+        dx: 4,
+        dy: -4,
+      })
+    ),
+  ];
 }

@@ -1,23 +1,159 @@
-import * as d3 from 'd3';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
+import { barX, defineChart, dot, text, tickX } from '@tanstack/charts';
+import type { ChartPoint } from '@tanstack/charts';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { Chart } from '@tanstack/charts/react';
+import { scaleBand } from '@tanstack/charts/scales/band';
+import { tooltip } from '@tanstack/charts/tooltip';
+import { scaleTime } from 'd3-scale';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { useTheme } from '../context/theme-context';
-import {
-  generateThemeColorPalette,
-  getThemeChartColors,
-} from '../utils/theme-colors';
+import { formatDay, formatMonth, parseDay } from '../utils/chart-kit';
+import { generateThemeColorPalette } from '../utils/theme-colors';
 import { getTimeWindowCutoff, TIME_WINDOW_OPTIONS } from '../utils/time-window';
 import type { TimeWindow } from '../utils/time-window';
 import { getVersionLifecycleData } from '../utils/version-lifecycle';
+import type { LifecycleMilestone } from '../utils/version-lifecycle';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
 import styles from './version-lifecycle-chart.module.scss';
 
-const MARGIN = { top: 20, right: 200, bottom: 50, left: 60 };
+const MARGIN = { left: 50, right: 90 };
 const ROW_HEIGHT = 50;
 const BAR_HEIGHT = 20;
+
+/** Space for the x axis below the rows. */
+const AXIS_HEIGHT = 50;
+
+/** Ramp-up labels need this many pixels of bar to fit. */
+const MIN_LABEL_WIDTH = 30;
+
+type Phase = 'ramp' | 'above' | 'never';
+
+const PHASE_OPACITY: Record<Phase, number> = {
+  ramp: 0.3,
+  above: 0.7,
+  never: 0.15,
+};
+
+interface LifecycleBar {
+  milestone: LifecycleMilestone;
+  phase: Phase;
+  /** Bar start and end as epoch milliseconds. */
+  start: number;
+  end: number;
+}
+
+interface RowLabel {
+  label: string;
+  x: Date;
+  text: string;
+}
+
+interface Layout {
+  bars: LifecycleBar[];
+  ongoing: RowLabel[];
+  nextMajor: RowLabel[];
+  neverReached: RowLabel[];
+  rampLabels: (RowLabel & { width: number })[];
+  domain: [Date, Date];
+}
+
+function percent(value: number): string {
+  return `${value.toFixed(0)}%`;
+}
+
+function formatDate(day: string | null): string {
+  return day ? formatDay(parseDay(day)) : '—';
+}
+
+function buildLayout(milestones: LifecycleMilestone[]): Layout {
+  const today = parseDay(new Date().toISOString().slice(0, 10));
+  const todayMs = today.getTime();
+  const layout: Layout = {
+    bars: [],
+    ongoing: [],
+    nextMajor: [],
+    neverReached: [],
+    rampLabels: [],
+    domain: [today, today],
+  };
+
+  let minMs = todayMs;
+  let maxMs = todayMs;
+  const track = (day: string | null) => {
+    if (!day) return;
+    const ms = parseDay(day).getTime();
+    minMs = Math.min(minMs, ms);
+    maxMs = Math.max(maxMs, ms);
+  };
+
+  for (const m of milestones) {
+    track(m.releaseDate);
+    track(m.reachedThresholdDate);
+    track(m.nextMajorReleaseDate);
+    track(m.droppedBelowDate);
+
+    const releaseMs = parseDay(m.releaseDate).getTime();
+    const bar = (phase: Phase, start: number, end: number) =>
+      layout.bars.push({ milestone: m, phase, start, end });
+
+    if (m.reachedThresholdDate) {
+      const thresholdMs = parseDay(m.reachedThresholdDate).getTime();
+      bar('ramp', releaseMs, thresholdMs);
+      if (m.daysToReachThreshold !== null) {
+        layout.rampLabels.push({
+          label: m.label,
+          x: new Date((releaseMs + thresholdMs) / 2),
+          text: `${m.daysToReachThreshold}d ↑`,
+          width: thresholdMs - releaseMs,
+        });
+      }
+
+      const endMs = m.droppedBelowDate
+        ? parseDay(m.droppedBelowDate).getTime()
+        : m.stillAboveThreshold
+        ? todayMs
+        : thresholdMs;
+      if (endMs > thresholdMs) {
+        bar('above', thresholdMs, endMs);
+        if (m.stillAboveThreshold && !m.droppedBelowDate) {
+          layout.ongoing.push({ label: m.label, x: today, text: '→' });
+        }
+      }
+
+      if (m.nextMajorReleaseDate) {
+        layout.nextMajor.push({
+          label: m.label,
+          x: parseDay(m.nextMajorReleaseDate),
+          text:
+            m.daysPersistingAfterNext === null
+              ? ''
+              : `+${m.daysPersistingAfterNext}d`,
+        });
+      }
+    } else {
+      // Concluded versions end at the next major; pending ones run to today.
+      const endMs =
+        m.neverReached && m.nextMajorReleaseDate
+          ? parseDay(m.nextMajorReleaseDate).getTime()
+          : todayMs;
+      bar('never', releaseMs, endMs);
+      if (m.neverReached) {
+        layout.neverReached.push({
+          label: m.label,
+          x: new Date((releaseMs + endMs) / 2),
+          text: `peak ${percent(m.peakPercent)}`,
+        });
+      }
+    }
+  }
+
+  layout.domain = [new Date(minMs), new Date(maxMs)];
+  return layout;
+}
 
 export const VersionLifecycleChart = memo(function VersionLifecycleChart({
   snapshots,
@@ -41,8 +177,6 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
   onMinPeakChange: (v: number) => void;
 }) {
   const { theme } = useTheme();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [threshold, setThreshold] = useState(50);
 
   const milestones = useMemo(
@@ -86,283 +220,198 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
     return result;
   }, [milestones, timeWindow, showOnlySnapshotted, snapshots, minPeak]);
 
-  const chartColors = getThemeChartColors(theme);
-  const palette = generateThemeColorPalette(
-    filteredMilestones.length + 1,
-    theme
+  const palette = useMemo(
+    () => generateThemeColorPalette(filteredMilestones.length + 1, theme),
+    [filteredMilestones.length, theme]
   );
 
-  useEffect(() => {
-    if (
-      !svgRef.current ||
-      !containerRef.current ||
-      filteredMilestones.length === 0
-    )
-      return;
+  const definition = useMemo(() => {
+    const labels = filteredMilestones.map((m) => m.label);
+    const layout = buildLayout(filteredMilestones);
+    const [minDate, maxDate] = layout.domain;
+    const spanMs = Math.max(1, maxDate.getTime() - minDate.getTime());
 
-    const containerWidth = containerRef.current.clientWidth;
-    const width = containerWidth;
-    const height =
-      MARGIN.top + filteredMilestones.length * ROW_HEIGHT + MARGIN.bottom;
-    const innerWidth = width - MARGIN.left - MARGIN.right;
-
-    // Find the range of dates
-    const allDates: string[] = [];
-    for (const m of filteredMilestones) {
-      allDates.push(m.releaseDate);
-      if (m.reachedThresholdDate) allDates.push(m.reachedThresholdDate);
-      if (m.nextMajorReleaseDate) allDates.push(m.nextMajorReleaseDate);
-      if (m.droppedBelowDate) allDates.push(m.droppedBelowDate);
-    }
-
-    // Add today as the latest possible date
-    const today = new Date().toISOString().slice(0, 10);
-    allDates.push(today);
-
-    const dateExtent = d3.extent(allDates) as [string, string];
-    const minDate = new Date(dateExtent[0] + 'T00:00:00');
-    const maxDate = new Date(dateExtent[1] + 'T00:00:00');
-
-    const xScale = d3
-      .scaleTime()
-      .domain([minDate, maxDate])
-      .range([0, innerWidth]);
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-    svg.attr('viewBox', `0 0 ${width} ${height}`).attr('width', width);
-
-    const g = svg
-      .append('g')
-      .attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
-
-    // X axis
-    g.append('g')
-      .attr('class', 'axis')
-      .attr(
-        'transform',
-        `translate(0,${filteredMilestones.length * ROW_HEIGHT})`
-      )
-      .call(
-        d3
-          .axisBottom(xScale)
-          .ticks(6)
-          .tickFormat((d) => d3.timeFormat('%b %Y')(d as Date))
+    const barMark = (phase: Phase) =>
+      barX(
+        layout.bars.filter((b) => b.phase === phase),
+        {
+          id: `lifecycle-${phase}`,
+          x1: 'start',
+          x2: 'end',
+          y: (b) => b.milestone.label,
+          color: (b) => b.milestone.label,
+          key: (b) => `${b.milestone.label}:${phase}`,
+          fillOpacity: PHASE_OPACITY[phase],
+          maxThickness: BAR_HEIGHT,
+          radius: 3,
+        }
       );
 
-    // Grid lines
-    g.append('g')
-      .attr('class', 'grid')
-      .call(
-        d3
-          .axisBottom(xScale)
-          .ticks(6)
-          .tickSize(filteredMilestones.length * ROW_HEIGHT)
-          .tickFormat(() => '')
-      )
-      .attr('transform', 'translate(0,0)');
-
-    const parseDate = (d: string) => new Date(d + 'T00:00:00');
-    const todayDate = parseDate(today);
-
-    for (let i = 0; i < filteredMilestones.length; i++) {
-      const m = filteredMilestones[i];
-      const y = i * ROW_HEIGHT + ROW_HEIGHT / 2;
-      const color = palette[i % palette.length];
-
-      // Version label
-      g.append('text')
-        .attr('x', -8)
-        .attr('y', y + 4)
-        .attr('text-anchor', 'end')
-        .attr('font-size', '12px')
-        .attr('font-weight', '600')
-        .attr('fill', color)
-        .text(m.label);
-
-      const releaseX = xScale(parseDate(m.releaseDate));
-
-      // Ramp-up phase: release → reached threshold
-      if (m.reachedThresholdDate) {
-        const thresholdX = xScale(parseDate(m.reachedThresholdDate));
-        // Ramp-up bar (lighter shade)
-        g.append('rect')
-          .attr('x', releaseX)
-          .attr('y', y - BAR_HEIGHT / 2)
-          .attr('width', Math.max(0, thresholdX - releaseX))
-          .attr('height', BAR_HEIGHT)
-          .attr('fill', color)
-          .attr('fill-opacity', 0.3)
-          .attr('rx', 3);
-
-        // Label: days to reach threshold
-        if (m.daysToReachThreshold !== null && thresholdX - releaseX > 30) {
-          g.append('text')
-            .attr('x', (releaseX + thresholdX) / 2)
-            .attr('y', y + 4)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '10px')
-            .attr(
-              'fill',
-              theme === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
-            )
-            .text(`${m.daysToReachThreshold}d ↑`);
-        }
-
-        // Above-threshold phase: threshold reached → dropped below (or ongoing)
-        const endX = m.droppedBelowDate
-          ? xScale(parseDate(m.droppedBelowDate))
-          : m.stillAboveThreshold
-          ? xScale(todayDate)
-          : thresholdX;
-
-        if (endX > thresholdX) {
-          g.append('rect')
-            .attr('x', thresholdX)
-            .attr('y', y - BAR_HEIGHT / 2)
-            .attr('width', Math.max(0, endX - thresholdX))
-            .attr('height', BAR_HEIGHT)
-            .attr('fill', color)
-            .attr('fill-opacity', 0.7)
-            .attr('rx', 3);
-
-          // If still above threshold, add open-ended indicator
-          if (m.stillAboveThreshold && !m.droppedBelowDate) {
-            g.append('text')
-              .attr('x', endX + 4)
-              .attr('y', y + 4)
-              .attr('font-size', '10px')
-              .attr('fill', color)
-              .text('→');
-          }
-        }
-
-        // Mark where next major was released (vertical tick on the bar)
-        if (m.nextMajorReleaseDate) {
-          const nextX = xScale(parseDate(m.nextMajorReleaseDate));
-          g.append('line')
-            .attr('x1', nextX)
-            .attr('x2', nextX)
-            .attr('y1', y - BAR_HEIGHT / 2 - 4)
-            .attr('y2', y + BAR_HEIGHT / 2 + 4)
-            .attr(
-              'stroke',
-              theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
-            )
-            .attr('stroke-width', 1.5)
-            .attr('stroke-dasharray', '2,2');
-
-          // Persistence label
-          if (m.daysPersistingAfterNext !== null) {
-            g.append('text')
-              .attr('x', nextX + 3)
-              .attr('y', y - BAR_HEIGHT / 2 - 6)
-              .attr('font-size', '9px')
-              .attr(
-                'fill',
-                theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
+    return defineChart({
+      chart: ({ width }) => {
+        const pxPerMs = (width - MARGIN.left - MARGIN.right) / spanMs;
+        return {
+          marks: [
+            barMark('ramp'),
+            barMark('above'),
+            barMark('never'),
+            decorative(
+              text(
+                layout.rampLabels.filter(
+                  (l) => l.width * pxPerMs > MIN_LABEL_WIDTH
+                ),
+                {
+                  id: 'ramp-labels',
+                  x: 'x',
+                  y: 'label',
+                  text: 'text',
+                  fill: 'currentColor',
+                  fontSize: 10,
+                }
               )
-              .text(`+${m.daysPersistingAfterNext}d`);
-          }
-        }
-      } else {
-        // Never reached threshold — cap at next major release if concluded,
-        // otherwise extend to today (still pending)
-        const endDate =
-          m.neverReached && m.nextMajorReleaseDate
-            ? parseDate(m.nextMajorReleaseDate)
-            : todayDate;
-        g.append('rect')
-          .attr('x', releaseX)
-          .attr('y', y - BAR_HEIGHT / 2)
-          .attr('width', Math.max(0, xScale(endDate) - releaseX))
-          .attr('height', BAR_HEIGHT)
-          .attr('fill', color)
-          .attr('fill-opacity', 0.15)
-          .attr('rx', 3);
-
-        // Show "never reached" label for concluded versions
-        if (m.neverReached) {
-          const midX = (releaseX + xScale(endDate)) / 2;
-          g.append('text')
-            .attr('x', midX)
-            .attr('y', y + 4)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '9px')
-            .attr(
-              'fill',
-              theme === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)'
-            )
-            .text(`peak ${m.peakPercent.toFixed(0)}%`);
-        }
-      }
-
-      // Release date marker (diamond)
-      g.append('circle')
-        .attr('cx', releaseX)
-        .attr('cy', y)
-        .attr('r', 4)
-        .attr('fill', color)
-        .attr('stroke', theme === 'dark' ? '#1e1e1e' : '#ffffff')
-        .attr('stroke-width', 1.5);
-
-      // Annotation: peak % and current %
-      const annotationX = innerWidth + 10;
-      g.append('text')
-        .attr('x', annotationX)
-        .attr('y', y - 4)
-        .attr('font-size', '10px')
-        .attr(
-          'fill',
-          theme === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
-        )
-        .text(`Peak: ${m.peakPercent.toFixed(0)}%`);
-      g.append('text')
-        .attr('x', annotationX)
-        .attr('y', y + 10)
-        .attr('font-size', '10px')
-        .attr(
-          'fill',
-          theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
-        )
-        .text(`Now: ${m.currentPercent.toFixed(0)}%`);
-    }
-
-    // Legend explaining bar segments
-    const legendY = filteredMilestones.length * ROW_HEIGHT + 25;
-    const legendItems = [
-      { label: `Ramp-up (below ${threshold}%)`, opacity: 0.3 },
-      { label: `Above ${threshold}%`, opacity: 0.7 },
-    ];
-    let legendX = 0;
-    for (const item of legendItems) {
-      g.append('rect')
-        .attr('x', legendX)
-        .attr('y', legendY)
-        .attr('width', 12)
-        .attr('height', 8)
-        .attr('fill', theme === 'dark' ? '#4ecdc4' : '#2a9d8f')
-        .attr('fill-opacity', item.opacity)
-        .attr('rx', 2);
-      g.append('text')
-        .attr('x', legendX + 16)
-        .attr('y', legendY + 8)
-        .attr('font-size', '10px')
-        .attr(
-          'fill',
-          theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'
-        )
-        .text(item.label);
-      legendX += item.label.length * 6 + 30;
-    }
-  }, [filteredMilestones, threshold, theme, palette, chartColors]);
+            ),
+            decorative(
+              text(layout.neverReached, {
+                id: 'never-reached-labels',
+                x: 'x',
+                y: 'label',
+                text: 'text',
+                fill: 'currentColor',
+                fontSize: 9,
+              })
+            ),
+            decorative(
+              text(layout.ongoing, {
+                id: 'ongoing-arrows',
+                x: 'x',
+                y: 'label',
+                text: 'text',
+                color: 'label',
+                fontSize: 10,
+                anchor: 'start',
+                dx: 4,
+              })
+            ),
+            decorative(
+              tickX(layout.nextMajor, {
+                id: 'next-major-ticks',
+                x: 'x',
+                y: 'label',
+                stroke: 'currentColor',
+                strokeOpacity: 0.8,
+                strokeWidth: 1.5,
+                length: BAR_HEIGHT + 8,
+              })
+            ),
+            decorative(
+              text(layout.nextMajor, {
+                id: 'next-major-labels',
+                x: 'x',
+                y: 'label',
+                text: 'text',
+                fill: 'currentColor',
+                fontSize: 9,
+                anchor: 'start',
+                dx: 3,
+                dy: -(BAR_HEIGHT / 2 + 9),
+              })
+            ),
+            decorative(
+              dot(filteredMilestones, {
+                id: 'release-dots',
+                x: (m) => parseDay(m.releaseDate),
+                y: 'label',
+                color: 'label',
+                r: 4,
+                stroke: 'var(--bg-primary)',
+                strokeWidth: 1.5,
+              })
+            ),
+            decorative(
+              text(filteredMilestones, {
+                id: 'peak-annotations',
+                x: () => maxDate,
+                y: 'label',
+                text: (m) => `Peak: ${percent(m.peakPercent)}`,
+                fill: 'currentColor',
+                fontSize: 10,
+                anchor: 'start',
+                dx: 18,
+                dy: -7,
+              })
+            ),
+            decorative(
+              text(filteredMilestones, {
+                id: 'now-annotations',
+                x: () => maxDate,
+                y: 'label',
+                text: (m) => `Now: ${percent(m.currentPercent)}`,
+                fill: 'currentColor',
+                fontSize: 10,
+                anchor: 'start',
+                dx: 18,
+                dy: 7,
+              })
+            ),
+          ],
+          scales: {
+            x: {
+              scale: scaleTime().domain(layout.domain),
+              grid: { strokeOpacity: 0.3 },
+              axis: {
+                ticks: {
+                  count: 6,
+                  format: (v: number | Date) => formatMonth(new Date(v)),
+                },
+              },
+            },
+            y: {
+              scale: scaleBand<string>().domain(labels).padding(0.2),
+              axis: {
+                line: false,
+                ticks: { size: 0 },
+                tickLabels: { fontSize: 12, fontWeight: 600 },
+              },
+            },
+          },
+          color: { domain: labels, range: palette },
+          margin: MARGIN,
+        };
+      },
+      tooltip: {
+        use: tooltip,
+        content: (points: readonly ChartPoint<LifecycleBar>[]) => {
+          const m = points[0]?.datum.milestone;
+          if (!m) return { rows: [] };
+          return {
+            title: m.label,
+            rows: [
+              { label: 'Released', value: formatDate(m.releaseDate) },
+              {
+                label: `Reached ${threshold}%`,
+                value: formatDate(m.reachedThresholdDate),
+              },
+              {
+                label: 'Next major',
+                value: formatDate(m.nextMajorReleaseDate),
+              },
+              {
+                label: `Below ${threshold}%`,
+                value: m.stillAboveThreshold
+                  ? 'still above'
+                  : formatDate(m.droppedBelowDate),
+              },
+              { label: 'Peak', value: percent(m.peakPercent) },
+              { label: 'Now', value: percent(m.currentPercent) },
+            ],
+          };
+        },
+      },
+    });
+  }, [filteredMilestones, palette, threshold]);
 
   return (
-    <div
-      className={styles.container}
-      ref={containerRef}
-      style={{ position: 'relative' }}
-    >
+    <div className={styles.container}>
       <div className={styles.controls}>
         <SegmentedControl
           options={TIME_WINDOW_OPTIONS}
@@ -421,9 +470,46 @@ export const VersionLifecycleChart = memo(function VersionLifecycleChart({
           Track this package to start collecting lifecycle data.
         </div>
       ) : (
-        <div className={styles.chart}>
-          <svg ref={svgRef} />
-        </div>
+        <>
+          <Chart
+            className={styles.chart}
+            definition={definition}
+            height={filteredMilestones.length * ROW_HEIGHT + AXIS_HEIGHT}
+            initialWidth={900}
+            ariaLabel="Major version lifecycle"
+          />
+          <ul className={styles.legend}>
+            <li className={styles.legendItem}>
+              <span
+                className={styles.legendBar}
+                style={{ opacity: PHASE_OPACITY.ramp }}
+              />
+              Ramp-up (below {threshold}%)
+            </li>
+            <li className={styles.legendItem}>
+              <span
+                className={styles.legendBar}
+                style={{ opacity: PHASE_OPACITY.above }}
+              />
+              Above {threshold}%
+            </li>
+            <li className={styles.legendItem}>
+              <span
+                className={styles.legendBar}
+                style={{ opacity: PHASE_OPACITY.never }}
+              />
+              Never reached {threshold}%
+            </li>
+            <li className={styles.legendItem}>
+              <span className={styles.legendDot} />
+              Release
+            </li>
+            <li className={styles.legendItem}>
+              <span className={styles.legendTick} />
+              Next major released
+            </li>
+          </ul>
+        </>
       )}
       <ChartDescription>
         <p>Major version lifecycle — release through peak to decline.</p>

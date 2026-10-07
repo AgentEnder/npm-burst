@@ -1,5 +1,3 @@
-import * as d3 from 'd3';
-
 /**
  * Categorical arc colors for the version charts.
  *
@@ -10,8 +8,8 @@ import * as d3 from 'd3';
  * indistinguishable neighbours, which is the opposite of what the chart is for.
  * Maximum mutual distinguishability beats palette harmony in this one place.
  *
- * The surrounding chart chrome (center, tooltips, labels) does follow the app
- * palette -- see `getThemeChartColors` below.
+ * The surrounding chart chrome (center, tooltips, labels) follows the app
+ * palette through CSS variables in `styles.scss`.
  */
 export function generateThemeColorPalette(
   count: number,
@@ -46,8 +44,7 @@ export function generateThemeColorPalette(
       return baseColors.slice(0, count);
     }
 
-    // For more colors, use a high-contrast rainbow
-    return d3.quantize(d3.interpolateRainbow, count);
+    return spreadHues(count);
   } else {
     // Light theme: Rich, saturated colors that stand out on light background
     const baseColors = [
@@ -77,31 +74,45 @@ export function generateThemeColorPalette(
       return baseColors.slice(0, count);
     }
 
-    // For more colors, use a high-contrast rainbow
-    return d3.quantize(d3.interpolateRainbow, count);
+    return spreadHues(count);
   }
 }
 
-export function getThemeChartColors(theme: 'light' | 'dark') {
-  if (theme === 'dark') {
-    return {
-      centerFill: '#4ecdc4',
-      centerHover: '#95e1d3',
-      labelColor: '#e6edf3',
-      tooltipBg: '#161b22',
-      tooltipBorder: '#30363d',
-      tooltipText: '#e6edf3',
-      tooltipTextSecondary: '#7d8590',
-    };
-  } else {
-    return {
-      centerFill: '#2a9d8f',
-      centerHover: '#457b9d',
-      labelColor: '#1f2328',
-      tooltipBg: '#ffffff',
-      tooltipBorder: '#d0d7de',
-      tooltipText: '#1f2328',
-      tooltipTextSecondary: '#656d76',
-    };
+/** Evenly spaced hues for palettes larger than the curated lists. */
+function spreadHues(count: number): string[] {
+  return Array.from({ length: count }, (_, i) =>
+    hslToHex((i * 360) / count, 0.75, 0.55)
+  );
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const a = s * Math.min(l, 1 - l);
+  const channel = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(c * 255)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
+
+/** Applies an alpha channel to a `#rrggbb` color. */
+export function withAlpha(hex: string, alpha: number): string {
+  const byte = Math.round(alpha * 255)
+    .toString(16)
+    .padStart(2, '0');
+  return `${hex}${byte}`;
+}
+
+/** Assigns palette colors by label position so a label keeps its color. */
+export function buildColorMap(
+  labels: string[],
+  palette: string[]
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (let i = 0; i < labels.length; i++) {
+    map.set(labels[i], palette[i % palette.length]);
   }
+  return map;
 }

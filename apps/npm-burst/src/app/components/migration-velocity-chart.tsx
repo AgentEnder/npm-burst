@@ -1,13 +1,20 @@
-import * as d3 from 'd3';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { defineChart, lineY } from '@tanstack/charts';
+import type { ChartFocusStrategy, ChartPoint } from '@tanstack/charts';
+import { crosshair } from '@tanstack/charts/crosshair';
+import { focusNearestX } from '@tanstack/charts/focus';
+import { Chart } from '@tanstack/charts/react';
+import { tooltip } from '@tanstack/charts/tooltip';
+import { scaleLinear } from 'd3-scale';
 import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { useTheme } from '../context/theme-context';
 import {
+  buildColorMap,
   generateThemeColorPalette,
-  getThemeChartColors,
 } from '../utils/theme-colors';
+import { monotoneCurve } from '../utils/chart-kit';
 import { getMigrationVelocityData } from '../utils/migration-velocity';
 import {
   getMigrationMaxDays,
@@ -23,8 +30,54 @@ import { SegmentedControl } from './segmented-control';
 import { matchVersionFilter, VersionFilterBar } from './version-filter-bar';
 import styles from './migration-velocity-chart.module.scss';
 
-const MARGIN = { top: 20, right: 20, bottom: 40, left: 50 };
 const CHART_HEIGHT = 350;
+
+/** Series whose nearest point is within this many days join the tooltip. */
+const TOOLTIP_DAY_TOLERANCE = 3;
+
+interface VelocityRow {
+  label: string;
+  days: number;
+  percent: number;
+}
+
+type VelocityPoint = ChartPoint<VelocityRow, number, number>;
+
+/**
+ * Groups each series' nearest point to the focused day, keeping those within
+ * `TOOLTIP_DAY_TOLERANCE`. Series rarely share exact day values, so the
+ * built-in `group-x` would usually show a single row.
+ */
+export function groupWithinDays(
+  points: readonly VelocityPoint[],
+  focused: VelocityPoint
+): VelocityPoint[] {
+  const day = focused.datum.days;
+  const nearest = new Map<string, VelocityPoint>();
+  for (const point of points) {
+    const { label, days } = point.datum;
+    const dist = Math.abs(days - day);
+    if (dist > TOOLTIP_DAY_TOLERANCE) continue;
+    const current = nearest.get(label);
+    if (!current || dist < Math.abs(current.datum.days - day)) {
+      nearest.set(label, point);
+    }
+  }
+  nearest.set(focused.datum.label, focused);
+  return [
+    focused,
+    ...[...nearest.values()].filter((point) => point !== focused),
+  ];
+}
+
+const focusWithinDays: ChartFocusStrategy<VelocityRow, number, number> = {
+  resolve: (points, context) => {
+    const [primary] = focusNearestX.resolve(points, context);
+    return primary ? groupWithinDays(points, primary) : [];
+  },
+  group: (points, { point }) => groupWithinDays(points, point),
+  navigation: (points) => focusNearestX.navigation(points),
+};
 
 export const MigrationVelocityChart = memo(function MigrationVelocityChart({
   snapshots,
@@ -44,8 +97,6 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
   onMigrationGranularityChange: (v: MigrationGranularity) => void;
 }) {
   const { theme } = useTheme();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [legendFilter, setLegendFilter] = useState('');
 
@@ -123,240 +174,93 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
     });
   }, [filteredLegendSeries]);
 
-  const chartColors = getThemeChartColors(theme);
-  const colorMap = useMemo(() => {
-    const map = new Map<string, string>();
-    if (visibleSeries.length === 0) return map;
-    const palette = generateThemeColorPalette(visibleSeries.length, theme);
-    visibleSeries.forEach((s, i) => {
-      map.set(s.label, palette[i % palette.length]);
-    });
-    return map;
-  }, [visibleSeries, theme]);
+  const palette = useMemo(
+    () => generateThemeColorPalette(series.length, theme),
+    [series.length, theme]
+  );
+  const colorMap = useMemo(
+    () => buildColorMap(allLabels, palette),
+    [allLabels, palette]
+  );
 
-  const hiddenSwatchColor =
-    theme === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)';
-
-  useEffect(() => {
-    if (!svgRef.current || !containerRef.current || series.length === 0) return;
-
-    const containerWidth = containerRef.current.clientWidth;
-    const width = containerWidth;
-    const height = CHART_HEIGHT;
-    const innerWidth = width - MARGIN.left - MARGIN.right;
-    const innerHeight = height - MARGIN.top - MARGIN.bottom;
-
-    // Find max days across all series
-    const maxDays =
-      d3.max(visibleSeries, (s) =>
-        d3.max(s.points, (p) => p.daysSinceRelease)
-      ) ?? 30;
-
+  const definition = useMemo(() => {
+    const colorOf = (row: VelocityRow) => colorMap.get(row.label) ?? '#888';
     const windowMaxDays = getMigrationMaxDays(migrationTimeWindow);
+
+    const rows: VelocityRow[] = visibleSeries.flatMap((s) =>
+      s.points
+        .filter(
+          (p) => windowMaxDays === null || p.daysSinceRelease <= windowMaxDays
+        )
+        .map((p) => ({
+          label: s.label,
+          days: p.daysSinceRelease,
+          percent: p.percent,
+        }))
+    );
+
+    let maxDays = 30;
+    if (visibleSeries.length > 0) {
+      maxDays = Math.max(
+        ...visibleSeries.flatMap((s) => s.points.map((p) => p.daysSinceRelease))
+      );
+    }
     const effectiveMaxDays =
       windowMaxDays !== null ? Math.min(maxDays, windowMaxDays) : maxDays;
 
-    const cappedSeries = visibleSeries.map((s) => ({
-      ...s,
-      points:
-        windowMaxDays !== null
-          ? s.points.filter((p) => p.daysSinceRelease <= windowMaxDays)
-          : s.points,
-    }));
-
-    const xScale = d3
-      .scaleLinear()
-      .domain([0, effectiveMaxDays])
-      .range([0, innerWidth]);
-
-    const yScale = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-    svg.attr('viewBox', `0 0 ${width} ${height}`).attr('width', width);
-
-    const g = svg
-      .append('g')
-      .attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
-
-    // Grid lines
-    g.append('g')
-      .attr('class', 'grid')
-      .call(
-        d3
-          .axisLeft(yScale)
-          .ticks(5)
-          .tickSize(-innerWidth)
-          .tickFormat(() => '')
-      );
-
-    // X axis
-    g.append('g')
-      .attr('class', 'axis')
-      .attr('transform', `translate(0,${innerHeight})`)
-      .call(
-        d3
-          .axisBottom(xScale)
-          .ticks(8)
-          .tickFormat((d) => `${d}d`)
-      );
-
-    // X axis label
-    g.append('text')
-      .attr('x', innerWidth / 2)
-      .attr('y', innerHeight + 35)
-      .attr('text-anchor', 'middle')
-      .attr(
-        'fill',
-        theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
-      )
-      .attr('font-size', '11px')
-      .text('Days since release');
-
-    // Y axis
-    g.append('g')
-      .attr('class', 'axis')
-      .call(
-        d3
-          .axisLeft(yScale)
-          .ticks(5)
-          .tickFormat((d) => `${d}%`)
-      );
-
-    // Line generator
-    const lineGen = d3
-      .line<{ daysSinceRelease: number; percent: number }>()
-      .x((d) => xScale(d.daysSinceRelease))
-      .y((d) => yScale(d.percent))
-      .curve(d3.curveMonotoneX);
-
-    // Draw lines
-    for (const s of cappedSeries) {
-      const color = colorMap.get(s.label) ?? '#888';
-
-      g.append('path')
-        .datum(s.points)
-        .attr('fill', 'none')
-        .attr('stroke', color)
-        .attr('stroke-width', 2)
-        .attr('d', lineGen);
-
-      // Dots
-      g.selectAll(null)
-        .data(s.points)
-        .join('circle')
-        .attr('cx', (d) => xScale(d.daysSinceRelease))
-        .attr('cy', (d) => yScale(d.percent))
-        .attr('r', 3)
-        .attr('fill', color)
-        .attr('stroke', theme === 'dark' ? '#1e1e1e' : '#ffffff')
-        .attr('stroke-width', 1.5);
-    }
-
-    // Tooltip
-    const tooltip = d3
-      .select(containerRef.current)
-      .selectAll<HTMLDivElement, unknown>('.migration-tooltip')
-      .data([null])
-      .join('div')
-      .attr('class', 'migration-tooltip')
-      .style('position', 'absolute')
-      .style('pointer-events', 'none')
-      .style('background', chartColors.tooltipBg)
-      .style('border', `1px solid ${chartColors.tooltipBorder}`)
-      .style('border-radius', '6px')
-      .style('padding', '8px 12px')
-      .style('font-size', '12px')
-      .style('color', chartColors.tooltipText)
-      .style('box-shadow', '0 2px 8px rgba(0,0,0,0.15)')
-      .style('opacity', 0)
-      .style('z-index', 10);
-
-    // Invisible overlay for mouse tracking
-    g.append('rect')
-      .attr('width', innerWidth)
-      .attr('height', innerHeight)
-      .attr('fill', 'transparent')
-      .on('mousemove', (event: MouseEvent) => {
-        const [mx] = d3.pointer(event);
-        const hoveredDay = Math.round(xScale.invert(mx));
-
-        const lines = [`<strong>Day ${hoveredDay}</strong>`];
-        const entries = cappedSeries
-          .map((s) => {
-            // Find closest point to this day
-            let closest = s.points[0];
-            let closestDist = Infinity;
-            for (const p of s.points) {
-              const dist = Math.abs(p.daysSinceRelease - hoveredDay);
-              if (dist < closestDist) {
-                closestDist = dist;
-                closest = p;
-              }
-            }
-            return {
-              label: s.label,
-              color: colorMap.get(s.label) ?? '#888',
-              percent: closest?.percent ?? 0,
-              dist: closestDist,
-            };
-          })
-          .filter((e) => e.dist <= 3)
-          .sort((a, b) => b.percent - a.percent);
-
-        for (const e of entries) {
-          lines.push(
-            `<span style="color:${e.color}">${
-              e.label
-            }</span>: ${e.percent.toFixed(1)}%`
-          );
-        }
-
-        const containerRect = containerRef.current!.getBoundingClientRect();
-        const svgRect = svgRef.current!.getBoundingClientRect();
-        const tooltipX =
-          xScale(hoveredDay) +
-          MARGIN.left +
-          (svgRect.left - containerRect.left) +
-          15;
-        const tooltipY = event.clientY - containerRect.top - 10;
-
-        tooltip
-          .html(lines.join('<br/>'))
-          .style('left', `${tooltipX}px`)
-          .style('top', `${tooltipY}px`)
-          .style('opacity', 1);
-
-        g.selectAll('.hover-line').remove();
-        g.append('line')
-          .attr('class', 'hover-line')
-          .attr('x1', xScale(hoveredDay))
-          .attr('x2', xScale(hoveredDay))
-          .attr('y1', 0)
-          .attr('y2', innerHeight)
-          .attr('stroke', chartColors.tooltipBorder)
-          .attr('stroke-width', 1)
-          .attr('stroke-dasharray', '3,3');
-      })
-      .on('mouseleave', () => {
-        tooltip.style('opacity', 0);
-        g.selectAll('.hover-line').remove();
-      });
-  }, [
-    series,
-    visibleSeries,
-    theme,
-    colorMap,
-    chartColors,
-    migrationTimeWindow,
-  ]);
+    return defineChart({
+      marks: [
+        lineY(rows, {
+          id: 'velocity',
+          x: 'days',
+          y: 'percent',
+          z: 'label',
+          key: (row) => `${row.label}@${row.days}`,
+          stroke: colorOf,
+          strokeWidth: 2,
+          points: true,
+          curve: monotoneCurve,
+        }),
+        crosshair({ x: true, y: false }),
+      ],
+      scales: {
+        x: {
+          scale: scaleLinear().domain([0, effectiveMaxDays]),
+          axis: {
+            label: 'Days since release',
+            ticks: { count: 8, format: (d: number) => `${d}d` },
+          },
+        },
+        y: {
+          scale: scaleLinear().domain([0, 100]),
+          grid: { strokeOpacity: 0.3 },
+          axis: {
+            ticks: { count: 5, format: (v: number) => `${v}%` },
+          },
+        },
+      },
+      margin: { top: 20, right: 20 },
+      focus: focusWithinDays,
+      maxFocusDistance: Number.POSITIVE_INFINITY,
+      tooltip: {
+        use: tooltip,
+        content: (points) => ({
+          title: `Day ${points[0]?.datum.days ?? 0}`,
+          rows: points
+            .slice()
+            .sort((a, b) => b.datum.percent - a.datum.percent)
+            .map((p) => ({
+              label: p.datum.label,
+              value: `${p.datum.percent.toFixed(1)}%`,
+              color: colorOf(p.datum),
+            })),
+        }),
+      },
+    });
+  }, [visibleSeries, colorMap, migrationTimeWindow]);
 
   return (
-    <div
-      className={styles.container}
-      ref={containerRef}
-      style={{ position: 'relative' }}
-    >
+    <div className={styles.container}>
       <div className={styles.controls}>
         <SegmentedControl
           options={MIGRATION_GRANULARITY_OPTIONS}
@@ -397,9 +301,13 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
               the cutoff. Try a wider window above to see them.
             </div>
           ) : (
-            <div className={styles.chart}>
-              <svg ref={svgRef} />
-            </div>
+            <Chart
+              className={styles.chart}
+              definition={definition}
+              height={CHART_HEIGHT}
+              initialWidth={900}
+              ariaLabel="Migration velocity by version"
+            />
           )}
 
           <div className={styles.legend}>
@@ -410,9 +318,7 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
             ) : (
               filteredLegendSeries.map((s) => {
                 const isHidden = hiddenSeries.has(s.label);
-                const color =
-                  colorMap.get(s.label) ??
-                  (isHidden ? hiddenSwatchColor : '#888');
+                const color = colorMap.get(s.label) ?? '#888';
                 return (
                   <div
                     key={s.label}
