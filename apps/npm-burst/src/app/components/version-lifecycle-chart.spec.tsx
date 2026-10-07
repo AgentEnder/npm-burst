@@ -22,12 +22,6 @@ function render() {
       snapshots={snapshots}
       liveData={null}
       versionReleases={versionReleases}
-      timeWindow="all"
-      onTimeWindowChange={() => undefined}
-      showOnlySnapshotted={false}
-      onShowOnlySnapshottedChange={() => undefined}
-      minPeak={0}
-      onMinPeakChange={() => undefined}
     />
   );
 }

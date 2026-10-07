@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { defineChart, lineY } from '@tanstack/charts';
 import type { ChartFocusStrategy, ChartPoint } from '@tanstack/charts';
 import { crosshair } from '@tanstack/charts/crosshair';
@@ -10,6 +10,8 @@ import type { Snapshot } from '../../server/functions/snapshots.telefunc';
 import type { VersionRelease } from '../../server/functions/versions.telefunc';
 import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { useTheme } from '../context/theme-context';
+import { useHiddenSeries } from '../hooks/use-hidden-series';
+import { useAppStore } from '../store';
 import {
   buildColorMap,
   generateThemeColorPalette,
@@ -20,10 +22,6 @@ import {
   getMigrationMaxDays,
   MIGRATION_GRANULARITY_OPTIONS,
   MIGRATION_WINDOW_OPTIONS,
-} from '../utils/time-window';
-import type {
-  MigrationGranularity,
-  MigrationTimeWindow,
 } from '../utils/time-window';
 import { ChartDescription } from './chart-description';
 import { SegmentedControl } from './segmented-control';
@@ -83,22 +81,23 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
   snapshots,
   liveData,
   versionReleases,
-  migrationTimeWindow,
-  onMigrationTimeWindowChange,
-  migrationGranularity,
-  onMigrationGranularityChange,
 }: {
   snapshots: Snapshot[];
   liveData: NpmDownloadsByVersion | null;
   versionReleases: VersionRelease[];
-  migrationTimeWindow: MigrationTimeWindow;
-  onMigrationTimeWindowChange: (v: MigrationTimeWindow) => void;
-  migrationGranularity: MigrationGranularity;
-  onMigrationGranularityChange: (v: MigrationGranularity) => void;
 }) {
   const { theme } = useTheme();
-  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
-  const [legendFilter, setLegendFilter] = useState('');
+  const [hiddenSeries, setHiddenSeries] = useHiddenSeries('migrationHidden');
+  const legendFilter = useAppStore((s) => s.versionFilter);
+  const setLegendFilter = useAppStore((s) => s.setVersionFilter);
+  const migrationTimeWindow = useAppStore((s) => s.migrationTimeWindow);
+  const onMigrationTimeWindowChange = useAppStore(
+    (s) => s.setMigrationTimeWindow
+  );
+  const migrationGranularity = useAppStore((s) => s.migrationGranularity);
+  const onMigrationGranularityChange = useAppStore(
+    (s) => s.setMigrationGranularity
+  );
 
   const series = useMemo(
     () =>
@@ -111,17 +110,20 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
     [snapshots, liveData, versionReleases, migrationGranularity]
   );
 
-  const toggleSeries = useCallback((label: string) => {
-    setHiddenSeries((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
-      return next;
-    });
-  }, []);
+  const toggleSeries = useCallback(
+    (label: string) => {
+      setHiddenSeries((prev) => {
+        const next = new Set(prev);
+        if (next.has(label)) {
+          next.delete(label);
+        } else {
+          next.add(label);
+        }
+        return next;
+      });
+    },
+    [setHiddenSeries]
+  );
 
   const allLabels = useMemo(() => series.map((s) => s.label), [series]);
   const filterMatch = useMemo(
@@ -163,7 +165,7 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
       for (const s of filteredLegendSeries) next.delete(s.label);
       return next;
     });
-  }, [filteredLegendSeries]);
+  }, [filteredLegendSeries, setHiddenSeries]);
 
   const hideAllInFilter = useCallback(() => {
     if (filteredLegendSeries.length === 0) return;
@@ -172,7 +174,7 @@ export const MigrationVelocityChart = memo(function MigrationVelocityChart({
       for (const s of filteredLegendSeries) next.add(s.label);
       return next;
     });
-  }, [filteredLegendSeries]);
+  }, [filteredLegendSeries, setHiddenSeries]);
 
   const palette = useMemo(
     () => generateThemeColorPalette(series.length, theme),

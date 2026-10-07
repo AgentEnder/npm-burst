@@ -61,24 +61,8 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
   const totalDownloads = useAppStore((s) => s.totalDownloads);
   const health = useAppStore((s) => s.health);
   const lowPassFilter = useAppStore((s) => s.lowPassFilter);
-  const timeWindow = useAppStore((s) => s.timeWindow);
-  const setTimeWindow = useAppStore((s) => s.setTimeWindow);
-  const migrationTimeWindow = useAppStore((s) => s.migrationTimeWindow);
-  const setMigrationTimeWindow = useAppStore((s) => s.setMigrationTimeWindow);
-  const migrationGranularity = useAppStore((s) => s.migrationGranularity);
-  const setMigrationGranularity = useAppStore((s) => s.setMigrationGranularity);
-  const sunburstVersionFilter = useAppStore((s) => s.sunburstVersionFilter);
-  const setSunburstVersionFilter = useAppStore(
-    (s) => s.setSunburstVersionFilter
-  );
-  const lifecycleShowOnlySnapshotted = useAppStore(
-    (s) => s.lifecycleShowOnlySnapshotted
-  );
-  const setLifecycleShowOnlySnapshotted = useAppStore(
-    (s) => s.setLifecycleShowOnlySnapshotted
-  );
-  const lifecycleMinPeak = useAppStore((s) => s.lifecycleMinPeak);
-  const setLifecycleMinPeak = useAppStore((s) => s.setLifecycleMinPeak);
+  const versionFilter = useAppStore((s) => s.versionFilter);
+  const setVersionFilter = useAppStore((s) => s.setVersionFilter);
 
   const handleVersionClick = useAppStore((s) => s.handleVersionClick);
   const resetSelection = useAppStore((s) => s.resetSelection);
@@ -103,8 +87,8 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
   }, [snapshots, snapshotIndex, liveData]);
 
   const sunburstFilterMatch = useMemo(
-    () => matchVersionFilter(sunburstSourceVersions, sunburstVersionFilter),
-    [sunburstSourceVersions, sunburstVersionFilter]
+    () => matchVersionFilter(sunburstSourceVersions, versionFilter),
+    [sunburstSourceVersions, versionFilter]
   );
 
   return (
@@ -158,8 +142,8 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
                   }}
                 >
                   <VersionFilterBar
-                    value={sunburstVersionFilter}
-                    onChange={setSunburstVersionFilter}
+                    value={versionFilter}
+                    onChange={setVersionFilter}
                     totalCount={sunburstSourceVersions.length}
                     matchingCount={sunburstFilterMatch.matchingLabels.size}
                     isRangeActive={sunburstFilterMatch.isRangeActive}
@@ -212,30 +196,18 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
               versionReleases={versionReleases}
               lowPassFilter={lowPassFilter}
               totalDownloads={totalDownloads}
-              timeWindow={timeWindow}
-              onTimeWindowChange={setTimeWindow}
             />
           ) : viewMode === 'migration' ? (
             <MigrationVelocityChart
               snapshots={snapshots}
               liveData={liveData}
               versionReleases={versionReleases}
-              migrationTimeWindow={migrationTimeWindow}
-              onMigrationTimeWindowChange={setMigrationTimeWindow}
-              migrationGranularity={migrationGranularity}
-              onMigrationGranularityChange={setMigrationGranularity}
             />
           ) : viewMode === 'lifecycle' ? (
             <VersionLifecycleChart
               snapshots={snapshots}
               liveData={liveData}
               versionReleases={versionReleases}
-              timeWindow={timeWindow}
-              onTimeWindowChange={setTimeWindow}
-              showOnlySnapshotted={lifecycleShowOnlySnapshotted}
-              onShowOnlySnapshottedChange={setLifecycleShowOnlySnapshotted}
-              minPeak={lifecycleMinPeak}
-              onMinPeakChange={setLifecycleMinPeak}
             />
           ) : viewMode === 'health' ? (
             <HealthReport health={health} />
