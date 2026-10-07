@@ -171,7 +171,7 @@ export function PackageDashboard({ seed }: { seed: PackageDetailData }) {
                   data={sunburstChartData}
                   sortByVersion={sortByVersion}
                   onVersionChange={handleVersionClick}
-                  initialSelection={selectedVersion}
+                  selectedVersion={selectedVersion}
                 />
               ) : null}
 

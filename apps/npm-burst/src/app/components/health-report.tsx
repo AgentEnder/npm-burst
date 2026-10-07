@@ -1,4 +1,3 @@
-import { area, line, scaleLinear, scalePoint } from 'd3';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -6,7 +5,14 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { SiGithub } from '@icons-pack/react-simple-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { areaY, defineChart, dot, lineY, ruleY } from '@tanstack/charts';
+import { crosshair } from '@tanstack/charts/crosshair';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { Chart } from '@tanstack/charts/react';
+import { scaleLinear } from '@tanstack/charts/scales/linear';
+import { scalePoint } from '@tanstack/charts/scales/point';
+import { tooltip } from '@tanstack/charts/tooltip';
 import { createPortal } from 'react-dom';
 import type { HealthMetricSeriesPoint } from '@npm-burst/github-data-access';
 import type { PackageHealthResponse } from '../../server/functions/health.telefunc';
@@ -18,7 +24,6 @@ import {
 import { useSafeAuth } from '../context/auth-context';
 import { useHealthRefresh } from '../hooks/use-health-refresh';
 import { useWarningToast } from '../hooks/use-warning-toast';
-import { axisLabelAnchor, pickAxisLabelIndexes } from './health-chart-utils';
 import { HealthEmptyState } from './health-empty-state';
 import { HealthEmptyShell } from './health-empty-shell';
 import { Popover } from './popover';
@@ -371,6 +376,8 @@ function getHeadlineValue(
   return last && last.point === latest ? last.value : null;
 }
 
+const SPARKLINE_HEIGHT = 38;
+
 function Sparkline({
   points,
   variant,
@@ -378,45 +385,51 @@ function Sparkline({
   points: HealthMetricSeriesPoint[];
   variant: MetricVariant;
 }) {
-  const values = getSeries(points, variant).map(({ value }) => value);
-  if (values.length === 0) {
-    return (
-      <svg
-        className={styles.sparkline}
-        viewBox="0 0 150 36"
-        preserveAspectRatio="none"
-      />
-    );
-  }
-  const yMin = Math.min(0, ...values);
-  const yMax = Math.max(0, ...values, yMin === 0 ? 1 : 0);
-  const x = scalePoint<number>()
-    .domain(values.map((_, index) => index))
-    .range([0, 150]);
-  const y = scaleLinear().domain([yMin, yMax]).range([32, 4]);
-  const path = line<number>()
-    .x((_, index) => x(index) ?? 0)
-    .y((value) => y(value))(values);
-  const zeroY = y(0);
-  const showZeroLine = yMin < 0;
+  const definition = useMemo(() => {
+    const rows = getSeries(points, variant).map(({ value }, index) => ({
+      index,
+      value,
+    }));
+    if (rows.length === 0) return null;
+    const values = rows.map(({ value }) => value);
+    const yMin = Math.min(0, ...values);
+    const yMax = Math.max(0, ...values, yMin === 0 ? 1 : 0);
+    return defineChart({
+      marks: [
+        ...(yMin < 0 ? [ruleY([0], { stroke: 'var(--divider)' })] : []),
+        lineY(rows, {
+          x: 'index',
+          y: 'value',
+          stroke: 'currentColor',
+          strokeWidth: 2,
+        }),
+      ],
+      scales: {
+        x: {
+          scale: scalePoint<number>().domain(rows.map(({ index }) => index)),
+        },
+        y: { scale: scaleLinear().domain([yMin, yMax]) },
+      },
+      guides: false,
 
+      // Vertical inset keeps the 2px stroke inside the box at the extremes.
+      margin: { top: 4, right: 0, bottom: 4, left: 0 },
+      focus: false,
+      pointer: false,
+      keyboard: false,
+      tooltip: false,
+    });
+  }, [points, variant]);
+
+  if (!definition) return <div className={styles.sparkline} />;
   return (
-    <svg
+    <Chart
       className={styles.sparkline}
-      viewBox="0 0 150 36"
-      preserveAspectRatio="none"
-    >
-      {showZeroLine ? (
-        <line
-          className={styles.gridLine}
-          x1={0}
-          x2={150}
-          y1={zeroY}
-          y2={zeroY}
-        />
-      ) : null}
-      <path d={path ?? ''} fill="none" stroke="currentColor" strokeWidth="2" />
-    </svg>
+      definition={definition}
+      height={SPARKLINE_HEIGHT}
+      initialWidth={150}
+      ariaLabel={`${variant.label} trend`}
+    />
   );
 }
 
@@ -434,11 +447,12 @@ function chartedVariants(
     : metric.variants;
 }
 
-const CHART_WIDTH = 700;
 const CHART_HEIGHT = 260;
-const CHART_MARGIN = { top: 10, right: 16, bottom: 34, left: 48 };
-/** Roughly the width of "Mar 19, 2026" in the axis font, plus breathing room. */
-const AXIS_LABEL_WIDTH = 96;
+
+interface ChartRow {
+  date: string;
+  value: number;
+}
 
 function FullChart({
   points,
@@ -451,181 +465,153 @@ function FullChart({
   selected: MetricVariant;
   onSelect: (variantId: string) => void;
 }) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const chartWidth = CHART_WIDTH - CHART_MARGIN.left - CHART_MARGIN.right;
-  const chartHeight = CHART_HEIGHT - CHART_MARGIN.top - CHART_MARGIN.bottom;
-
   const variants = chartedVariants(metric, selected);
-  const charted = variants.map((variant) => ({
-    variant,
-    series: getSeries(points, variant),
-  }));
-  // Snapshots any drawn series has a value for, in order.
-  const dates = points
-    .map((point) => point.snapshotDate)
-    .filter((date) =>
-      charted.some(({ series }) =>
-        series.some(({ point }) => point.snapshotDate === date)
-      )
+
+  const definition = useMemo(() => {
+    const charted = chartedVariants(metric, selected).map((variant) => ({
+      variant,
+      rows: getSeries(points, variant).map(
+        ({ point, value }): ChartRow => ({ date: point.snapshotDate, value })
+      ),
+    }));
+    // Snapshots any drawn series has a value for, in order.
+    const dates = points
+      .map((point) => point.snapshotDate)
+      .filter((date) =>
+        charted.some(({ rows }) => rows.some((row) => row.date === date))
+      );
+    const values = charted.flatMap(({ rows }) =>
+      rows.map(({ value }) => value)
     );
-  const values = charted.flatMap(({ series }) =>
-    series.map(({ value }) => value)
-  );
-  const yMin = Math.min(0, ...values);
-  const yMax = Math.max(0, ...values, yMin === 0 ? 1 : 0);
-  const x = scalePoint<string>().domain(dates).range([0, chartWidth]);
-  const y = scaleLinear().domain([yMin, yMax]).nice().range([chartHeight, 0]);
-  const zeroY = y(0);
-  const ticks = y.ticks(4);
-  const labelled = pickAxisLabelIndexes(
-    dates.length,
-    Math.max(2, Math.floor(chartWidth / AXIS_LABEL_WIDTH))
-  );
+    const yMin = Math.min(0, ...values);
+    const yMax = Math.max(0, ...values, yMin === 0 ? 1 : 0);
+    const lastDate = dates[dates.length - 1];
 
-  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
-    const svg = svgRef.current;
-    if (!svg || dates.length === 0) return;
-    const rect = svg.getBoundingClientRect();
-    const plotX =
-      ((event.clientX - rect.left) / rect.width) * CHART_WIDTH -
-      CHART_MARGIN.left;
-    let nearest = 0;
-    let nearestDistance = Infinity;
-    dates.forEach((date, index) => {
-      const distance = Math.abs((x(date) ?? 0) - plotX);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = index;
-      }
+    // Unselected series first so the selected one paints on top.
+    const drawOrder = [...charted].sort((a) =>
+      a.variant.id === selected.id ? 1 : -1
+    );
+    const marks = drawOrder.flatMap(({ variant, rows }) => {
+      const isSelected = variant.id === selected.id;
+      const color = variant.color;
+      return [
+        ...(isSelected
+          ? [
+              decorative(
+                areaY(rows, {
+                  id: `${variant.id}-area`,
+                  x: 'date',
+                  y: 'value',
+                  y1: 0,
+                  fill: color,
+                  fillOpacity: 0.14,
+                })
+              ),
+            ]
+          : []),
+        decorative(
+          lineY(rows, {
+            id: `${variant.id}-line`,
+            x: 'date',
+            y: 'value',
+            stroke: color,
+            strokeWidth: isSelected ? 2.5 : 1.5,
+          })
+        ),
+        dot(rows, {
+          id: variant.id,
+          x: 'date',
+          y: 'value',
+          key: 'date',
+          r: isSelected ? 3.5 : 2.5,
+          fill: color,
+          // Surface ring keeps overlapping series separable.
+          stroke: 'var(--surface-1)',
+          strokeWidth: 2,
+          states: [{ when: { focus: 'x' }, style: { r: 5 } }],
+        }),
+      ];
     });
-    setHoverIndex(nearest);
-  };
 
-  const hoverDate = hoverIndex === null ? null : dates[hoverIndex];
-  const hoverX = hoverDate === null ? null : x(hoverDate) ?? 0;
+    return defineChart({
+      marks: [
+        crosshair({
+          x: {
+            stroke: 'var(--text-tertiary)',
+            strokeOpacity: 1,
+            strokeDasharray: '3 3',
+          },
+          y: false,
+        }),
+        ...marks,
+      ],
+      scales: {
+        x: {
+          scale: scalePoint<string>().domain(dates),
+          axis: {
+            line: false,
+            ticks: { values: dates, size: 0, format: formatDate },
+            tickLabels: {
+              // Pin the ends inward so they stay inside the plot.
+              anchor: ({ index }) =>
+                dates.length <= 1
+                  ? 'middle'
+                  : index === 0
+                  ? 'start'
+                  : index === dates.length - 1
+                  ? 'end'
+                  : 'middle',
+              thin: { priority: 'ends', keep: lastDate ? [lastDate] : [] },
+            },
+          },
+        },
+        y: {
+          scale: scaleLinear().domain([yMin, yMax]),
+          nice: 4,
+          grid: { stroke: 'var(--divider)', strokeOpacity: 1, strokeWidth: 1 },
+          axis: {
+            line: false,
+            ticks: { count: 4, size: 0, format: selected.formatValue },
+          },
+        },
+      },
+      margin: { top: 10, right: 16 },
+      focus: 'group-x',
+      focusRing: false,
+      maxFocusDistance: Number.POSITIVE_INFINITY,
+      tooltip: {
+        use: tooltip,
+        content: (focused) => {
+          const date = focused[0]?.datum.date;
+          if (date === undefined) return { rows: [] };
+          return {
+            title: formatDate(date),
+            rows: charted.map(({ variant, rows }) => ({
+              label: variant.label,
+              value: variant.formatValue(
+                rows.find((row) => row.date === date)?.value ?? null
+              ),
+              color: variant.color,
+              active: variant.id === selected.id,
+            })),
+          };
+        },
+      },
+    });
+  }, [points, metric, selected]);
 
   return (
     <div className={styles.chart}>
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        role="img"
-        aria-label={metric.label}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHoverIndex(null)}
-      >
-        <g transform={`translate(${CHART_MARGIN.left}, ${CHART_MARGIN.top})`}>
-          {ticks.map((tick) => (
-            <g key={tick} transform={`translate(0, ${y(tick)})`}>
-              <line
-                className={styles.gridLine}
-                x1={0}
-                x2={chartWidth}
-                y1={0}
-                y2={0}
-              />
-              <text className={styles.axisLabel} x={-8} y={4} textAnchor="end">
-                {selected.formatValue(tick)}
-              </text>
-            </g>
-          ))}
-          {dates.map((date, index) =>
-            labelled.has(index) ? (
-              <text
-                key={date}
-                className={styles.axisLabel}
-                x={x(date) ?? 0}
-                y={chartHeight + 18}
-                textAnchor={axisLabelAnchor(index, dates.length)}
-              >
-                {formatDate(date)}
-              </text>
-            ) : null
-          )}
-          {hoverX !== null ? (
-            <line
-              className={styles.crosshair}
-              x1={hoverX}
-              x2={hoverX}
-              y1={0}
-              y2={chartHeight}
-            />
-          ) : null}
-          {/* Unselected series first so the selected one paints on top. */}
-          {[...charted]
-            .sort((a) => (a.variant.id === selected.id ? 1 : -1))
-            .map(({ variant, series }) => {
-              const isSelected = variant.id === selected.id;
-              const linePath = line<SeriesPoint>()
-                .x(({ point }) => x(point.snapshotDate) ?? 0)
-                .y(({ value }) => y(value))(series);
-              const areaPath = area<SeriesPoint>()
-                .x(({ point }) => x(point.snapshotDate) ?? 0)
-                .y0(zeroY)
-                .y1(({ value }) => y(value))(series);
-              return (
-                <g
-                  key={variant.id}
-                  className={isSelected ? styles.seriesSelected : styles.series}
-                  style={{ color: variant.color }}
-                  data-series={variant.id}
-                >
-                  {isSelected ? (
-                    <path className={styles.area} d={areaPath ?? ''} />
-                  ) : null}
-                  <path className={styles.line} d={linePath ?? ''} />
-                  {series.map(({ point, value }) => (
-                    <circle
-                      key={point.snapshotDate}
-                      className={styles.marker}
-                      cx={x(point.snapshotDate) ?? 0}
-                      cy={y(value)}
-                      r={
-                        point.snapshotDate === hoverDate
-                          ? 5
-                          : isSelected
-                          ? 3.5
-                          : 2.5
-                      }
-                    />
-                  ))}
-                </g>
-              );
-            })}
-        </g>
-      </svg>
-      {hoverDate !== null && hoverX !== null ? (
-        <div
-          className={styles.tooltip}
-          style={{
-            left: `${((CHART_MARGIN.left + hoverX) / CHART_WIDTH) * 100}%`,
-          }}
-          role="status"
-        >
-          <div className={styles.tooltipDate}>{formatDate(hoverDate)}</div>
-          {charted.map(({ variant, series }) => {
-            const hit = series.find(
-              ({ point }) => point.snapshotDate === hoverDate
-            );
-            return (
-              <div key={variant.id} className={styles.tooltipRow}>
-                <span
-                  className={styles.legendSwatch}
-                  style={{ background: variant.color }}
-                />
-                <span>{variant.label}</span>
-                <span className={styles.tooltipValue}>
-                  {variant.formatValue(hit ? hit.value : null)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
+      <Chart
+        className={styles.plot}
+        definition={definition}
+        height={CHART_HEIGHT}
+        initialWidth={700}
+        ariaLabel={metric.label}
+      />
       {variants.length > 1 ? (
         <div className={styles.legend} role="group" aria-label="Series">
-          {charted.map(({ variant }) => (
+          {variants.map((variant) => (
             <button
               key={variant.id}
               type="button"

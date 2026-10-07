@@ -428,91 +428,10 @@
   width: 100%;
 }
 
-.chart svg {
-  width: 100%;
-  min-height: 260px;
-  display: block;
-}
-
-.axisLabel {
-  fill: var(--text-tertiary);
+/* Axis text inherits `color`. */
+.plot {
+  color: var(--text-tertiary);
   font-size: 11px;
-}
-
-/* Each series group sets `color` to its own token; marks inherit it, so the
-   same stat is the same colour on every row and in the legend swatch. */
-.series,
-.seriesSelected {
-  color: var(--accent-main);
-}
-
-.line {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5px;
-  stroke-linejoin: round;
-}
-
-.seriesSelected .line {
-  stroke-width: 2.5px;
-}
-
-.marker {
-  fill: currentColor;
-  /* 2px surface ring so overlapping series stay separable. */
-  stroke: var(--surface-1);
-  stroke-width: 2px;
-}
-
-.area {
-  fill: currentColor;
-  fill-opacity: 0.14;
-}
-
-.gridLine {
-  stroke: var(--divider);
-  stroke-width: 1;
-}
-
-.crosshair {
-  stroke: var(--text-tertiary);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
-.tooltip {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  pointer-events: none;
-  display: grid;
-  gap: 2px;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-md);
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-  white-space: nowrap;
-  z-index: 1;
-}
-
-.tooltipDate {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.tooltipRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.tooltipValue {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
 }
 
 /* Series identity below the plot; also the second place to pick the headline

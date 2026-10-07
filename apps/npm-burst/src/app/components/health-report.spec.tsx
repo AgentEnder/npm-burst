@@ -179,21 +179,51 @@ describe('HealthReport', () => {
     });
   });
 
-  describe('expanded chart', () => {
-    function expandRow(label: string) {
-      const utils = render(<HealthReport health={buildHealth()} />);
+  describe('charts', () => {
+    const base = buildHealth().snapshots[0];
+
+    /** Twenty daily snapshots; open issues shrink so the Δ series goes negative. */
+    const dailySnapshots = Array.from({ length: 20 }, (_, index) => ({
+      ...base,
+      snapshotDate: `2026-03-${String(index + 1).padStart(2, '0')}`,
+      openIssuesCount: 40 - index,
+      avgIssueCloseHours: 48 + index,
+    }));
+
+    function expandRow(
+      label: string,
+      health = buildHealth({ snapshots: dailySnapshots })
+    ) {
+      const utils = render(<HealthReport health={health} />);
       const rowButton = utils
         .getByText(label)
         .closest('[role="button"]') as HTMLElement;
       fireEvent.click(rowButton);
       const row = rowButton.parentElement as HTMLElement;
-      return { ...utils, row, rowButton };
+      const chart = within(row).getByRole('img', { name: label });
+      return { ...utils, row, rowButton, chart };
     }
 
-    it('draws every stat of a duration row and lets the legend pick the headline', () => {
-      const { row, rowButton } = expandRow('Issue Resolution Time');
-      const svg = row.querySelector('svg[role="img"]') as SVGSVGElement;
-      expect(svg.querySelectorAll('[data-series]')).toHaveLength(3);
+    /** Variant ids of the plotted series, in paint order. */
+    function seriesIds(chart: Element): (string | null)[] {
+      return Array.from(chart.querySelectorAll('g.ts-chart__dot')).map(
+        (group) => group.getAttribute('data-ts-key')
+      );
+    }
+
+    function areaIds(chart: Element): (string | null)[] {
+      return Array.from(chart.querySelectorAll('g.ts-chart__area')).map(
+        (group) => group.getAttribute('data-ts-key')
+      );
+    }
+
+    it('draws every stat of a duration row with the selected one on top', () => {
+      const { row, rowButton, chart } = expandRow('Issue Resolution Time');
+      expect(seriesIds(chart)).toEqual(['p95', 'median', 'avg']);
+      expect(areaIds(chart)).toEqual(['avg-area']);
+      expect(
+        chart.querySelector('[stroke="var(--chart-series-p95)"]')
+      ).toBeTruthy();
 
       const legend = within(row).getByRole('group', { name: 'Series' });
       fireEvent.click(within(legend).getByRole('button', { name: /P95/ }));
@@ -202,38 +232,74 @@ describe('HealthReport', () => {
           .getByRole('button', { name: 'P95' })
           .getAttribute('aria-pressed')
       ).toBe('true');
+      expect(seriesIds(chart).at(-1)).toBe('p95');
+      expect(areaIds(chart)).toEqual(['p95-area']);
     });
 
     it('draws only the selected series when the other variant is a delta', () => {
-      const { row } = expandRow('Open Issues');
-      const svg = row.querySelector('svg[role="img"]') as SVGSVGElement;
-      expect(svg.querySelectorAll('[data-series]')).toHaveLength(1);
+      const { row, chart } = expandRow('Open Issues');
+      expect(seriesIds(chart)).toEqual(['total']);
       expect(within(row).queryByRole('group', { name: 'Series' })).toBeNull();
     });
 
-    it('thins x-axis labels when there are more snapshots than fit', () => {
-      const base = buildHealth().snapshots[0];
-      const snapshots = Array.from({ length: 20 }, (_, index) => ({
-        ...base,
-        snapshotDate: `2026-03-${String(index + 1).padStart(2, '0')}`,
-      }));
-      const { getByText } = render(
-        <HealthReport health={buildHealth({ snapshots })} />
+    it('thins x-axis labels and keeps the ends inside the plot', () => {
+      const { chart } = expandRow('PRs Merged');
+      const labels = Array.from(
+        chart.querySelectorAll('text[data-ts-key^="x-tick-label"]')
       );
-      const rowButton = getByText('PRs Merged').closest(
+      expect(labels.length).toBeGreaterThan(1);
+      expect(labels.length).toBeLessThan(20);
+      expect(labels[0].textContent).toMatch(/Mar 1, 2026/);
+      expect(labels[0].getAttribute('text-anchor')).toBe('start');
+      const last = labels[labels.length - 1];
+      expect(last.textContent).toMatch(/Mar 20, 2026/);
+      expect(last.getAttribute('text-anchor')).toBe('end');
+    });
+
+    it('shows every series for the focused snapshot in the tooltip', () => {
+      const { chart } = expandRow('Issue Resolution Time');
+      fireEvent.focus(chart);
+      fireEvent.keyDown(chart, { key: 'End' });
+
+      const host = chart.closest('.ts-chart-host') as HTMLElement;
+      const tip = within(host).getByRole('status');
+      const summary = tip.getAttribute('aria-label') ?? '';
+      expect(summary).toMatch(/Mar 20, 2026/);
+      // avgIssueCloseHours = 48 + 19 = 67h.
+      expect(summary).toMatch(/Avg: 2\.8d/);
+      expect(summary).toMatch(/Median: 30h/);
+      expect(summary).toMatch(/P95: 10d/);
+
+      // Markers at the focused snapshot grow; the rest keep their size.
+      const focused = chart.querySelectorAll(
+        'circle[data-ts-key$=":2026-03-20"]'
+      );
+      expect(focused).toHaveLength(3);
+      focused.forEach((marker) => expect(marker.getAttribute('r')).toBe('5'));
+      expect(
+        chart
+          .querySelector('circle[data-ts-key$=":2026-03-01"]')
+          ?.getAttribute('r')
+      ).not.toBe('5');
+    });
+
+    it('draws a sparkline per row and a zero line once values go negative', () => {
+      const { getByText } = render(
+        <HealthReport health={buildHealth({ snapshots: dailySnapshots })} />
+      );
+      const row = getByText('Open Issues').closest(
         '[role="button"]'
       ) as HTMLElement;
-      fireEvent.click(rowButton);
-      const svg = (rowButton.parentElement as HTMLElement).querySelector(
-        'svg[role="img"]'
-      ) as SVGSVGElement;
-      const axisLabels = Array.from(svg.querySelectorAll('text')).filter(
-        (node) => /2026$/.test(node.textContent ?? '')
-      );
-      expect(axisLabels.length).toBeLessThan(20);
+      const sparkline = () =>
+        within(row).getByRole('img', { name: /trend$/ }) as Element;
+
       expect(
-        axisLabels[axisLabels.length - 1].getAttribute('text-anchor')
-      ).toBe('end');
+        sparkline().querySelector('path[stroke="currentColor"]')
+      ).toBeTruthy();
+      expect(sparkline().querySelector('.ts-chart__rule')).toBeNull();
+
+      fireEvent.click(within(row).getByRole('button', { name: 'Δ' }));
+      expect(sparkline().querySelector('.ts-chart__rule')).toBeTruthy();
     });
   });
 });
