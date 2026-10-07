@@ -211,9 +211,13 @@ export function getVersionAdoptionData(
       // Also add known version series points at 0 for pre-snapshot dates
       // so the stacked chart has matching date entries
       for (const s of result) {
-        for (const up of unknownPoints) {
-          s.points.unshift({ date: up.date, percent: 0, count: 0 });
-        }
+        s.points.unshift(
+          ...unknownPoints.map((up) => ({
+            date: up.date,
+            percent: 0,
+            count: 0,
+          }))
+        );
       }
     }
 
