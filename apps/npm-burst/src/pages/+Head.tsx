@@ -1,6 +1,7 @@
 import { usePageContext } from 'vike-react/usePageContext';
 
 import { SITE_NAME } from '../app/utils/package-seo';
+import { CARD_HEIGHT, CARD_WIDTH } from '../og/card-url';
 import { absoluteUrl } from '../app/utils/site';
 
 /**
@@ -19,8 +20,10 @@ d.dataset.theme=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-s
 /**
  * Document head shared by every page.
  *
- * `title` / `description` / `og:*` are emitted by vike-react from the `title`
- * and `description` settings (see `+config.ts` and the per-page overrides).
+ * `title` / `description` / `og:*` are emitted by vike-react from the `title`,
+ * `description` and `image` settings (see `+config.ts`, `+image.ts` and the
+ * per-page overrides). The image's dimensions and alt text are not, so they
+ * are added here.
  * What is left for here is everything vike-react does not generate:
  *
  * - **Canonical.** Package URLs accept view state as query strings
@@ -35,6 +38,10 @@ d.dataset.theme=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-s
 export default function Head() {
   const pageContext = usePageContext();
   const canonical = absoluteUrl(pageContext.urlPathname);
+  const packageName = pageContext.routeParams?.['packageName'];
+  const imageAlt = packageName
+    ? `Weekly downloads of ${packageName}, broken down by version`
+    : SITE_NAME;
 
   return (
     <>
@@ -43,7 +50,9 @@ export default function Head() {
       <meta property="og:url" content={canonical} />
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:type" content="website" />
-      <meta name="twitter:card" content="summary" />
+      <meta property="og:image:width" content={`${CARD_WIDTH}`} />
+      <meta property="og:image:height" content={`${CARD_HEIGHT}`} />
+      <meta property="og:image:alt" content={imageAlt} />
 
       {/*
         SVG first: browsers that support it get the sharp mark at any size and

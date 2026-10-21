@@ -135,16 +135,22 @@ export function buildPackagePath(
   packageName: string,
   tab: PackageTab = DEFAULT_PACKAGE_TAB
 ): string {
-  // The scope separator stays literal — `@nx/devkit` is two path segments, not
-  // an encoded one. Encoding it to %2F would break the parse and some proxies
-  // normalize it back anyway.
-  // `@` is a legal path character (RFC 3986 sub-delim) and npm/npmjs.com use
-  // it literally, so restore it after encoding the rest of the segment.
-  const encodedName = packageName
+  const suffix = tab === DEFAULT_PACKAGE_TAB ? '' : `/${tab}`;
+  return `/package/${encodePackageName(packageName)}${suffix}`;
+}
+
+/**
+ * Encode a package name for a URL path.
+ *
+ * The scope separator stays literal — `@nx/devkit` is two path segments, not
+ * an encoded one. Encoding it to %2F would break the parse and some proxies
+ * normalize it back anyway. `@` is a legal path character (RFC 3986
+ * sub-delim) and npm/npmjs.com use it literally, so restore it after encoding
+ * the rest of the segment.
+ */
+export function encodePackageName(packageName: string): string {
+  return packageName
     .split('/')
     .map((segment) => encodeURIComponent(segment).replace(/%40/g, '@'))
     .join('/');
-
-  const suffix = tab === DEFAULT_PACKAGE_TAB ? '' : `/${tab}`;
-  return `/package/${encodedName}${suffix}`;
 }

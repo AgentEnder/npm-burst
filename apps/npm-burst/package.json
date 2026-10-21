@@ -9,12 +9,14 @@
   "dependencies": {
     "@npm-burst/github-data-access": "workspace:",
     "@npm-burst/npm-data-access": "workspace:",
+    "@resvg/resvg-wasm": "^2.6.2",
     "@universal-middleware/core": "^0.4.17",
     "@vikejs/hono": "^0.2.0",
     "hono": "^4.12.14",
-    "markdown-factory": "^0.2.0"
+    "markdown-factory": "^0.2.0",
+    "satori": "^0.29.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.33.1"
+    "@cloudflare/vite-plugin": "^1.64.0"
   }
 }

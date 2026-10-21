@@ -22,8 +22,7 @@ import {
   readInitialStateFromURL,
   subscribeToURLSync,
 } from './url-sync';
-
-type VersionLevel = 'major' | 'minor' | 'patch';
+import type { UrlViewState, VersionLevel } from './url-params';
 
 /** Index of the snapshot dated `date`, or `null` when absent. */
 function snapshotIndexFor(snapshots: Snapshot[], date: string | null) {
@@ -40,13 +39,9 @@ interface PackageCache {
   health: PackageHealthResponse | null;
 }
 
-export interface AppState {
-  // URL-synced state
+/** URL-synced fields come from `UrlViewState`. */
+export interface AppState extends UrlViewState {
   npmPackageName: string;
-  sortByVersion: boolean;
-  lowPassFilter: number;
-  selectedVersion: string | null;
-  expandedNodes: string[];
 
   // Fetched data
   liveData: NpmDownloadsByVersion | null;
@@ -83,32 +78,10 @@ export interface AppState {
    */
   isRevalidatingHealth: boolean;
   error: string | null;
-  showDataTable: boolean;
   /** Active tab, mirrored from the route by `seedPackageStore` */
   viewMode: PackageTab;
   /** Incremented to force re-fetch after cache invalidation */
   fetchGeneration: number;
-
-  /** Snapshot date from the URL, resolved once snapshot history loads. */
-  pendingSnapshotDate: string | null;
-
-  // Chart controls
-  /** Version filter shared by the Breakdown, Adoption and Migration tabs. */
-  versionFilter: string;
-  timeWindow: TimeWindow;
-  adoptionChartMode: 'stacked' | 'lines';
-  adoptionYAxis: 'percent' | 'count';
-  adoptionGrouping: VersionLevel;
-  adoptionShowReleases: boolean;
-  /** Release tick level; `null` follows the grouping. */
-  adoptionTickLevel: VersionLevel | null;
-  adoptionHidden: string[];
-  migrationTimeWindow: MigrationTimeWindow;
-  migrationGranularity: VersionLevel;
-  migrationHidden: string[];
-  lifecycleThreshold: number;
-  lifecycleShowOnlySnapshotted: boolean;
-  lifecycleMinPeak: number;
 
   // Actions
   setNpmPackageName: (pkg: string) => void;
@@ -161,7 +134,7 @@ export interface AppState {
   setLifecycleShowOnlySnapshotted: (v: boolean) => void;
   setLifecycleMinPeak: (v: number) => void;
   /** Apply state parsed from the query string, e.g. after back/forward. */
-  applyURLState: (state: Partial<AppState>) => void;
+  applyURLState: (state: Partial<UrlViewState>) => void;
 
   recomputeChartData: () => void;
   /** Save the current package's data to the in-memory and local caches. */

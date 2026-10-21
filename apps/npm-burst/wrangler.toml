@@ -16,9 +16,23 @@ main = "vike:server-entry"
 # telefunc RPC endpoint and the GitHub App routes can fall into the
 # asset layer's `html_handling` / `not_found_handling` lookups and come
 # back as 405 (assets only serve GET/HEAD). Listing those prefixes
-# routes them directly to the Worker.
+# routes them directly to the Worker. Social cards are never assets, so
+# they skip the lookup too.
 [assets]
-run_worker_first = ["/_telefunc", "/api/*"]
+run_worker_first = ["/_telefunc", "/api/*", "/og/*"]
+
+# Workers Cache sits in front of the social card entrypoint only. Pages,
+# assets and the API keep the default entrypoint, uncached here, because
+# enabling it there would bill every asset request. Pages have their own
+# edge cache in `src/server/html-cache.ts`. The `cache` key needs wrangler
+# 4.151 or later.
+[exports.default]
+type = "worker"
+cache = { enabled = false }
+
+[exports.OgCard]
+type = "worker"
+cache = { enabled = true }
 
 [[routes]]
 pattern = "npm-burst.com"

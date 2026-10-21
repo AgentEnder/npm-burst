@@ -10,13 +10,31 @@
     "outDir": "../../dist/npm-burst/server/out-tsc",
     "composite": true
   },
-  "include": ["src/server/**/*.ts", "src/dev-auth.ts", "+server.ts"],
+  "include": [
+    "src/server/**/*.ts",
+    "src/dev-auth.ts",
+    "+server.ts",
+    "src/og/**/*.ts",
+    "src/og/**/*.tsx",
+    "src/app/components/sunburst/sunburst-model.ts",
+    "src/app/store/url-params.ts",
+    "src/app/utils/chart-data.ts",
+    "src/app/utils/package-route.ts",
+    "src/app/utils/package-seo.ts",
+    "src/app/utils/site.ts",
+    "src/app/utils/theme-colors.ts",
+    "src/app/utils/time-window.ts"
+  ],
   "references": [
+    {
+      "path": "../../libs/npm-data-access/tsconfig.lib.json"
+    },
     {
       "path": "../../libs/github-data-access/tsconfig.lib.json"
     },
     {
       "path": "../../libs/shared/tsconfig.lib.json"
     }
-  ]
+  ],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.spec.tsx"]
 }
