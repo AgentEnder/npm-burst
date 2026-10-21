@@ -2,9 +2,9 @@ import type { NpmDownloadsByVersion } from '@npm-burst/npm-data-access';
 import { parse, satisfies, validRange } from 'semver';
 import {
   isLeafNode,
-  SunburstData,
-  SunburstLeafNode,
-} from '../components/sunburst';
+  type SunburstData,
+  type SunburstLeafNode,
+} from '../components/sunburst/sunburst-model';
 
 const FILTER_OTHER_NAME = 'Other (filtered)';
 

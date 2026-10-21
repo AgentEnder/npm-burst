@@ -1,11 +1,11 @@
 import { appStore, type AppState } from './app-store';
-import { readStateFromSearch, writeStateToSearch } from './url-sync';
+import { readStateFromSearch, writeStateToSearch } from './url-params';
 
 function stateWith(overrides: Partial<AppState>): AppState {
   return { ...appStore.getState(), ...overrides };
 }
 
-describe('url-sync', () => {
+describe('url-params', () => {
   it('writes nothing when every control is at its default', () => {
     expect(writeStateToSearch(appStore.getState(), '')).toBe('');
   });
