@@ -24,10 +24,6 @@
       "dependsOn": ["build"],
       "options": { "cwd": "apps/npm-burst" }
     },
-    "og:preview": {
-      "command": "tsx --tsconfig tsconfig.app.json scripts/render-og-preview.tsx",
-      "options": { "cwd": "apps/npm-burst" }
-    },
     "db:migrate": {
       "command": "wrangler d1 migrations apply npm-burst-db --local",
       "options": { "cwd": "apps/npm-burst" },
