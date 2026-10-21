@@ -1,6 +1,10 @@
 /**
  * Stale-while-revalidate cache for server-rendered package HTML.
  *
+ * Entries are keyed per path and shared across query strings, so the one
+ * query-dependent tag, the social card's `og:image`, is filled in per request
+ * on the way out (see `og-image-meta.ts`).
+ *
  * Safe to cache in a *shared* cache only because SSR output here is
  * user-agnostic: `getAuthUserId` (see `auth.ts`) authenticates from the
  * `Authorization: Bearer` header alone, never cookies, and browsers do not
@@ -16,6 +20,8 @@
  */
 
 import type { MiddlewareHandler } from 'hono';
+
+import { withCardQuery } from './og-image-meta';
 
 /** How long a cached render is served without revalidating. */
 const FRESH_SECONDS = 5 * 60;
@@ -111,6 +117,7 @@ export const htmlCacheMiddleware: MiddlewareHandler = async (c, next) => {
 
   if (skipCache) {
     await next();
+    c.res = withCardQuery(c.res, c.req.url);
     return;
   }
 
@@ -120,11 +127,11 @@ export const htmlCacheMiddleware: MiddlewareHandler = async (c, next) => {
     const hit = await cache.match(key);
     if (hit) {
       if (ageSeconds(hit) <= FRESH_SECONDS) {
-        return hit;
+        return withCardQuery(hit, c.req.url);
       }
       // Stale: answer immediately, refresh behind the response.
       c.executionCtx?.waitUntil(revalidate(key, cache));
-      return hit;
+      return withCardQuery(hit, c.req.url);
     }
   }
 
@@ -135,4 +142,6 @@ export const htmlCacheMiddleware: MiddlewareHandler = async (c, next) => {
     const stored = withCacheMetadata(response.clone());
     c.executionCtx?.waitUntil(cache.put(key, stored));
   }
+  // After the copy above, so the stored HTML stays query-free.
+  c.res = withCardQuery(c.res, c.req.url);
 };
